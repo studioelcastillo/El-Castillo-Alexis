@@ -702,24 +702,16 @@
   </div>
 </template>
 <script>
-import AuthService from 'src/services/AuthService'
-import UserService from 'src/services/UserService'
-import DashboardService from 'src/services/DashboardService'
-import ReportService from 'src/services/ReportService'
-import ModelStreamService from 'src/services/ModelStreamService'
-import StudioService from 'src/services/StudioService'
-import DocumentService from 'src/services/DocumentService'
-import MonitorService from 'src/services/MonitorService'
+// ── Supabase Services ──────────────────────────────────────
+import AuthSupabaseService from 'src/services/supabase/AuthSupabaseService'
+import DashboardSupabaseService from 'src/services/supabase/DashboardSupabaseService'
+import { StudioService, PeriodService } from 'src/services/supabase/SupabaseServices'
+
+// ── Mixins y componentes ───────────────────────────────────
 import { xMisc } from 'src/mixins/xMisc.js'
 import { sGate } from 'src/mixins/sGate.js'
 import { Chart } from 'highcharts-vue'
-
-// Highcharts additional modules
 import Highcharts from 'highcharts'
-// import Funnel from 'highcharts/modules/funnel'
-// import Gantt from 'highcharts/modules/gantt'
-// Funnel(Highcharts)
-// Gantt(Highcharts)
 
 export default {
   name: 'DashboardView',
@@ -744,11 +736,12 @@ export default {
         user_surname: '',
         user_email: '',
         prof_id: '',
-       },
+        user_id: null
+      },
       imageUrl: '',
       loader: true,
       tasksList: [],
-      indicatorsList: [],
+      indicatorsList: {},
       taskCompletedImageIndex: -1,
       report: {
         period: { value: 0, label: '' },
@@ -756,33 +749,18 @@ export default {
       },
       periods: [],
       studios: [],
-      studioData: [],
+      studioData: {},
       chartOptsStreamEarnings: {
-        chart: {
-          type: 'column'
-        },
-        title: {
-          text: 'Ganancias x plataforma x periodo',
-          align: 'center'
-        },
-        xAxis: {
-          categories: []
-        },
+        chart: { type: 'column' },
+        title: { text: 'Ganancias x plataforma x periodo', align: 'center' },
+        xAxis: { categories: [] },
         yAxis: {
           min: 0,
-          title: {
-            text: 'Ganancias'
-          },
-          stackLabels: {
-            enabled: true
-          }
+          title: { text: 'Ganancias' },
+          stackLabels: { enabled: true }
         },
         legend: {
           align: 'center',
-          // x: 70,
-          // verticalAlign: 'top',
-          // y: 70,
-          // floating: true,
           backgroundColor: Highcharts.defaultOptions.legend.backgroundColor || 'white',
           borderColor: '#CCC',
           borderWidth: 1,
@@ -795,9 +773,7 @@ export default {
         plotOptions: {
           column: {
             stacking: 'normal',
-            dataLabels: {
-              enabled: true
-            }
+            dataLabels: { enabled: true }
           }
         },
         series: []
@@ -805,103 +781,25 @@ export default {
       modelGoalsTable: {
         dataset: [],
         filter: '',
-        visibleColumns: [ 'user_identification', 'user_name', 'user_surname', 'sum_goal', 'sum_earnings' ],
+        visibleColumns: ['user_identification', 'user_name', 'user_surname', 'sum_goal', 'sum_earnings'],
         columns: [
-          {
-            name: 'user_identification',
-            required: true,
-            label: 'Identificación',
-            align: 'left',
-            field: row => row.user_identification,
-            sortable: true
-          },
-          {
-            name: 'user_name',
-            required: true,
-            label: 'Nombre',
-            align: 'left',
-            field: row => row.user_name,
-            sortable: true
-          },
-          {
-            name: 'user_surname',
-            required: true,
-            label: 'Apellido',
-            align: 'left',
-            field: row => row.user_surname,
-            sortable: true
-          },
-          {
-            name: 'sum_goal',
-            required: true,
-            label: 'Meta',
-            align: 'left',
-            field: row => row.sum_goal,
-            sortable: true
-          },
-          {
-            name: 'sum_earnings',
-            required: true,
-            label: 'Ganancias',
-            align: 'left',
-            field: row => row.sum_earnings,
-            sortable: true
-          },
-          {
-            name: 'goal_indicator',
-            required: true,
-            label: 'Indicador',
-            align: 'left',
-            field: row => row.sum_earnings / row.sum_goal,
-            sortable: true
-          },
+          { name: 'user_identification', required: true, label: 'Identificación', align: 'left', field: row => row.users?.user_identification, sortable: true },
+          { name: 'user_name', required: true, label: 'Nombre', align: 'left', field: row => row.users?.user_name, sortable: true },
+          { name: 'user_surname', required: true, label: 'Apellido', align: 'left', field: row => row.users?.user_surname, sortable: true },
+          { name: 'sum_goal', required: true, label: 'Meta', align: 'left', field: row => row.goal_amount, sortable: true },
+          { name: 'sum_earnings', required: true, label: 'Ganancias', align: 'left', field: row => row.sum_earnings || 0, sortable: true },
+          { name: 'goal_indicator', required: true, label: 'Indicador', align: 'left', field: row => (row.sum_earnings || 0) / (row.goal_amount || 1), sortable: true }
         ]
       },
       studioGoalsTable: {
-        dataset: [2],
+        dataset: [],
         filter: '',
-        visibleColumns: [ 'std_nit', 'std_name', 'sum_goal', 'sum_earnings' ],
+        visibleColumns: ['std_name', 'sum_goal', 'sum_earnings'],
         columns: [
-          {
-            name: 'std_nit',
-            required: true,
-            label: 'Nit',
-            align: 'left',
-            field: row => row.std_nit,
-            sortable: true
-          },
-          {
-            name: 'std_name',
-            required: true,
-            label: 'Estudio',
-            align: 'left',
-            field: row => row.std_name,
-            sortable: true
-          },
-          {
-            name: 'sum_goal',
-            required: true,
-            label: 'Meta',
-            align: 'left',
-            field: row => row.sum_goal,
-            sortable: true
-          },
-          {
-            name: 'sum_earnings',
-            required: true,
-            label: 'Ganancias',
-            align: 'left',
-            field: row => row.sum_earnings,
-            sortable: true
-          },
-          {
-            name: 'goal_indicator',
-            required: true,
-            label: 'Indicador',
-            align: 'left',
-            field: row => row.sum_earnings / row.sum_goal,
-            sortable: true
-          },
+          { name: 'std_name', required: true, label: 'Estudio', align: 'left', field: row => row.studios?.std_name, sortable: true },
+          { name: 'sum_goal', required: true, label: 'Meta', align: 'left', field: row => row.goal_amount, sortable: true },
+          { name: 'sum_earnings', required: true, label: 'Ganancias', align: 'left', field: row => row.sum_earnings || 0, sortable: true },
+          { name: 'goal_indicator', required: true, label: 'Indicador', align: 'left', field: row => (row.sum_earnings || 0) / (row.goal_amount || 1), sortable: true }
         ]
       },
       pagination: {
@@ -913,200 +811,116 @@ export default {
     }
   },
   async mounted () {
-    this.sUser = this.decryptSession('user')
-    await this.validateSession()
-    if (this.modeprop === 'as' && this.openGate('show-dashboard-as-user', this.sUser.prof_id)) {
-      const user = await UserService.getUserWithPermission({ id: this.$route.params.id, token: this.decryptSession('token') })
-      this.sUser = user.data.data
-    }
-    await this.getSelects()
-
-    if (this.openGate('tasks-dashboard', this.sUser.prof_id)) {
-      this.getTasks()
-      this.getIndicators()
-      if (![6].includes(this.sUser.prof_id)) {
-        await this.getCharts()
+    try {
+      // ── Cargar sesión de Supabase ──
+      const { data: sessionData } = await AuthSupabaseService.getSession()
+      if (sessionData?.session?.user) {
+        const { data: profile } = await AuthSupabaseService.getUserProfile(sessionData.session.user.id)
+        if (profile) {
+          this.sUser = profile
+        }
+      } else {
+        this.sUser = this.decryptSession('user')
       }
-    } else {
+
+      await this.getSelects()
+
+      if (this.openGate('tasks-dashboard', this.sUser.prof_id)) {
+        await this.getTasks()
+        await this.getIndicators()
+        if (![6].includes(this.sUser.prof_id)) {
+          await this.getCharts()
+        }
+      } else {
+        this.loader = false
+      }
+      this.loader = false
+
+      // Perfil image logic
+      if ([4, 5].includes(this.sUser.prof_id)) {
+        this.imageUrl = this.sUser.user_photo_url || ''
+      } else if ([2].includes(this.sUser.prof_id)) {
+        this.imageUrl = this.studioData?.std_photo_url || ''
+      } else {
+        this.imageUrl = '/images/studios/STUDIO-1.png'
+      }
+    } catch (error) {
+      console.error('Error in Dashboard mounted:', error)
       this.loader = false
     }
-    this.loader = false
-    
-    if ([4,5].includes(this.sUser.prof_id)) {
-      // this.imageUrl = (this.sUser.user_image) ? this.getApiUrl('/images/models/' + this.sUser.user_image)  : ''
-      const response = await DocumentService.getUserProfilePicture({ id: this.sUser.user_id, token: this.decryptSession('token') })
-      this.imageUrl = (response.data.data) ? this.getApiUrl('/images/models/documents/' + response.data.data.doc_url)  : ''
-    } 
-    else if ([2].includes(this.sUser.prof_id)) {
-      this.imageUrl = (this.studioData.std_image) ? this.getApiUrl('/images/studios/' + this.studioData.std_image)  : '' 
-    }
-    else if ([7,8].includes(this.sUser.prof_id)) {
-      this.getIndicators()
-      await this.getCharts()
-    }
-    else {
-      this.imageUrl = this.getApiUrl('/images/studios/STUDIO-1.png')
-    }
-    
   },
   methods: {
-    async validateSession() {
-      try {
-        var sesion = await AuthService.checkSession({ token: this.decryptSession('token') })
-        this.encryptSession('user', sesion.data.user)
-        this.sUser = sesion.data.user
-        // console.log('token', this.decryptSession('token'))
-        this.$emit('update-user-session')
-      } catch (error) {
-        this.errorsAlerts(error)
-      }
-    },
     async getSelects () {
-      var response
-
-      // periods
-      this.periods = []
-      // async
-      response = await ReportService.getStudioPeriods({ id: this.sUser.user_id, token: this.decryptSession('token') })
-      for (var u = 0; u < response.data.data.length; u++) {
-        this.periods.push({
-          label: response.data.data[u].label,
-          since: response.data.data[u].since,
-          until: response.data.data[u].until,
-          value: response.data.data[u].since + '|' + response.data.data[u].until,
-        })
-      }
-      if (this.periods.length > 0) {
-        this.report.period = this.periods[0]
-      }
-
-      // studios
-      this.studios = []
-      this.studios.push({ label: 'TODOS', value: '' })
-      this.report.std_id = { label: 'TODOS', value: '' }
-      // query
-      let query = 'std_active=true'
-      // async
-      response = await StudioService.getStudios({ query: query, id: this.sUser.user_id, token: this.decryptSession('token') })
-      for (var u = 0; u < response.data.data.length; u++) {
-        this.studios.push({
-          label: response.data.data[u].std_name,
-          value: response.data.data[u].std_id,
-        })
-      }
-      if (response.data.data.length > 0) {
-        this.studioData = response.data.data[0]
-      }
-      if ([7].includes(this.sUser.prof_id)) {
-        this.monitors = []
-        this.monitors.push({ label: 'TODOS', value: '' })
-        this.monitor = { label: 'TODOS', value: '' }
-        response = await MonitorService.getMonitorsOfChiefMonitor({ id: this.sUser.user_id, token: this.decryptSession('token') })
-        for (var u = 0; u < response.data.data.length; u++) {
-          this.monitors.push({
-            label: response.data.data[u].user_name,
-            value: response.data.data[u].user_id,
-          })
+      try {
+        // Periods
+        const { data: periods } = await PeriodService.getAll()
+        this.periods = (periods || []).map(p => ({
+          label: p.per_name,
+          since: p.per_start_date,
+          until: p.per_end_date,
+          value: p.per_id
+        }))
+        if (this.periods.length > 0) {
+          this.report.period = this.periods[0]
         }
+
+        // Studios
+        const { data: studios } = await StudioService.getAll({ std_active: true })
+        this.studios = [{ label: 'TODOS', value: '' }]
+        if (studios) {
+          studios.forEach(s => {
+            this.studios.push({ label: s.std_name, value: s.std_id })
+          })
+          this.studioData = studios[0]
+        }
+      } catch (error) {
+        console.error('Error getting selects:', error)
       }
     },
     async getTasks () {
       try {
-        var response = await DashboardService.getTasks({ query: '', token: this.decryptSession('token') })
-        this.tasksList = response.data.data
-        // this.tasksList = []
-        // console.log('this.tasksList')
-        // console.log(this.tasksList)
-
-        // random completed task image
+        const { data } = await DashboardSupabaseService.getTasks(this.sUser.user_id)
+        this.tasksList = data || []
         this.taskCompletedImageIndex = this.getRandomInt(0, 6)
-        this.loader = false
       } catch (error) {
-        console.log(error)
-        this.errorsAlerts(error)
-        this.loader = false
+        console.error('Error getting tasks:', error)
       }
     },
     async getIndicators () {
       try {
-        // query
-        let query = ''
-        query += '&report_since=' + this.report.period.since + '&report_until=' + this.report.period.until
-        if (this.report.std_id && this.report.std_id.value) {
-          query += '&std_id=' + this.report.std_id.value
-        } else if (this.monitor && this.monitor.value && this.monitor.value !== 0) {
-          query += '&monitor_id=' + this.monitor.value
-        }
-
-        var response = await DashboardService.getIndicators({ id: this.sUser.user_id, query: query, token: this.decryptSession('token') })
-        this.indicatorsList = response.data.data
-        // this.indicatorsList = []
-        // console.log('on getIndicators')
-        // console.log('response.data.data')
-        // console.log(response.data.data)
-        // console.log(this.sUser)
-
-        // change execution chart data
-        // this.chartOptsExecution.series[1].name = 'Presup. a ' + response.data.data.sum_emplcycle_limit
-        // this.chartOptsExecution.series[0].data[0] = parseInt(response.data.data.sum_trans_debit_total)
-        // this.chartOptsExecution.series[1].data[0] = parseInt(response.data.data.sum_emplcycle_grand_total)
-        // this.chartOptsExecution.series[2].data[0] = parseInt(response.data.data.sum_emplcycle_anual_total)
-
-        this.loader = false
+        const { data } = await DashboardSupabaseService.getIndicators({
+          per_id: this.report.period?.value,
+          std_id: this.report.std_id?.value
+        })
+        this.indicatorsList = data || {}
       } catch (error) {
-        console.log(error)
-        this.errorsAlerts(error)
-        this.loader = false
+        console.error('Error getting indicators:', error)
       }
     },
     async getCharts () {
       try {
-        // query
-        let query = ''
-        query += '&report_since=' + this.report.period.since + '&report_until=' + this.report.period.until
-        if (this.report.std_id && this.report.std_id.value) {
-          query += '&std_id=' + this.report.std_id.value
-        } else if (this.monitor && this.monitor.value && this.monitor.value !== 0) {
-          query += '&monitor_id=' + this.monitor.value
+        const params = {
+          per_id: this.report.period?.value,
+          std_id: this.report.std_id?.value
         }
-        var response = await DashboardService.getCharts({ id: this.sUser.user_id, query: query, token: this.decryptSession('token') })
-        //console.log("chartop", response.data.data)
-        this.chartOptsStreamEarnings.series = response.data.data.streamEarnings.series
-        this.chartOptsStreamEarnings.xAxis.categories = response.data.data.streamEarnings.xAxis.categories
-        this.modelGoalsTable.dataset = response.data.data.modelsGoals
-        this.studioGoalsTable.dataset = response.data.data.studiosGoals
+        const { data: charts } = await DashboardSupabaseService.getCharts(params)
+        if (charts) {
+          this.chartOptsStreamEarnings.series = charts.series || []
+          this.chartOptsStreamEarnings.xAxis.categories = charts.categories || []
+        }
+
+        const { data: modelGoals } = await DashboardSupabaseService.getModelGoals(params)
+        this.modelGoalsTable.dataset = modelGoals || []
+
+        const { data: studioGoals } = await DashboardSupabaseService.getStudioGoals(params)
+        this.studioGoalsTable.dataset = studioGoals || []
       } catch (error) {
-        console.log(error)
-        this.errorsAlerts(error)
-        this.loader = false
-      }
-    },
-    async populateStreams () {
-      try {
-        this.loader = true
-        await ModelStreamService.populateStreams({ query: '', token: this.decryptSession('token') })
-        await this.getCharts()
-        this.loader = false
-      } catch (error) {
-        console.log(error)
-        this.errorsAlerts(error)
-        this.loader = false
+        console.error('Error getting charts:', error)
       }
     },
     openTransactionDialog () {
-      // this.$q.dialog({
-      //   component: TransactionsFilesDialog,
-      //   parent: this
-      // }).onOk(async (data) => {
-      //   this.getIndicators()
-      //   this.getTasks()
-      //   this.getCharts()
-      // }).onCancel(() => {
-      //   // console.log('Cancel')
-      // }).onDismiss(() => {
-      //   // console.log('Called on OK or Cancel')
-      // })
-    },
+      // Future implementation
+    }
   }
 }
 </script>
