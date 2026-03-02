@@ -1,7 +1,3 @@
-import { api } from '../boot/axios'
+import ProfileSupabaseService from "./supabase/ProfileSupabaseService";
 
-export default {
-  getProfiles (params) {
-    return api.get('api/profiles', { headers: { Authorization: 'Bearer ' + params.token } })
-  }
-}
+export default ProfileSupabaseService;
