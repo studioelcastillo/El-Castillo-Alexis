@@ -36,6 +36,7 @@ export default route(function (/* { store, ssrContext } */) {
     if (to.name === 'logout') {
       localStorage.removeItem('user')
       localStorage.removeItem('token')
+      localStorage.removeItem('dashboard_user')
       window.location.href = '/login'
     }
 
@@ -49,24 +50,27 @@ export default route(function (/* { store, ssrContext } */) {
           } else {
             localStorage.removeItem('user')
             localStorage.removeItem('token')
+            localStorage.removeItem('dashboard_user')
             window.location.href = '/login'
           }
         }).catch(error => {
           // console.error('Error validating session:', error)
           localStorage.removeItem('user')
           localStorage.removeItem('token')
+          localStorage.removeItem('dashboard_user')
           window.location.href = '/login'
         })
       } catch (error) {
         // console.error('Error validating session:', error)
         localStorage.removeItem('user')
         localStorage.removeItem('token')
+        localStorage.removeItem('dashboard_user')
         window.location.href = '/login'
       }
     } else if (!reqSession) {
       if (to.name === 'login' && localStorage.getItem('token')) {
         //next({ name: 'home' })
-        window.location.href = '/home'
+        window.location.href = '/dashboard'
       } else {
         next()
       }

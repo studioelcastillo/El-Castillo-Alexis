@@ -1,7 +1,3 @@
-import { api } from '../boot/axios'
+import LoginHistorySupabaseService from "./supabase/LoginHistorySupabaseService";
 
-export default {
-  getHistory (params) {
-    return api.get('api/login/history?' + params.filters, { headers: { Authorization: 'Bearer ' + params.token } })
-  }
-}
+export default LoginHistorySupabaseService;

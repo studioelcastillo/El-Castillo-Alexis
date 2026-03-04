@@ -49,7 +49,7 @@
         <template v-slot:body-cell-interval_used="props">
           <q-td :props="props">
             <q-chip
-              :color="getIntervalColor  (props.value)"
+              :color="getIntervalColor(props.value)"
               text-color="white"
               size="sm"
             >
@@ -65,7 +65,7 @@
               text-color="white"
               size="sm"
             >
-              {{ props.value ? 'Automático' : 'Manual' }}
+              {{ props.value ? "Automático" : "Manual" }}
             </q-chip>
           </q-td>
         </template>
@@ -85,7 +85,10 @@
         <template v-slot:body-cell-actions="props">
           <q-td :props="props">
             <q-btn
-              v-if="props.row.payroll_period_state === 'ABIERTO' && parentMode !== 'show'"
+              v-if="
+                props.row.payroll_period_state === 'ABIERTO' &&
+                parentMode !== 'show'
+              "
               @click="closePeriod(props.row)"
               icon="lock"
               size="sm"
@@ -96,7 +99,10 @@
               <q-tooltip>Cerrar período</q-tooltip>
             </q-btn>
             <q-btn
-              v-else-if="props.row.payroll_period_state === 'CERRADO' && parentMode !== 'show'"
+              v-else-if="
+                props.row.payroll_period_state === 'CERRADO' &&
+                parentMode !== 'show'
+              "
               @click="openPeriod(props.row)"
               icon="lock_open"
               size="sm"
@@ -125,29 +131,30 @@
 </template>
 
 <script>
-import { xMisc } from 'src/mixins/xMisc.js'
-import { sGate } from 'src/mixins/sGate.js'
+import { xMisc } from "src/mixins/xMisc.js";
+import { sGate } from "src/mixins/sGate.js";
+import PayrollService from "src/services/PayrollService";
 
 export default {
-  name: 'StudioPayrollPeriods',
+  name: "StudioPayrollPeriods",
   mixins: [xMisc, sGate],
   props: {
     studioId: {
       type: Number,
-      required: true
+      required: true,
     },
     liquidationInterval: {
       type: String,
-      default: ''
+      default: "",
     },
     payrollLiquidationInterval: {
       type: String,
-      default: 'MENSUAL'
+      default: "MENSUAL",
     },
     parentMode: {
       type: String,
-      default: 'edit'
-    }
+      default: "edit",
+    },
   },
 
   data() {
@@ -158,70 +165,76 @@ export default {
       generating: false,
       periodColumns: [
         {
-          name: 'payroll_period_id',
-          label: 'ID',
-          field: 'payroll_period_id',
-          align: 'left',
-          sortable: true
-        },
-        {
-          name: 'start_date',
-          label: 'Fecha Inicio',
-          field: 'payroll_period_start_date',
-          align: 'left',
+          name: "payroll_period_id",
+          label: "ID",
+          field: "payroll_period_id",
+          align: "left",
           sortable: true,
-          format: val => this.formatDate(val)
         },
         {
-          name: 'end_date',
-          label: 'Fecha Fin',
-          field: 'payroll_period_end_date',
-          align: 'left',
+          name: "start_date",
+          label: "Fecha Inicio",
+          field: "payroll_period_start_date",
+          align: "left",
           sortable: true,
-          format: val => this.formatDate(val)
+          format: (val) => this.formatDate(val),
         },
         {
-          name: 'interval_used',
-          label: 'Intervalo Usado',
-          field: 'payroll_period_interval',
-          align: 'center'
+          name: "end_date",
+          label: "Fecha Fin",
+          field: "payroll_period_end_date",
+          align: "left",
+          sortable: true,
+          format: (val) => this.formatDate(val),
         },
         {
-          name: 'state',
-          label: 'Estado',
-          field: 'payroll_period_state',
-          align: 'center'
+          name: "interval_used",
+          label: "Intervalo Usado",
+          field: "payroll_period_interval",
+          align: "center",
         },
         {
-          name: 'auto_generated',
-          label: 'Tipo',
-          field: 'is_auto_generated',
-          align: 'center'
+          name: "state",
+          label: "Estado",
+          field: "payroll_period_state",
+          align: "center",
         },
         {
-          name: 'actions',
-          label: 'Acciones',
-          align: 'center'
-        }
+          name: "auto_generated",
+          label: "Tipo",
+          field: "is_auto_generated",
+          align: "center",
+        },
+        {
+          name: "actions",
+          label: "Acciones",
+          align: "center",
+        },
       ],
       pagination: {
-        sortBy: 'payroll_period_start_date',
+        sortBy: "payroll_period_start_date",
         descending: true,
         page: 1,
-        rowsPerPage: 5
-      }
-    }
+        rowsPerPage: 5,
+      },
+    };
   },
 
   computed: {
     intervalColor() {
-      return this.payrollLiquidationInterval === 'SEMANAL' ? 'blue' :
-             this.payrollLiquidationInterval === 'QUINCENAL' ? 'purple' : 'green';
+      return this.payrollLiquidationInterval === "SEMANAL"
+        ? "blue"
+        : this.payrollLiquidationInterval === "QUINCENAL"
+        ? "purple"
+        : "green";
     },
     intervalText() {
-      return this.payrollLiquidationInterval === 'SEMANAL' ? 'Semanal' :
-             this.payrollLiquidationInterval === 'QUINCENAL' ? 'Quincenal' : 'Mensual';
-    }
+      return this.payrollLiquidationInterval === "SEMANAL"
+        ? "Semanal"
+        : this.payrollLiquidationInterval === "QUINCENAL"
+        ? "Quincenal"
+        : "Mensual";
+    },
   },
 
   watch: {
@@ -229,7 +242,7 @@ export default {
       if (this.studioId > 0) {
         this.loadPeriods();
       }
-    }
+    },
   },
 
   mounted() {
@@ -242,23 +255,12 @@ export default {
     async loadPeriods() {
       try {
         this.loading = true;
-        const response = await this.$api.get(`/api/payroll/periods?std_id=${this.studioId}`, {
-          headers: { Authorization: `Bearer ${this.decryptSession('token')}` }
+        const response = await PayrollService.getPayrollPeriods({
+          std_id: this.studioId,
         });
-
-        // Asegurar que periods siempre sea un array
-        if (Array.isArray(response.data)) {
-          this.periods = response.data;
-        } else if (response.data && Array.isArray(response.data.data)) {
-          // En caso de que la respuesta tenga estructura { data: [...] }
-          this.periods = response.data.data;
-        } else {
-          // Si no es array, inicializar como array vacío
-          this.periods = [];
-          console.warn('La respuesta del API no contiene un array válido:', response.data);
-        }
+        this.periods = response.data?.data || [];
       } catch (error) {
-        this.periods = []; // Asegurar que sea array en caso de error
+        this.periods = [];
         this.errorsAlerts(error);
       } finally {
         this.loading = false;
@@ -268,13 +270,11 @@ export default {
     async generateCurrentPeriod() {
       try {
         this.generating = true;
-        await this.$api.post('/api/payroll/periods/auto-generate', {
+        await PayrollService.autoGeneratePeriod({
           std_id: this.studioId,
-          target_date: new Date().toISOString().split('T')[0]
-        }, {
-          headers: { Authorization: `Bearer ${this.decryptSession('token')}` }
+          target_date: new Date().toISOString().split("T")[0],
         });
-        this.alert('positive', 'Período generado exitosamente');
+        this.alert("positive", "Período generado exitosamente");
         this.loadPeriods();
       } catch (error) {
         this.errorsAlerts(error);
@@ -286,13 +286,11 @@ export default {
     async generateNextPeriods() {
       try {
         this.generating = true;
-        await this.$api.post('/api/payroll/periods/auto-generate-next', {
+        await PayrollService.autoGenerateNextPeriods({
           std_id: this.studioId,
-          count: 3
-        }, {
-          headers: { Authorization: `Bearer ${this.decryptSession('token')}` }
+          count: 3,
         });
-        this.alert('positive', 'Períodos futuros generados');
+        this.alert("positive", "Períodos futuros generados");
         this.loadPeriods();
       } catch (error) {
         this.errorsAlerts(error);
@@ -302,100 +300,98 @@ export default {
     },
 
     async closePeriod(period) {
-      this.$q.dialog({
-        title: 'Confirmar',
-        message: '¿Estás seguro de cerrar este período de nómina?',
-        cancel: 'Cancelar',
-        ok: 'Cerrar',
-        persistent: true
-      }).onOk(async () => {
-        try {
-          await this.$api.put(`/api/payroll/periods/${period.payroll_period_id}/close`, {}, {
-            headers: { Authorization: `Bearer ${this.decryptSession('token')}` }
-          });
-          this.alert('positive', 'Período cerrado exitosamente');
-          this.loadPeriods();
-        } catch (error) {
-          this.errorsAlerts(error);
-        }
-      });
+      this.$q
+        .dialog({
+          title: "Confirmar",
+          message: "¿Estás seguro de cerrar este período de nómina?",
+          cancel: "Cancelar",
+          ok: "Cerrar",
+          persistent: true,
+        })
+        .onOk(async () => {
+          try {
+            await PayrollService.closePeriod(period.payroll_period_id);
+            this.alert("positive", "Período cerrado exitosamente");
+            this.loadPeriods();
+          } catch (error) {
+            this.errorsAlerts(error);
+          }
+        });
     },
 
     async openPeriod(period) {
-      this.$q.dialog({
-        title: 'Confirmar',
-        message: '¿Estás seguro de abrir este período de nómina?',
-        cancel: 'Cancelar',
-        ok: 'Abrir',
-        persistent: true
-      }).onOk(async () => {
-        try {
-          await this.$api.put(`/api/payroll/periods/${period.payroll_period_id}/open`, {}, {
-            headers: { Authorization: `Bearer ${this.decryptSession('token')}` }
-          });
-          this.alert('positive', 'Período abierto exitosamente');
-          this.loadPeriods();
-        } catch (error) {
-          this.errorsAlerts(error);
-        }
-      });
+      this.$q
+        .dialog({
+          title: "Confirmar",
+          message: "¿Estás seguro de abrir este período de nómina?",
+          cancel: "Cancelar",
+          ok: "Abrir",
+          persistent: true,
+        })
+        .onOk(async () => {
+          try {
+            await PayrollService.openPeriod(period.payroll_period_id);
+            this.alert("positive", "Período abierto exitosamente");
+            this.loadPeriods();
+          } catch (error) {
+            this.errorsAlerts(error);
+          }
+        });
     },
 
     async deletePeriod(period) {
-      this.$q.dialog({
-        title: 'Confirmar',
-        message: '¿Estás seguro de eliminar este período de nómina manual?',
-        cancel: 'Cancelar',
-        ok: 'Eliminar',
-        persistent: true
-      }).onOk(async () => {
-        try {
-          await this.$api.delete(`/api/payroll/periods/${period.payroll_period_id}`, {
-            headers: { Authorization: `Bearer ${this.decryptSession('token')}` }
-          });
-          this.alert('positive', 'Período eliminado exitosamente');
-          this.loadPeriods();
-        } catch (error) {
-          this.errorsAlerts(error);
-        }
-      });
+      this.$q
+        .dialog({
+          title: "Confirmar",
+          message: "¿Estás seguro de eliminar este período de nómina manual?",
+          cancel: "Cancelar",
+          ok: "Eliminar",
+          persistent: true,
+        })
+        .onOk(async () => {
+          try {
+            await PayrollService.deletePeriod(period.payroll_period_id);
+            this.alert("positive", "Período eliminado exitosamente");
+            this.loadPeriods();
+          } catch (error) {
+            this.errorsAlerts(error);
+          }
+        });
     },
 
     updateAutoGeneration() {
-      // Esta función se puede usar para actualizar la configuración del estudio
-      // en el futuro si se requiere
-      console.log('Auto generation changed:', this.autoGenerate);
+      console.log("Auto generation changed:", this.autoGenerate);
     },
 
     getIntervalColor(interval) {
-      return interval === 'SEMANAL' ? 'blue' :
-             interval === 'QUINCENAL' ? 'purple' : 'green';
+      return interval === "SEMANAL"
+        ? "blue"
+        : interval === "QUINCENAL"
+        ? "purple"
+        : "green";
     },
 
     getStateColor(state) {
-      return state === 'ABIERTO' ? 'green' :
-             state === 'CERRADO' ? 'orange' : 'red';
+      return state === "ABIERTO"
+        ? "green"
+        : state === "CERRADO"
+        ? "orange"
+        : "red";
     },
 
     formatDate(dateString) {
-      if (!dateString) return '';
-
-      // Extraer solo la parte de la fecha (YYYY-MM-DD) sin la hora
-      const datePart = dateString.split('T')[0];
-      const [year, month, day] = datePart.split('-');
-
-      // Crear fecha usando año, mes (0-indexado) y día
+      if (!dateString) return "";
+      const datePart = dateString.split("T")[0];
+      const [year, month, day] = datePart.split("-");
       const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-
-      // Formatear usando toLocaleDateString
-      return date.toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
+      return date.toLocaleDateString("es-ES", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
       });
-    }
-  }
-}
+    },
+  },
+};
 </script>
 
 <style scoped>

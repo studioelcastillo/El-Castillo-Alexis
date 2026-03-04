@@ -1,14 +1,21 @@
-import { supabase } from "../../boot/supabase";
+import { supabase } from "../../supabaseClient";
+
+const getDefaultPassword = (identification) => {
+  const digits = String(identification || "").replace(/\D/g, "");
+  if (!digits) return "";
+  return digits.slice(-5);
+};
 
 export default {
   // ── AUTH ──────────────────────────────────────────
   async login({ email, password, policyId, policyAnswer }) {
     // 1. Identificar si es email o cédula
     let targetEmail = email;
+    let userRecord = null;
     if (!email.includes("@")) {
       const { data: userData, error: userError } = await supabase
         .from("users")
-        .select("user_email")
+        .select("user_email, user_password, user_identification, auth_user_id")
         .eq("user_identification", email)
         .single();
 
@@ -16,6 +23,14 @@ export default {
         throw new Error("Usuario no encontrado por identificación");
       }
       targetEmail = userData.user_email;
+      userRecord = userData;
+    } else {
+      const { data: userData } = await supabase
+        .from("users")
+        .select("user_email, user_password, user_identification, auth_user_id")
+        .eq("user_email", email)
+        .single();
+      userRecord = userData || null;
     }
 
     // 2. Autenticar con Supabase Auth
@@ -24,7 +39,70 @@ export default {
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      const defaultPassword = getDefaultPassword(
+        userRecord?.user_identification || email
+      );
+      const passwordMatchesStored =
+        userRecord?.user_password && userRecord.user_password === password;
+      const passwordMatchesDefault =
+        !userRecord?.user_password && defaultPassword === password;
+
+      const canBootstrap =
+        userRecord &&
+        !userRecord.auth_user_id &&
+        (passwordMatchesStored || passwordMatchesDefault);
+
+      if (!canBootstrap) {
+        throw error;
+      }
+
+      const { data: signUpData, error: signUpError } =
+        await supabase.auth.signUp({
+          email: targetEmail,
+          password,
+        });
+
+      if (signUpError) {
+        throw error;
+      }
+
+      if (!signUpData?.session?.access_token) {
+        throw new Error(
+          "Cuenta creada. Revisa tu correo para activar el acceso."
+        );
+      }
+
+      if (signUpData?.user?.id) {
+        try {
+          await supabase
+            .from("users")
+            .update({ auth_user_id: signUpData.user.id })
+            .eq("user_email", targetEmail);
+        } catch (updateError) {
+          console.warn("[login] Failed to link auth_user_id", updateError);
+        }
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("users")
+        .select("*, profiles(*)")
+        .eq("user_email", targetEmail)
+        .single();
+
+      if (profileError) throw profileError;
+
+      return {
+        data: {
+          status: "Success",
+          data: {
+            user: profile,
+            access_token: signUpData.session.access_token,
+            lgnhist_id: null,
+          },
+        },
+      };
+    }
 
     // 3. Obtener el perfil extendido del usuario
     const { data: profile, error: profileError } = await this.getUserProfile(
@@ -62,6 +140,16 @@ export default {
     return supabase.auth.signOut();
   },
 
+  async signInWithOAuth({ provider }) {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: provider,
+      options: {
+        redirectTo: window.location.origin + "/auth/callback",
+      },
+    });
+    return { data, error };
+  },
+
   async recoveryPassword({ email }) {
     return supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin + "/recovery",
@@ -80,16 +168,51 @@ export default {
     return supabase.auth.getUser();
   },
 
+  async checkSession() {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    return {
+      data: {
+        session: session ? "active" : "inactive",
+      },
+    };
+  },
+
   // ── POLÍTICAS DE DATOS ──────────────────────────
   async getActiveDataPolicy() {
-    // Mock temporal dado que no se encontró tabla en schema.sql
+    try {
+      const { data, error } = await supabase
+        .from("data_policies")
+        .select("pol_id, pol_description")
+        .eq("pol_active", true)
+        .order("pol_id", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!error && data) {
+        return {
+          data: {
+            status: "Success",
+            data: {
+              pol_id: data.pol_id,
+              pol_description: data.pol_description,
+            },
+          },
+        };
+      }
+    } catch (e) {
+      // fallback si la tabla aún no existe
+    }
+
+    // Fallback hardcoded
     return {
       data: {
         status: "Success",
         data: {
           pol_id: 1,
           pol_description:
-            "Al iniciar sesión, usted acepta el tratamiento de sus datos personales según la ley vigente de protección de datos de El Castillo Group SAS.",
+            "Al iniciar sesión en el sistema de El Castillo Group SAS, usted acepta el tratamiento de sus datos personales de acuerdo con las leyes vigentes de protección de datos personales de la República de Colombia (Ley 1581 de 2012) y sus decretos reglamentarios. Sus datos serán utilizados exclusivamente para la gestión administrativa, contractual y operativa al interior de la empresa.",
         },
       },
     };

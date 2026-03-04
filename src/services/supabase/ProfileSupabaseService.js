@@ -1,4 +1,4 @@
-import { supabase } from "../../boot/supabase";
+import { supabase } from "../../supabaseClient";
 
 export default {
   async getProfiles(params) {

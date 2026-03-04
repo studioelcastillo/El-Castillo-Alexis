@@ -1,3 +1,3 @@
-import DashboardSupabaseService from './supabase/DashboardSupabaseService'
+import DashboardSupabaseService from "./supabase/DashboardSupabaseService";
 
-export default DashboardSupabaseService
+export default DashboardSupabaseService;

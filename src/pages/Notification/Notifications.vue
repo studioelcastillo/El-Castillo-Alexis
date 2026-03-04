@@ -165,6 +165,7 @@ export default {
 
         const noRead = response.data.NoRead
         this.noRead['TODO'] = 0
+        this.noRead['null'] = 0
         for (var i = 0; i < noRead.length; i++) {
           if (noRead[i].noti_type === null) {
             this.noRead['null'] = this.noRead['null'] + noRead[i].noRead

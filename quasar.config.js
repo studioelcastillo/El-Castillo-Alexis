@@ -2,17 +2,48 @@
 
 /*
  * This file runs in a Node context (it's NOT transpiled by Babel), so use only
- * the ES6 features that are supported by your Node version. https://node.green/
+ * the ES features that are supported by your Node version. https://node.green/
  */
 
 // Configuration for your app
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js
 
+import { configure } from 'quasar/wrappers';
+import { existsSync } from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
 
-const { configure } = require('quasar/wrappers');
-const path = require('path');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-module.exports = configure(function (/* ctx */) {
+const loadEnv = () => {
+  const baseEnvPath = path.join(__dirname, '.env');
+  const baseEnv = dotenv.config({ path: baseEnvPath }).parsed || {};
+  const envName = process.env.ENVIRONMENT || baseEnv.ENVIRONMENT;
+  let mergedEnv = { ...baseEnv };
+
+  if (envName) {
+    const envPath = path.join(__dirname, `.env.${envName}`);
+    if (existsSync(envPath)) {
+      const envFile = dotenv.config({ path: envPath }).parsed || {};
+      mergedEnv = { ...mergedEnv, ...envFile };
+    }
+  }
+
+  Object.keys(mergedEnv).forEach((key) => {
+    if (process.env[key] !== undefined) {
+      mergedEnv[key] = process.env[key];
+    }
+  });
+
+  return mergedEnv;
+};
+
+export default configure(function (/* ctx */) {
+  const envVars = loadEnv();
+  const distDir = process.env.DIST_DIR || envVars.DIST_DIR || 'dist/spa';
+
   return {
     eslint: {
       // fix: true,
@@ -72,7 +103,8 @@ module.exports = configure(function (/* ctx */) {
 
       // publicPath: '/',
       // analyze: true,
-      env: require('dotenv').config().parsed, // default: {}
+      env: envVars, // default: {}
+      distDir,
       // rawDefine: {}
       // ignorePublicFolder: true,
       // minify: false,
@@ -82,26 +114,43 @@ module.exports = configure(function (/* ctx */) {
       // extendViteConf (viteConf) {},
       // viteVuePluginOptions: {},
 
-      vitePlugins: [
-        ['@intlify/vite-plugin-vue-i18n', {
-          // if you want to use Vue I18n Legacy API, you need to set `compositionOnly: false`
-          // compositionOnly: false,
+      vitePlugins: [],
 
-          // if you want to use named tokens in your Vue I18n messages, such as 'Hello {name}',
-          // you need to set `runtimeOnly: false`
-          // runtimeOnly: false,
+      extendViteConf (viteConf) {
+        const build = viteConf.build || {};
+        const rollupOptions = build.rollupOptions || {};
+        const output = rollupOptions.output || {};
 
-          // you need to set i18n resource including paths !
-          include: path.resolve(__dirname, './src/i18n/**')
-        }]
-      ]
+        output.manualChunks = (id) => {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('highcharts')) return 'highcharts';
+          if (id.includes('firebase')) return 'firebase';
+          if (id.includes('@supabase')) return 'supabase';
+          if (id.includes('quasar')) return 'quasar';
+          if (id.includes('moment')) return 'moment';
+          if (id.includes('pusher') || id.includes('laravel-echo')) return 'realtime';
+          return 'vendor';
+        };
+
+        rollupOptions.output = output;
+        build.rollupOptions = rollupOptions;
+        build.chunkSizeWarningLimit = 1200;
+        viteConf.build = build;
+      }
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#devServer
     devServer: {
       // https: true
-      port: process.env.PORT || 6303,
-      open: true // opens browser window automatically
+      port: envVars.PORT || process.env.PORT || 6303,
+      open: true, // opens browser window automatically
+      proxy: {
+        '/dashboard-app': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+          ws: true,
+        }
+      }
     },
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#framework
@@ -226,5 +275,5 @@ module.exports = configure(function (/* ctx */) {
       // extendBexScriptsConf (esbuildConf) {}
       // extendBexManifestJson (json) {}
     }
-  }
+  };
 });

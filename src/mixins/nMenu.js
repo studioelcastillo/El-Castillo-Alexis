@@ -50,6 +50,12 @@ var nMenu = [
     group: 'generals',
     // caption: 'quasar.dev',
     icon: 'home',
+    link: 'dashboard',
+  },
+  {
+    title: 'Dashboard Clasico',
+    group: 'generals',
+    icon: 'space_dashboard',
     link: 'home',
   },
   {

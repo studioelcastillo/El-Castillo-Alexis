@@ -10,11 +10,20 @@
     "format": "prettier --write \"**/*.{js,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
-    "build": "quasar build"
+    "build": "npm run dashboard:install && npm run dashboard:build && node --max-old-space-size=4096 node_modules/@quasar/app-vite/bin/quasar.js build && npm run dashboard:copy",
+    "serve:prod": "serve dist/spa --single -l 4173",
+    "dashboard:install": "npm --prefix apps/dashboard install",
+    "dashboard:dev": "npm --prefix apps/dashboard run dev",
+    "dashboard:build": "npm --prefix apps/dashboard run build:mem",
+    "dashboard:copy": "node scripts/copy-dashboard.mjs",
+    "gemini:proxy": "node server/gemini-proxy.mjs",
+    "dashboard:preview": "npm --prefix apps/dashboard run preview",
+    "adms:receiver": "node scripts/adms-receiver.mjs"
   },
   "dependencies": {
     "@mercadopago/sdk-js": "^0.0.3",
     "@quasar/extras": "^1.16.4",
+    "@supabase/supabase-js": "^2.39.0",
     "@vue-youtube/component": "^0.0.6",
     "@vue-youtube/core": "^0.0.6",
     "axios": "^1.2.1",
@@ -31,22 +40,27 @@
     "quasar": "^2.8.0",
     "vue": "^3.2.29",
     "vue-i18n": "^9.0.0",
-    "@supabase/supabase-js": "^2.39.0",
     "vue-router": "^4.0.12"
   },
   "devDependencies": {
-    "@intlify/vite-plugin-vue-i18n": "^3.3.1",
-    "@quasar/app-vite": "^1.4.3",
+    "@quasar/app-vite": "^2.4.1",
+    "@vitejs/plugin-vue": "^6.0.4",
     "autoprefixer": "^10.4.2",
     "eslint": "^8.11.0",
     "eslint-config-prettier": "^8.1.0",
     "eslint-plugin-vue": "^9.0.0",
     "postcss": "^8.4.14",
-    "prettier": "^2.5.1"
+    "prettier": "^2.5.1",
+    "serve": "^14.2.6",
+    "vite": "^7.3.1"
   },
   "engines": {
     "node": "^20 || ^18 || ^16",
     "npm": ">= 6.13.4",
     "yarn": ">= 1.21.1"
+  },
+  "overrides": {
+    "undici": "6.23.0",
+    "serialize-javascript": "7.0.3"
   }
 }

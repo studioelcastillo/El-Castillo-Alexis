@@ -3,38 +3,46 @@
     <div class="row">
       <div class="col-12">
         <q-card flat bordered class="my-card" v-if="!disabledView">
-          <q-form
-              @submit="onSubmit"
-              class="q-gutter-md"
-            >
+          <q-form @submit="onSubmit" class="q-gutter-md">
             <q-card-section v-if="!isDialog">
               <div class="q-px-md q-gutter-sm">
-                <q-btn color="black" @click="goTo('petitions')" :label="'&lt; ' + 'Regresar'" />
+                <q-btn
+                  color="black"
+                  @click="goTo('petitions')"
+                  :label="'&lt; ' + 'Regresar'"
+                />
               </div>
             </q-card-section>
 
             <q-separator v-if="!isDialog" class="q-my-none" inset />
 
             <q-card-section v-if="isDialog" class="row items-center q-pb-none">
-              <h5 class="is-size-3">{{initTitle}}</h5>
+              <h5 class="is-size-3">{{ initTitle }}</h5>
               <q-space />
               <q-btn icon="close" flat round dense v-close-popup />
             </q-card-section>
 
             <q-separator v-if="isDialog" inset />
 
-            <q-card flat bordered class="my-card bg-warning text-black q-px-sm" v-if="modelStudioNotFound">
+            <q-card
+              flat
+              bordered
+              class="my-card bg-warning text-black q-px-sm"
+              v-if="modelStudioNotFound"
+            >
               <q-card-section>
                 <div class="q-pa-md q-gutter-sm">
                   <!--<h3><b></b></h3>-->
-                  <h5 class="subtitle">No se encontro ningun estudio con contrato activo</h5>
+                  <h5 class="subtitle">
+                    No se encontro ningun estudio con contrato activo
+                  </h5>
                 </div>
               </q-card-section>
             </q-card>
             <div v-else>
               <q-card-section>
-                <h5 v-if="!isDialog" class="is-size-3">{{initTitle}}</h5>
-                <br v-if="!isDialog">
+                <h5 v-if="!isDialog" class="is-size-3">{{ initTitle }}</h5>
+                <br v-if="!isDialog" />
                 <!-- Datos Basicos -->
                 <q-card flat bordered class="my-card">
                   <q-card-section>
@@ -49,13 +57,21 @@
                           label-color="primary"
                           :options="types"
                           lazy-rules
-                          :rules="[
-                            val => !!val || 'Este campo es requerido'
-                          ]"
-                          :readonly="mode == 'show' || mode == 'edit' || readonlyFields.type"
+                          :rules="[(val) => !!val || 'Este campo es requerido']"
+                          :readonly="
+                            mode == 'show' ||
+                            mode == 'edit' ||
+                            readonlyFields.type
+                          "
                         />
                       </div>
-                      <div class="col-xs-12 col-sm-12" v-if="openGate('create-petitions', sUser.prof_id) && mode == 'create'">
+                      <div
+                        class="col-xs-12 col-sm-12"
+                        v-if="
+                          openGate('create-petitions', sUser.prof_id) &&
+                          mode == 'create'
+                        "
+                      >
                         <q-select
                           filled
                           v-model="petition.user_id"
@@ -78,7 +94,15 @@
                           </template>
                         </q-select>
                       </div>
-                      <div class="col-xs-12 col-sm-12" v-if="openGate('create-petitions', sUser.prof_id) && (mode == 'show' || mode == 'edit' || studios_models.length > 1)">
+                      <div
+                        class="col-xs-12 col-sm-12"
+                        v-if="
+                          openGate('create-petitions', sUser.prof_id) &&
+                          (mode == 'show' ||
+                            mode == 'edit' ||
+                            studios_models.length > 1)
+                        "
+                      >
                         <q-select
                           filled
                           v-model="petition.stdmod_id"
@@ -86,43 +110,77 @@
                           label-color="primary"
                           :options="studios_models"
                           lazy-rules
-                          :rules="[
-                            val => !!val || 'Este campo es requerido'
-                          ]"
-                          :readonly="mode == 'show' || mode == 'edit' || readonlyFields.stdmod_id"
+                          :rules="[(val) => !!val || 'Este campo es requerido']"
+                          :readonly="
+                            mode == 'show' ||
+                            mode == 'edit' ||
+                            readonlyFields.stdmod_id
+                          "
                         />
                       </div>
-                      <div class="col-xs-12 col-sm-12" v-if="petition.type == 'REPORTE' || mode == 'show' || mode == 'edit'">
+                      <div
+                        class="col-xs-12 col-sm-12"
+                        v-if="
+                          petition.type == 'REPORTE' ||
+                          mode == 'show' ||
+                          mode == 'edit'
+                        "
+                      >
                         <select-pages-options
                           v-model="petition.page[0]"
                           :mode="mode"
-                          :readonly="mode == 'show' || mode == 'edit' || readonlyFields.page"
+                          :readonly="
+                            mode == 'show' ||
+                            mode == 'edit' ||
+                            readonlyFields.page
+                          "
                         />
                       </div>
-                      <div class="col-xs-12 col-sm-12" v-if="petition.type == 'CREACIÓN DE CUENTA' && mode == 'create'">
-                        <br><h5>Páginas</h5>
-                        <br>
-                        <check-pages-options 
+                      <div
+                        class="col-xs-12 col-sm-12"
+                        v-if="
+                          petition.type == 'CREACIÓN DE CUENTA' &&
+                          mode == 'create'
+                        "
+                      >
+                        <br />
+                        <h5>Páginas</h5>
+                        <br />
+                        <check-pages-options
                           v-model="petition.page"
                           :mode="mode"
                           @validate-max-petitions="validateMaxPetitions"
                           :user-id="petition.user_id"
                           :not-include-pages="notIncludePages"
                         />
-                        <h6 v-if="petition.user_id != 0"> Solicitudes en curso ({{ petition.page.length + page_count_pending_petitions }}/4)</h6>
-                        <span v-if="pagesErrorShow" class="text-red">Debe ingresar al menos una pagina</span><br>
+                        <h6 v-if="petition.user_id != 0">
+                          Solicitudes en curso ({{
+                            petition.page.length + page_count_pending_petitions
+                          }}/4)
+                        </h6>
+                        <span v-if="pagesErrorShow" class="text-red"
+                          >Debe ingresar al menos una pagina</span
+                        ><br />
                       </div>
-                      <div :class="(mode == 'create') ? 'col-xs-12 col-sm-12' : 'col-xs-12 col-sm-6'">
+                      <div
+                        :class="
+                          mode == 'create'
+                            ? 'col-xs-12 col-sm-12'
+                            : 'col-xs-12 col-sm-6'
+                        "
+                      >
                         <q-input
                           filled
                           v-model="petition.nick"
-                          :label="(mode !== 'create') ? 'Nick sugerido' : 'Nick'"
+                          :label="mode !== 'create' ? 'Nick sugerido' : 'Nick'"
                           label-color=""
                           lazy-rules
-                          :rules="[
-                            val => !!val || 'Este campo es requerido',
-                          ]"
-                          :readonly="mode == 'show' || mode == 'edit' || readonlyFields.nick"
+                          :rules="[(val) => !!val || 'Este campo es requerido']"
+                          :readonly="
+                            mode == 'show' ||
+                            mode == 'edit' ||
+                            readonlyFields.nick
+                          "
                         />
                       </div>
                       <div class="col-xs-12 col-sm-6" v-if="mode !== 'create'">
@@ -131,23 +189,31 @@
                           v-model="petitionStateSend.ptn_nick_final"
                           label="Nick"
                           label-color=""
-                          :rules="[
-                            val => !!val || 'Este campo es requerido',
-                          ]"
+                          :rules="[(val) => !!val || 'Este campo es requerido']"
                           readonly
                         />
                       </div>
-                      <div :class="(mode == 'create') ? 'col-xs-12 col-sm-12' : 'col-xs-12 col-sm-6'">
+                      <div
+                        :class="
+                          mode == 'create'
+                            ? 'col-xs-12 col-sm-12'
+                            : 'col-xs-12 col-sm-6'
+                        "
+                      >
                         <q-input
                           filled
                           v-model="petition.password"
-                          :label="(mode !== 'create') ? 'Clave sugerida' : 'Clave'"
+                          :label="
+                            mode !== 'create' ? 'Clave sugerida' : 'Clave'
+                          "
                           label-color=""
                           lazy-rules
-                          :rules="[
-                            val => !!val || 'Este campo es requerido',
-                          ]"
-                          :readonly="mode == 'show' || mode == 'edit' || readonlyFields.password"
+                          :rules="[(val) => !!val || 'Este campo es requerido']"
+                          :readonly="
+                            mode == 'show' ||
+                            mode == 'edit' ||
+                            readonlyFields.password
+                          "
                         />
                       </div>
                       <div class="col-xs-12 col-sm-6" v-if="mode !== 'create'">
@@ -156,9 +222,7 @@
                           v-model="petitionStateSend.ptn_password_final"
                           label="Clave"
                           label-color=""
-                          :rules="[
-                            val => !!val || 'Este campo es requerido',
-                          ]"
+                          :rules="[(val) => !!val || 'Este campo es requerido']"
                           readonly
                         />
                       </div>
@@ -180,7 +244,12 @@
                           readonly
                         />
                       </div>
-                      <div class="col-xs-12 col-sm-12" v-if="mode !== 'create' && petition.page[0] == 'XLOVECAM'">
+                      <div
+                        class="col-xs-12 col-sm-12"
+                        v-if="
+                          mode !== 'create' && petition.page[0] == 'XLOVECAM'
+                        "
+                      >
                         <q-input
                           filled
                           v-model="petition.linkacc"
@@ -196,18 +265,28 @@
                           label="Observacion"
                           label-color=""
                           lazy-rules
-                          :readonly="mode == 'show' || readonlyFields.observation"
+                          :readonly="
+                            mode == 'show' || readonlyFields.observation
+                          "
                           type="textarea"
                         />
                       </div>
                     </div>
-                  </q-card-section>
-                </q-card><br>
-                <q-card flat bordered class="my-card" v-if="this.mode == 'edit' || this.mode == 'show'">
+                  </q-card-section> </q-card
+                ><br />
+                <q-card
+                  flat
+                  bordered
+                  class="my-card"
+                  v-if="this.mode == 'edit' || this.mode == 'show'"
+                >
                   <q-card-section>
                     <h6 v-if="!isDialog">Modelo</h6>
                     <div class="row q-col-gutter-sm">
-                      <div class="col-xs-12 col-sm-12" v-if="mode == 'show' || mode == 'edit'">
+                      <div
+                        class="col-xs-12 col-sm-12"
+                        v-if="mode == 'show' || mode == 'edit'"
+                      >
                         <q-input
                           filled
                           v-model="model.name"
@@ -217,7 +296,10 @@
                           readonly
                         />
                       </div>
-                      <div class="col-xs-12 col-sm-12" v-if="mode == 'show' || mode == 'edit'">
+                      <div
+                        class="col-xs-12 col-sm-12"
+                        v-if="mode == 'show' || mode == 'edit'"
+                      >
                         <q-input
                           filled
                           v-model="model.identification"
@@ -227,7 +309,10 @@
                           readonly
                         />
                       </div>
-                      <div class="col-xs-12 col-sm-12" v-if="mode == 'show' || mode == 'edit'">
+                      <div
+                        class="col-xs-12 col-sm-12"
+                        v-if="mode == 'show' || mode == 'edit'"
+                      >
                         <q-input
                           filled
                           v-model="model.category"
@@ -239,9 +324,17 @@
                       </div>
                     </div>
                     <div v-if="additionalModels.length > 0">
-                      <q-separator spaced="0px"/><br>
-                      <h6>Datos compañer@<span v-if="additionalModels.length > 1">s</span></h6>
-                      <div v-for="(additionalModel, amkey) in additionalModels" class="row q-col-gutter-sm" :key="amkey">
+                      <q-separator spaced="0px" /><br />
+                      <h6>
+                        Datos compañer@<span v-if="additionalModels.length > 1"
+                          >s</span
+                        >
+                      </h6>
+                      <div
+                        v-for="(additionalModel, amkey) in additionalModels"
+                        class="row q-col-gutter-sm"
+                        :key="amkey"
+                      >
                         <div class="col-xs-12 col-sm-12">
                           <span>Compañer@ {{ amkey + 1 }} : </span>
                         </div>
@@ -275,27 +368,47 @@
                           />
                         </div>
                       </div>
-                    </div><br>
-                    <div>
-                      <q-btn color="primary" icon="file_download" label="Documentos" @click="downloadModelDocs" />
                     </div>
-                  </q-card-section>
-                </q-card><br>
+                    <br />
+                    <div>
+                      <q-btn
+                        color="primary"
+                        icon="file_download"
+                        label="Documentos"
+                        @click="downloadModelDocs"
+                      />
+                    </div>
+                  </q-card-section> </q-card
+                ><br />
               </q-card-section>
               <q-separator inset />
               <q-card-section v-if="mode == 'create'">
                 <div>
-                  <q-btn type="submit" class="bg-primary text-white submit1" label="Enviar"/>
+                  <q-btn
+                    type="submit"
+                    class="bg-primary text-white submit1"
+                    label="Enviar"
+                  />
                 </div>
               </q-card-section>
-              <q-card-section v-else-if="mode == 'show' && openGate('edit-petitions', sUser.prof_id)">
+              <q-card-section
+                v-else-if="
+                  mode == 'show' && openGate('edit-petitions', sUser.prof_id)
+                "
+              >
                 <div>
-                  <q-btn class="bg-primary text-white submit1" label="Editar" @click="this.mode = 'edit'" />
+                  <q-btn
+                    class="bg-primary text-white submit1"
+                    label="Editar"
+                    @click="this.mode = 'edit'"
+                  />
                 </div>
               </q-card-section>
             </div>
           </q-form>
-          <q-card-section v-if="(mode == 'show' || mode == 'edit') && !modelStudioNotFound">
+          <q-card-section
+            v-if="(mode == 'show' || mode == 'edit') && !modelStudioNotFound"
+          >
             <h6>Estados de la solicitud</h6>
             <q-stepper
               v-model="step"
@@ -307,7 +420,7 @@
               <q-step
                 v-for="(petitionState, key) in petitionsStates"
                 :key="key"
-                :name="(key + 1)"
+                :name="key + 1"
                 :title="statesLabels[petitionState.ptnstate_state]"
                 :caption="convertUTCDateToLocalDate(petitionState.created_at)"
                 :icon="this.statesIcons[petitionState.ptnstate_state]"
@@ -315,23 +428,41 @@
                 :active-icon="this.statesIcons[petitionState.ptnstate_state]"
                 :done="true"
                 :active-color="this.statesColors[petitionState.ptnstate_state]"
-                :inactive-color="this.statesColors[petitionState.ptnstate_state]"
+                :inactive-color="
+                  this.statesColors[petitionState.ptnstate_state]
+                "
                 :done-color="this.statesColors[petitionState.ptnstate_state]"
               >
                 {{ petitionState.ptnstate_observation }}
-                <br>
-                <span style="font-size: 12px;">{{ petitionState.user.user_name + ' ' + petitionState.user.user_name2 + ' ' + petitionState.user.user_surname + ' ' + petitionState.user.user_surname2  }}</span>
+                <br />
+                <span style="font-size: 12px">{{
+                  petitionState.user.user_name +
+                  " " +
+                  petitionState.user.user_name2 +
+                  " " +
+                  petitionState.user.user_surname +
+                  " " +
+                  petitionState.user.user_surname2
+                }}</span>
               </q-step>
               <q-step
-                v-if="this.mode == 'edit' && openGate('edit-petitions', sUser.prof_id) && showLastStep"
-                :name="(petitionsStates.length + 1)"
+                v-if="
+                  this.mode == 'edit' &&
+                  openGate('edit-petitions', sUser.prof_id) &&
+                  showLastStep
+                "
+                :name="petitionsStates.length + 1"
                 title="Siguiente estado"
                 icon="double_arrow"
                 done-icon="double_arrow"
                 active-icon="double_arrow"
                 active-color="blue-10"
               >
-                <q-form ref="petitionStateForm" @submit.prevent="submitForm" :lazy-validation="true">
+                <q-form
+                  ref="petitionStateForm"
+                  @submit.prevent="submitForm"
+                  :lazy-validation="true"
+                >
                   <div class="row q-col-gutter-sm">
                     <div class="col-xs-12 col-sm-12">
                       <q-input
@@ -340,9 +471,7 @@
                         label="Nick"
                         label-color=""
                         lazy-rules
-                        :rules="[
-                          val => !!val || 'Este campo es requerido'
-                        ]"
+                        :rules="[(val) => !!val || 'Este campo es requerido']"
                       />
                     </div>
                     <div class="col-xs-12 col-sm-12">
@@ -352,9 +481,7 @@
                         label="Correo"
                         label-color=""
                         lazy-rules
-                        :rules="[
-                          val => !!val || 'Este campo es requerido'
-                        ]"
+                        :rules="[(val) => !!val || 'Este campo es requerido']"
                       />
                     </div>
                     <div class="col-xs-12 col-sm-12">
@@ -364,9 +491,7 @@
                         label="Clave"
                         label-color=""
                         lazy-rules
-                        :rules="[
-                          val => !!val || 'Este campo es requerido'
-                        ]"
+                        :rules="[(val) => !!val || 'Este campo es requerido']"
                       />
                     </div>
                     <div class="col-xs-12 col-sm-12">
@@ -376,9 +501,7 @@
                         label="Pseudónimo de pago"
                         label-color=""
                         lazy-rules
-                        :rules="[
-                          val => !!val || 'Este campo es requerido'
-                        ]"
+                        :rules="[(val) => !!val || 'Este campo es requerido']"
                       />
                     </div>
                     <div class="col-xs-12 col-sm-12">
@@ -391,14 +514,17 @@
                         type="textarea"
                         @update:model-value="onObservationInput"
                       />
-                      <div v-if="previousObservations.length > 0" class="q-mt-sm">
-                        <q-btn 
-                          v-for="(obs, index) in previousObservations" 
+                      <div
+                        v-if="previousObservations.length > 0"
+                        class="q-mt-sm"
+                      >
+                        <q-btn
+                          v-for="(obs, index) in previousObservations"
                           :key="index"
                           @click="selectObservation(obs)"
                           :color="'primary'"
-                          :text-color="getContrastYIQ('primary')"      
-                          :style="{backgroundColor: 'primary'}"
+                          :text-color="getContrastYIQ('primary')"
+                          :style="{ backgroundColor: 'primary' }"
                           class="q-mb-sm observation-btn"
                           no-caps
                           align="left"
@@ -407,23 +533,47 @@
                         </q-btn>
                       </div>
                     </div>
-                    <div class="col-xs-12 col-sm-12" v-if="petition.page[0] == 'XLOVECAM'">
+                    <div
+                      class="col-xs-12 col-sm-12"
+                      v-if="petition.page[0] == 'XLOVECAM'"
+                    >
                       <q-input
                         filled
                         v-model="petition.linkacc"
                         label="Link de cuenta"
                         label-color=""
                         lazy-rules
-                        :rules="[
-                          val => !!val || 'Este campo es requerido'
-                        ]"
+                        :rules="[(val) => !!val || 'Este campo es requerido']"
                       />
                     </div>
                   </div>
                 </q-form>
                 <q-stepper-navigation>
-                  <q-btn flat @click="submitState('APROBADA')" color="primary" :label="stateConfirmBtn[petitionsStates[petitionsStates.length - 1].ptnstate_state]" :class="'q-ml-sm text-' + stateConfirmBtnColors[petitionsStates[petitionsStates.length - 1].ptnstate_state]" />
-                  <q-btn flat @click="submitState('RECHAZADA')" color="primary" label="Rechazar" class="q-ml-sm text-red" />
+                  <q-btn
+                    flat
+                    @click="submitState('APROBADA')"
+                    color="primary"
+                    :label="
+                      stateConfirmBtn[
+                        petitionsStates[petitionsStates.length - 1]
+                          .ptnstate_state
+                      ]
+                    "
+                    :class="
+                      'q-ml-sm text-' +
+                      stateConfirmBtnColors[
+                        petitionsStates[petitionsStates.length - 1]
+                          .ptnstate_state
+                      ]
+                    "
+                  />
+                  <q-btn
+                    flat
+                    @click="submitState('RECHAZADA')"
+                    color="primary"
+                    label="Rechazar"
+                    class="q-ml-sm text-red"
+                  />
                 </q-stepper-navigation>
               </q-step>
             </q-stepper>
@@ -435,65 +585,66 @@
 </template>
 
 <script>
-import PetitionService from 'src/services/PetitionService'
-import UserService from 'src/services/UserService'
-import CheckPagesOptions from './CheckPagesOptions.vue'
-import SelectPagesOptions from 'src/components/SelectPagesOptions.vue'
-import { xMisc } from 'src/mixins/xMisc.js'
-import { sGate } from 'src/mixins/sGate.js'
+import PetitionService from "src/services/PetitionService";
+import UserService from "src/services/UserService";
+import { supabase } from "src/supabaseClient";
+import CheckPagesOptions from "./CheckPagesOptions.vue";
+import SelectPagesOptions from "src/components/SelectPagesOptions.vue";
+import { xMisc } from "src/mixins/xMisc.js";
+import { sGate } from "src/mixins/sGate.js";
 
 export default {
-  name: 'Petition-form',
+  name: "Petition-form",
   mixins: [xMisc, sGate],
   components: { CheckPagesOptions, SelectPagesOptions },
   props: {
     isDialog: {
       type: String,
-      default: null
+      default: null,
     },
     parentTable: {
       type: String,
-      default: null
+      default: null,
     },
     parentField: {
       type: String,
-      default: null
+      default: null,
     },
     parentId: {
       type: Number,
-      default: null
+      default: null,
     },
     dialogChildId: {
       type: Number,
-      default: null
+      default: null,
     },
     modeprop: {
       type: String,
-      default: ''
+      default: "",
     },
   },
-  data () {
+  data() {
     return {
       sUser: {},
-      mode: (this.$route.params.id) ? 'edit' : 'create',
-      initTitle: 'Crear solicitud',
+      mode: this.$route.params.id ? "edit" : "create",
+      initTitle: "Crear solicitud",
       petition: {
         id: 0,
-        type: '',
-        nick: '',
-        password: '',
+        type: "",
+        nick: "",
+        password: "",
         page: [],
         page_before: [],
         page_count_pending_petitions: 0,
-        observation: '',
+        observation: "",
         user_id: 0,
         stdmod_id: 0,
-        linkacc: ''
+        linkacc: "",
       },
       studios_models: [],
       models: [],
       pagesErrorShow: false,
-      petitionUserName: '',
+      petitionUserName: "",
       readonlyFields: {
         type: false,
         nick: false,
@@ -501,253 +652,337 @@ export default {
         observation: false,
         password: false,
         user_id: false,
-        stdmod_id: false
+        stdmod_id: false,
       },
-      types: ['CREACIÓN DE CUENTA', 'REPORTE'],
+      types: ["CREACIÓN DE CUENTA", "REPORTE"],
       pages: [
-        'BONGACAMS',
-        'CAM4',
-        'CAMSODA ALIADOS',
-        'CHATURBATE',
-        'FLIRT4FREE',
-        'IMLIVE',
-        'LIVEJASMIN',
-        'ONLYFANS',
-        'MYDIRTYHOBBY',
-        'MYFREECAMS',
-        'SKYPRIVATE',
-        'STREAMATE',
-        'STREAMRAY',
-        'STRIPCHAT',
-        'XHAMSTER',
-        'XLOVECAM',
-        'CHERRY',
-        'DREAMCAM'
+        "BONGACAMS",
+        "CAM4",
+        "CAMSODA ALIADOS",
+        "CHATURBATE",
+        "FLIRT4FREE",
+        "IMLIVE",
+        "LIVEJASMIN",
+        "ONLYFANS",
+        "MYDIRTYHOBBY",
+        "MYFREECAMS",
+        "SKYPRIVATE",
+        "STREAMATE",
+        "STREAMRAY",
+        "STRIPCHAT",
+        "XHAMSTER",
+        "XLOVECAM",
+        "CHERRY",
+        "DREAMCAM",
       ],
       notIncludePages: [],
       petitionsStates: [],
       petitionStateSend: {
-        ptn_payment_pseudonym: '',
-        ptn_nick_final: '',
-        ptn_mail: '',
-        ptn_password_final: '',
-        ptnstate_observation: ''
+        ptn_payment_pseudonym: "",
+        ptn_nick_final: "",
+        ptn_mail: "",
+        ptn_password_final: "",
+        ptnstate_observation: "",
       },
-      petitionStateObservation: '',
+      petitionStateObservation: "",
       step: 1,
-      statesColors: { 
-        'EN PROCESO': 'orange',
-        'PENDIENTE': 'deep-purple',
-        'APROBADA': 'green',
-        'RECHAZADA': 'red'
+      statesColors: {
+        "EN PROCESO": "orange",
+        PENDIENTE: "deep-purple",
+        APROBADA: "green",
+        RECHAZADA: "red",
       },
-      statesIcons: { 
-        'EN PROCESO': 'settings',
-        'PENDIENTE': 'hourglass_bottom',
-        'APROBADA': 'done',
-        'RECHAZADA': 'close'
+      statesIcons: {
+        "EN PROCESO": "settings",
+        PENDIENTE: "hourglass_bottom",
+        APROBADA: "done",
+        RECHAZADA: "close",
       },
       stateTransitionApprove: {
-        'EN PROCESO': 'PENDIENTE',
-        'PENDIENTE': 'APROBADA'
+        "EN PROCESO": "PENDIENTE",
+        PENDIENTE: "APROBADA",
       },
       stateConfirmBtn: {
-        'EN PROCESO': 'Procesar',
-        'PENDIENTE': 'Aprobar'
+        "EN PROCESO": "Procesar",
+        PENDIENTE: "Aprobar",
       },
       stateConfirmBtnColors: {
-        'EN PROCESO': 'deep-purple',
-        'PENDIENTE': 'green'
+        "EN PROCESO": "deep-purple",
+        PENDIENTE: "green",
       },
       statesLabels: {
-        'EN PROCESO': 'ABIERTO',
-        'PENDIENTE': 'EN PROCESO',
-        'APROBADA': 'APROBADA',
-        'RECHAZADA': 'RECHAZADA'
+        "EN PROCESO": "ABIERTO",
+        PENDIENTE: "EN PROCESO",
+        APROBADA: "APROBADA",
+        RECHAZADA: "RECHAZADA",
       },
       model: {
         user_id: 0,
-        name: '',
-        identification: '',
-        category : ''
+        name: "",
+        identification: "",
+        category: "",
       },
       additionalModels: [],
       showLastStep: false,
       sended: false,
       modelStudioNotFound: false,
       disabledView: false,
-      previousObservations: []
-    }
+      previousObservations: [],
+    };
   },
-  mounted () {
-    this.sUser = this.decryptSession('user')
-    if (this.openGate('create-petition-own', this.sUser.prof_id)) {
-      this.petition.user_id = this.sUser.user_id
-      this.checkModelAssociatedToStudio()
-      this.getStudiosModelsByModel()
+  mounted() {
+    this.sUser = this.decryptSession("user");
+    if (this.openGate("create-petition-own", this.sUser.prof_id)) {
+      this.petition.user_id = this.sUser.user_id;
+      this.checkModelAssociatedToStudio();
+      this.getStudiosModelsByModel();
     }
-    if (this.modeprop != '') {
-      this.mode = this.modeprop
-    } else if ((this.$route.params.id && !this.isDialog) || (this.isDialog && this.parentId !== null && this.dialogChildId !== null)) {
-      this.mode = 'edit'
+    if (this.modeprop != "") {
+      this.mode = this.modeprop;
+    } else if (
+      (this.$route.params.id && !this.isDialog) ||
+      (this.isDialog && this.parentId !== null && this.dialogChildId !== null)
+    ) {
+      this.mode = "edit";
     }
 
-    if (this.mode === 'create' && !(this.openGate('create-petition-own', this.sUser.prof_id) || this.openGate('create-petitions', this.sUser.prof_id))) {
-      this.disabledView = true
+    if (
+      this.mode === "create" &&
+      !(
+        this.openGate("create-petition-own", this.sUser.prof_id) ||
+        this.openGate("create-petitions", this.sUser.prof_id)
+      )
+    ) {
+      this.disabledView = true;
     }
-    if (this.mode === 'edit' || this.mode === 'show') {
-      this.getData()
+    if (this.mode === "edit" || this.mode === "show") {
+      this.getData();
     }
-    this.getMaxPetitions()
+    this.getMaxPetitions();
   },
   methods: {
-    async onSubmit () {
+    async onSubmit() {
       if (this.petition.page.length == 0) {
-        this.pagesErrorShow = true  
-        return
+        this.pagesErrorShow = true;
+        return;
       }
       try {
-        this.activateLoading('Cargando')
+        this.activateLoading("Cargando");
         if (!this.sended) {
-          this.sended = true
-          if (this.mode === 'create' && (this.openGate('create-petitions', this.sUser.prof_id) || this.openGate('create-petition-own', this.sUser.prof_id))) {
+          this.sended = true;
+          if (
+            this.mode === "create" &&
+            (this.openGate("create-petitions", this.sUser.prof_id) ||
+              this.openGate("create-petition-own", this.sUser.prof_id))
+          ) {
             var record = await PetitionService.addPetitions({
               ptn_type: this.petition.type,
               ptn_nick: this.petition.nick,
               ptn_password: this.petition.password,
               ptn_page: this.petition.page,
-              user_id: (this.openGate('create-petitions', this.sUser.prof_id)) ? this.petition.user_id.value : this.petition.user_id,
+              user_id: this.openGate("create-petitions", this.sUser.prof_id)
+                ? this.petition.user_id.value
+                : this.petition.user_id,
               stdmod_id: this.petition.stdmod_id.value,
               ptnstate_observation: this.petition.observation,
-              token: this.decryptSession('token')
-            })
-            this.alert('positive', 'Creado')
-            this.petition.id = record.data.data.ptn_id
+              token: this.decryptSession("token"),
+            });
+            this.alert("positive", "Creado");
+            this.petition.id = record.data.data.ptn_id;
           }
-          this.sended = false
+          this.sended = false;
           //var modeUrl = (this.openGate('edit-petitions', this.sUser.prof_id)) ? 'edit' : 'show'
-          this.goTo('petitions')
+          this.goTo("petitions");
         }
-        this.disableLoading()
+        this.disableLoading();
       } catch (error) {
         // console.log(error)
-        this.disableLoading()
-        if (error.response && error.response.data && error.response.data.code && error.response.data.message) {
-          if (error.response.data.code === 'UNEXPECTED_ERROR') {
-            this.alert('negative', error.response.data.message)
-          } else if (error.response.data.code === 'MISSING_DOCUMENTS') {
+        this.disableLoading();
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.code &&
+          error.response.data.message
+        ) {
+          if (error.response.data.code === "UNEXPECTED_ERROR") {
+            this.alert("negative", error.response.data.message);
+          } else if (error.response.data.code === "MISSING_DOCUMENTS") {
             this.$q.notify({
-              message: '<a href="' + (this.openGate('create-petitions', this.sUser.prof_id) ? this.getFrontUrl('users/edit/' + this.petition.user_id.value, '_blank') : this.getFrontUrl('myprofile', '_blank')) + '" target="_blank">' + error.response.data.message + '</a>',
+              message:
+                '<a href="' +
+                (this.openGate("create-petitions", this.sUser.prof_id)
+                  ? this.getFrontUrl(
+                      "users/edit/" + this.petition.user_id.value,
+                      "_blank"
+                    )
+                  : this.getFrontUrl("myprofile", "_blank")) +
+                '" target="_blank">' +
+                error.response.data.message +
+                "</a>",
               html: true,
-              color: 'warning',
-              textColor: 'black',
+              color: "warning",
+              textColor: "black",
               actions: [
-                { icon: 'supervisor_account', color: 'black', round: true, handler: () => { (this.openGate('create-petitions', this.sUser.prof_id)) ? this.goTo('users/edit/' + this.petition.user_id.value, '_blank') : this.goTo('myprofile', '_blank') } 
-                }
-              ]
-            })
+                {
+                  icon: "supervisor_account",
+                  color: "black",
+                  round: true,
+                  handler: () => {
+                    this.openGate("create-petitions", this.sUser.prof_id)
+                      ? this.goTo(
+                          "users/edit/" + this.petition.user_id.value,
+                          "_blank"
+                        )
+                      : this.goTo("myprofile", "_blank");
+                  },
+                },
+              ],
+            });
             // this.alert('warning', )
           } else {
-            this.alert('warning', error.response.data.message)
+            this.alert("warning", error.response.data.message);
           }
         } else {
-          this.errorsAlerts(error)
+          this.errorsAlerts(error);
         }
-        this.sended = false
+        this.sended = false;
       }
     },
-    async getData () {
-      if (this.mode === 'edit') {
-        this.initTitle = 'Gestionar solicitud'
-      } else if (this.mode === 'show') {
-        this.initTitle = 'Ver solicitud'
+    async getData() {
+      if (this.mode === "edit") {
+        this.initTitle = "Gestionar solicitud";
+      } else if (this.mode === "show") {
+        this.initTitle = "Ver solicitud";
       }
 
       try {
-        this.activateLoading('Cargando')
-        const ptn_id = this.$route.params.id
-        var response = await PetitionService.getPetition({ id: ptn_id, token: this.decryptSession('token') })
+        this.activateLoading("Cargando");
+        const ptn_id = this.$route.params.id;
+        var response = await PetitionService.getPetition({
+          id: ptn_id,
+          token: this.decryptSession("token"),
+        });
         if (response.data.data.length > 0) {
-          this.petition.id = response.data.data[0].ptn_id
-          this.petition.type = response.data.data[0].ptn_type
-          this.petition.nick = response.data.data[0].ptn_nick
-          this.petition.password = response.data.data[0].ptn_password
-          this.petition.page[0] = response.data.data[0].ptn_page
-          this.petition.user_id = response.data.data[0].user_id
-          this.petitionsStates = response.data.data[0].petition_state
-          this.model.user_id = response.data.data[0].user.user_id
-          this.model.name = response.data.data[0].user.user_name + ' ' + response.data.data[0].user.user_name2 + ' ' + response.data.data[0].user.user_surname + ' ' + response.data.data[0].user.user_surname2
-          this.model.identification = response.data.data[0].user.user_identification
-          this.model.category = response.data.data[0].user.user_model_category
-          this.petitionStateSend.ptn_payment_pseudonym = response.data.data[0].ptn_payment_pseudonym
-          this.petitionStateSend.ptn_nick_final = response.data.data[0].ptn_nick_final
-          this.petitionStateSend.ptn_mail = response.data.data[0].ptn_mail
-          this.petitionStateSend.ptn_password_final = response.data.data[0].ptn_password_final
-          this.petition.stdmod_id = { label: response.data.data[0].studio_model.stdmod_id + ' ' + response.data.data[0].studio_model.studio.std_name, value: 0}
-          this.petition.linkacc = response.data.data[0].ptn_linkacc
+          this.petition.id = response.data.data[0].ptn_id;
+          this.petition.type = response.data.data[0].ptn_type;
+          this.petition.nick = response.data.data[0].ptn_nick;
+          this.petition.password = response.data.data[0].ptn_password;
+          this.petition.page[0] = response.data.data[0].ptn_page;
+          this.petition.user_id = response.data.data[0].user_id;
+          this.petitionsStates = response.data.data[0].petition_state;
+          this.model.user_id = response.data.data[0].user.user_id;
+          this.model.name =
+            response.data.data[0].user.user_name +
+            " " +
+            response.data.data[0].user.user_name2 +
+            " " +
+            response.data.data[0].user.user_surname +
+            " " +
+            response.data.data[0].user.user_surname2;
+          this.model.identification =
+            response.data.data[0].user.user_identification;
+          this.model.category = response.data.data[0].user.user_model_category;
+          this.petitionStateSend.ptn_payment_pseudonym =
+            response.data.data[0].ptn_payment_pseudonym;
+          this.petitionStateSend.ptn_nick_final =
+            response.data.data[0].ptn_nick_final;
+          this.petitionStateSend.ptn_mail = response.data.data[0].ptn_mail;
+          this.petitionStateSend.ptn_password_final =
+            response.data.data[0].ptn_password_final;
+          this.petition.stdmod_id = {
+            label:
+              response.data.data[0].studio_model.stdmod_id +
+              " " +
+              response.data.data[0].studio_model.studio.std_name,
+            value: 0,
+          };
+          this.petition.linkacc = response.data.data[0].ptn_linkacc;
 
-          this.additionalModels = []
-          response.data.data[0].user.additional_models.forEach((additional_model, index) => {
+          this.additionalModels = [];
+          response.data.data[0].user.additional_models.forEach(
+            (additional_model, index) => {
               this.additionalModels.push({
                 name: additional_model.usraddmod_name,
                 identification: additional_model.usraddmod_identification,
-                birthdate: additional_model.usraddmod_birthdate
-              })
+                birthdate: additional_model.usraddmod_birthdate,
+              });
             }
+          );
+          this.showLastStep = !["APROBADA", "RECHAZADA"].includes(
+            this.petitionsStates[this.petitionsStates.length - 1].ptnstate_state
           )
-          this.showLastStep = (!['APROBADA', 'RECHAZADA'].includes(this.petitionsStates[this.petitionsStates.length - 1].ptnstate_state)) ? true : false
+            ? true
+            : false;
         } else {
-          this.disabledView = true
+          this.disabledView = true;
         }
-        this.disableLoading()
+        this.disableLoading();
       } catch (error) {
-        this.errorsAlerts(error)
-        this.disableLoading()
+        this.errorsAlerts(error);
+        this.disableLoading();
       }
     },
-    async getMaxPetitions () {
-      if (this.mode === 'create' && (this.openGate('create-petition-own', this.sUser.prof_id) || typeof this.petition.user_id.value !== 'undefined')) {
-        const userId = (this.openGate('create-petition-own', this.sUser.prof_id)) ? this.petition.user_id : this.petition.user_id.value
-        var response = await PetitionService.getAccountCreations({ user_id: userId, token: this.decryptSession('token') })
-        this.page_count_pending_petitions = response.data.data.length
-        this.petition.page = []
-        this.notIncludePages = response.data.data
+    async getMaxPetitions() {
+      if (
+        this.mode === "create" &&
+        (this.openGate("create-petition-own", this.sUser.prof_id) ||
+          typeof this.petition.user_id.value !== "undefined")
+      ) {
+        const userId = this.openGate("create-petition-own", this.sUser.prof_id)
+          ? this.petition.user_id
+          : this.petition.user_id.value;
+        var response = await PetitionService.getAccountCreations({
+          user_id: userId,
+          token: this.decryptSession("token"),
+        });
+        this.page_count_pending_petitions = response.data.data.length;
+        this.petition.page = [];
+        this.notIncludePages = response.data.data;
       }
     },
-    async insertState (state) {
-      const stateToTransition = (state === 'APROBADA')  ? this.stateTransitionApprove[this.petitionsStates[this.petitionsStates.length - 1].ptnstate_state] : 'RECHAZADA'
-      if (this.openGate('edit-petitions', this.sUser.prof_id)) {
-        const titleDialog = (state === 'APROBADA') ? '¿APROBAR?' : '¿RECHAZAR?'
-        const actionDialog = (state === 'APROBADA') ? 'aprobar' : 'rechazar'
-        this.$q.dialog({
-          title: titleDialog,
-          message: '¿Estas seguro que deseas ' + actionDialog + ' esta solicitud?',
-          cancel: true,
-          persistent: true
-        }).onOk(() => {
-          if (!this.sended) {
-            this.sended = true
-            this.sendState(stateToTransition)
-            this.petitionStateObservation = ''
-            this.getData()
-          }
-          this.sended = false
-        })
+    async insertState(state) {
+      const stateToTransition =
+        state === "APROBADA"
+          ? this.stateTransitionApprove[
+              this.petitionsStates[this.petitionsStates.length - 1]
+                .ptnstate_state
+            ]
+          : "RECHAZADA";
+      if (this.openGate("edit-petitions", this.sUser.prof_id)) {
+        const titleDialog = state === "APROBADA" ? "¿APROBAR?" : "¿RECHAZAR?";
+        const actionDialog = state === "APROBADA" ? "aprobar" : "rechazar";
+        this.$q
+          .dialog({
+            title: titleDialog,
+            message:
+              "¿Estas seguro que deseas " + actionDialog + " esta solicitud?",
+            cancel: true,
+            persistent: true,
+          })
+          .onOk(() => {
+            if (!this.sended) {
+              this.sended = true;
+              this.sendState(stateToTransition);
+              this.petitionStateObservation = "";
+              this.getData();
+            }
+            this.sended = false;
+          });
       }
     },
-    submitState (state) {
-      if (state === 'RECHAZADA') {
-        this.insertState(state)
+    submitState(state) {
+      if (state === "RECHAZADA") {
+        this.insertState(state);
       } else {
-        const form = this.$refs.petitionStateForm
-        form.validate().then(success => {
+        const form = this.$refs.petitionStateForm;
+        form.validate().then((success) => {
           if (success) {
-            this.insertState(state)
+            this.insertState(state);
           }
-        })  
+        });
       }
     },
-    async sendState (stateToTransition) {
+    async sendState(stateToTransition) {
       try {
         var record = await PetitionService.addPetitionState({
           ptn_id: this.petition.id,
@@ -758,100 +993,142 @@ export default {
           ptn_password_final: this.petitionStateSend.ptn_password_final,
           ptn_payment_pseudonym: this.petitionStateSend.ptn_payment_pseudonym,
           ptn_linkacc: this.petition.linkacc,
-          token: this.decryptSession('token')
-        })
-      } 
-      catch (error) {
-        this.disableLoading()
-        if (error.response && error.response.data && error.response.data.code && error.response.data.message) {
-          if (error.response.data.code === 'UNEXPECTED_ERROR') {
-            this.alert('negative', error.response.data.message)
+          token: this.decryptSession("token"),
+        });
+      } catch (error) {
+        this.disableLoading();
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.code &&
+          error.response.data.message
+        ) {
+          if (error.response.data.code === "UNEXPECTED_ERROR") {
+            this.alert("negative", error.response.data.message);
           } else {
-            this.alert('warning', error.response.data.message)
+            this.alert("warning", error.response.data.message);
           }
         } else {
-          this.errorsAlerts(error)
+          this.errorsAlerts(error);
         }
       }
     },
-    async downloadModelDocs () {
-      //var response = await DocumentService.downloadUserDocuments({ user_id: this.model.user_id, token: this.decryptSession('token') })
-      var url = process.env.API_URL + '/api/document/download/images?access_token=' + this.decryptSession('token') + '&user_id=' + this.model.user_id
-      var win = window.open(url, '_blank')
-      win.focus()
-    },
-    validateMaxPetitions() {
-      if (this.petition.page.length > (4 - this.page_count_pending_petitions)) {
-        this.petition.page = this.petition.page_before
-      } else {
-        this.petition.page_before = this.petition.page
-        this.pagesErrorShow = false
-      }
-    },
-    async getModels (val, update, abort) {
-      if (val.length < 3) {
-        abort()
-        return
-      }
+    async downloadModelDocs() {
       try {
-        var response = await UserService.getModelsByOwnerStudio({ search: val, prof_ids: [4, 5], token: this.decryptSession('token') })
-        update(() => {
-          this.models = response.data.data
-        })
-      } catch (error) {
-        this.errorsAlerts(error)
-      }
-    },
-    async checkModelAssociatedToStudio () {
-      var response = await PetitionService.checkModelStudio({ user_id: this.sUser.user_id, token: this.decryptSession('token') })
-      this.modelStudioNotFound = (response.data.status == 'fail') ? true : false
-    },
-    async getStudiosModelsByModel () {
-      try {
-        const user_id = (this.openGate('create-petitions', this.sUser.prof_id)) ? this.petition.user_id.value : this.petition.user_id
-        var response = await PetitionService.getStudiosModelsByModel({ user_id: user_id, token: this.decryptSession('token') })
-        this.studios_models = response.data.data
-        this.petition.stdmod_id = this.studios_models[0]
-      } 
-      catch (error) {
-        this.disableLoading()
-        if (error.response && error.response.data && error.response.data.code && error.response.data.message) {
-          if (error.response.data.code === 'UNEXPECTED_ERROR') {
-            this.alert('negative', error.response.data.message)
-          } else {
-            this.alert('warning', error.response.data.message)
+        const { data } = await supabase.storage
+          .from("el-castillo")
+          .list(`documents/users/${this.model.user_id}`);
+
+        if (data && data.length > 0) {
+          for (const file of data) {
+            const { data: fileData } = supabase.storage
+              .from("el-castillo")
+              .getPublicUrl(
+                `documents/users/${this.model.user_id}/${file.name}`
+              );
+            if (fileData?.publicUrl) {
+              window.open(fileData.publicUrl, "_blank");
+            }
           }
         } else {
-          this.errorsAlerts(error)
+          this.alert("info", "No se encontraron documentos para este usuario");
+        }
+      } catch (error) {
+        console.error("Error downloading documents:", error);
+        this.alert("warning", "Error al descargar documentos");
+      }
+    },
+    validateMaxPetitions() {
+      if (this.petition.page.length > 4 - this.page_count_pending_petitions) {
+        this.petition.page = this.petition.page_before;
+      } else {
+        this.petition.page_before = this.petition.page;
+        this.pagesErrorShow = false;
+      }
+    },
+    async getModels(val, update, abort) {
+      if (val.length < 3) {
+        abort();
+        return;
+      }
+      try {
+        var response = await UserService.getModelsByOwnerStudio({
+          search: val,
+          prof_ids: [4, 5],
+          token: this.decryptSession("token"),
+        });
+        update(() => {
+          this.models = response.data.data;
+        });
+      } catch (error) {
+        this.errorsAlerts(error);
+      }
+    },
+    async checkModelAssociatedToStudio() {
+      var response = await PetitionService.checkModelStudio({
+        user_id: this.sUser.user_id,
+        token: this.decryptSession("token"),
+      });
+      this.modelStudioNotFound = response.data.status == "fail" ? true : false;
+    },
+    async getStudiosModelsByModel() {
+      try {
+        const user_id = this.openGate("create-petitions", this.sUser.prof_id)
+          ? this.petition.user_id.value
+          : this.petition.user_id;
+        var response = await PetitionService.getStudiosModelsByModel({
+          user_id: user_id,
+          token: this.decryptSession("token"),
+        });
+        this.studios_models = response.data.data;
+        this.petition.stdmod_id = this.studios_models[0];
+      } catch (error) {
+        this.disableLoading();
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.code &&
+          error.response.data.message
+        ) {
+          if (error.response.data.code === "UNEXPECTED_ERROR") {
+            this.alert("negative", error.response.data.message);
+          } else {
+            this.alert("warning", error.response.data.message);
+          }
+        } else {
+          this.errorsAlerts(error);
         }
       }
     },
     updatedUser() {
-      this.getMaxPetitions()
-      this.getStudiosModelsByModel()
+      this.getMaxPetitions();
+      this.getStudiosModelsByModel();
     },
     async onObservationInput() {
-      if (this.petitionStateSend.ptnstate_observation && this.petitionStateSend.ptnstate_observation.length > 0) {
-        console.log(this.petitionStateSend.ptnstate_observation)
+      if (
+        this.petitionStateSend.ptnstate_observation &&
+        this.petitionStateSend.ptnstate_observation.length > 0
+      ) {
+        console.log(this.petitionStateSend.ptnstate_observation);
         try {
           const response = await PetitionService.getPreviousObservations({
             search: this.petitionStateSend.ptnstate_observation,
-            token: this.decryptSession('token')
-          })
-          this.previousObservations = response.data.data || []
+            token: this.decryptSession("token"),
+          });
+          this.previousObservations = response.data.data || [];
         } catch (error) {
-          this.previousObservations = []
+          this.previousObservations = [];
         }
       } else {
-        this.previousObservations = []
+        this.previousObservations = [];
       }
     },
     selectObservation(observation) {
-      this.petitionStateSend.ptnstate_observation = observation
-      this.previousObservations = []
-    }
-  }
-}
+      this.petitionStateSend.ptnstate_observation = observation;
+      this.previousObservations = [];
+    },
+  },
+};
 </script>
 
 <style scoped>
