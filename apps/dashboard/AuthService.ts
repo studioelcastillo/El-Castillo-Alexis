@@ -97,8 +97,8 @@ const AuthService = {
   newPassword: (params: { u: string; t: string; password: string }) =>
     AuthSupabaseService.newPassword({ password: params.password }),
 
-  changePassword: (params: { password: string; oldPassword?: string }) =>
-    AuthSupabaseService.changePassword({ password: params.password }),
+  changePassword: (params: { password: string; oldPassword: string }) =>
+    AuthSupabaseService.changePassword({ password: params.password, oldPassword: params.oldPassword }),
 };
 
 export default AuthService;

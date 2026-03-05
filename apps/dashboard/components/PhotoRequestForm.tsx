@@ -1,22 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { X, Zap, Clock, Calendar, AlertCircle, ShieldCheck } from 'lucide-react';
 import PhotoService from '../PhotoService';
+import { getStoredUser } from '../session';
 import { PhotoRestrictionStatus } from '../types';
 
-// Mock User Context (Should match PhotographyPage)
-const CURRENT_USER = {
-    id: 3990,
-    name: 'Jennifer Zuluaga',
-    role: 'ADMIN'
+// Resolve current user from real session
+const getSessionUser = () => {
+    const u = getStoredUser();
+    return {
+        id: u?.user_id ?? u?.id ?? 0,
+        name: `${u?.user_name ?? ''} ${u?.user_surname ?? ''}`.trim() || 'Usuario',
+        role: u?.profile?.prof_name ?? u?.prof_name ?? 'ADMIN',
+    };
 };
 
 export const PhotoRequestForm: React.FC<{ onClose: () => void, onSubmit: (data: any) => void }> = ({ onClose, onSubmit }) => {
+    const CURRENT_USER = getSessionUser();
     const [formData, setFormData] = useState({
-        services: ['FOTO'], // Array of services: FOTO, VIDEO
+        services: ['FOTO'],
         objective: 'CONTENIDO', location: 'Sede Principal',
         proposed_date: '', proposed_time: '', duration_minutes: 60,
         style_references: '', requires_makeup: false, makeup_pref: '',
-        models: CURRENT_USER.role === 'MODELO' ? CURRENT_USER.name : '' // Comma separated names
+        models: CURRENT_USER.role?.toUpperCase().includes('MODEL') ? CURRENT_USER.name : ''
     });
     const [availability, setAvailability] = useState<any>(null);
     const [restrictionStatus, setRestrictionStatus] = useState<PhotoRestrictionStatus | null>(null);
@@ -24,31 +29,22 @@ export const PhotoRequestForm: React.FC<{ onClose: () => void, onSubmit: (data: 
 
     useEffect(() => {
         PhotoService.getAvailability().then(setAvailability);
-
-        // If current user is a model, check their restriction immediately
-        if (CURRENT_USER.role === 'MODELO') {
+        if (CURRENT_USER.role?.toUpperCase().includes('MODEL')) {
             checkRestriction(CURRENT_USER.id);
         }
     }, []);
 
     useEffect(() => {
-        if (CURRENT_USER.role !== 'MODELO' && formData.models) {
+        if (!CURRENT_USER.role?.toUpperCase().includes('MODEL') && formData.models) {
             const firstModel = formData.models.split(',')[0].trim();
             if (firstModel) {
                 const timer = setTimeout(() => {
-                const timer = setTimeout(() => {
-                    // In a real app, we would call UserService.search(firstModel)
-                    // For now, if it's the demo model, we use ID 3990
-                    if (firstModel.toLowerCase().includes('jennifer')) {
-                        checkRestriction(3990);
-                    } else {
-                        setRestrictionStatus(null);
-                    }
-                }, 800);
+                    // In a real app, call UserService.search(firstModel) to get user ID
+                    setRestrictionStatus(null);
                 }, 800);
                 return () => clearTimeout(timer);
             }
-        } else if (CURRENT_USER.role !== 'MODELO' && !formData.models) {
+        } else if (!CURRENT_USER.role?.toUpperCase().includes('MODEL') && !formData.models) {
             setRestrictionStatus(null);
         }
     }, [formData.models]);
@@ -62,14 +58,16 @@ export const PhotoRequestForm: React.FC<{ onClose: () => void, onSubmit: (data: 
 
     const handleSubmit = () => {
         const modelList = formData.models.split(',').map(m => m.trim()).filter(m => m !== '');
-        const finalModels = modelList.length > 0 ? modelList : ['Jennifer Zuluaga']; // Default if empty for demo
+        const finalModels = modelList.length > 0 ? modelList : [CURRENT_USER.name];
 
         finalModels.forEach(model => {
             const type = formData.services.join(' + ');
             onSubmit({
                 ...formData,
                 type: type || 'FOTO',
-                requester_name: model // Overriding requester name for each request
+                requester_id: CURRENT_USER.id,
+                requester_name: CURRENT_USER.name,
+                model_name: model
             });
         });
     };

@@ -41,6 +41,7 @@ yarn-error.log*
 castillo_prod_aws.sql.txt
 /apps/**/.env
 /apps/**/.env.*
+!/apps/**/.env.example
 /server/.env
 /server/.env.*
 

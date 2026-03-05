@@ -229,7 +229,17 @@ const AuthSupabaseService = {
       .single();
   },
 
-  changePassword({ password }: { password: string }) {
+  async changePassword({ password, oldPassword }: { password: string; oldPassword: string }) {
+    // Re-authenticate first to verify the current password (prevents unauthorized changes)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) throw new Error('No hay sesión activa.');
+
+    const { error: reAuthError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: oldPassword,
+    });
+    if (reAuthError) throw new Error('La contraseña actual es incorrecta.');
+
     return supabase.auth.updateUser({ password });
   },
 };

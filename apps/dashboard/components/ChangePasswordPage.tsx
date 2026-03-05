@@ -15,18 +15,26 @@ const ChangePasswordPage: React.FC = () => {
     event.preventDefault();
     setNotice(null);
 
+    if (!oldPassword) {
+      setNotice({ type: "error", message: "Debes ingresar tu contraseña actual para continuar." });
+      return;
+    }
     if (!password || password !== confirm) {
-      setNotice({ type: "error", message: "Las contrasenas no coinciden." });
+      setNotice({ type: "error", message: "Las contraseñas nuevas no coinciden." });
+      return;
+    }
+    if (password.length < 6) {
+      setNotice({ type: "error", message: "La nueva contraseña debe tener al menos 6 caracteres." });
       return;
     }
 
     setLoading(true);
     try {
       await AuthService.changePassword({ password, oldPassword });
-      setNotice({ type: "success", message: "Contrasena actualizada." });
+      setNotice({ type: "success", message: "Contraseña actualizada correctamente." });
       setTimeout(() => navigate("/dashboard"), 1200);
     } catch (err) {
-      setNotice({ type: "error", message: "No se pudo actualizar." });
+      setNotice({ type: "error", message: "No se pudo actualizar. Verifica que tu contraseña actual sea correcta." });
     } finally {
       setLoading(false);
     }
@@ -65,14 +73,19 @@ const ChangePasswordPage: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              Contrasena actual (opcional)
+              Contraseña actual <span className="text-red-500">*</span>
             </label>
             <input
               type="password"
               value={oldPassword}
               onChange={(event) => setOldPassword(event.target.value)}
+              required
+              placeholder="Ingresa tu contraseña actual"
               className="mt-2 w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:ring-4 focus:ring-amber-500/10"
             />
+            <p className="mt-1 text-[10px] text-slate-400">
+              💡 Si nunca cambiaste tu contraseña, es los <strong>últimos 5 dígitos de tu número de cédula</strong>.
+            </p>
           </div>
           <div>
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">

@@ -22,6 +22,7 @@ Crea un `.env` (en el root o `apps/dashboard/.env`) y define:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_API_URL` (opcional, usa el API por defecto)
+- `VITE_SESSION_KEY` (opcional, para cifrado de sesion)
 - `VITE_DASHBOARD_BASE` (opcional, ej: `/dashboard-app/`)
 - `GEMINI_API_KEY` (opcional)
 Plantilla disponible en `apps/dashboard/.env.example`.
@@ -34,7 +35,7 @@ Configuracion sugerida:
 - Output directory: `apps/dashboard/dist`
 - Dev command: `npm run dev` (puerto 3000)
 - Variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
-- Opcional: `VITE_API_URL`, `VITE_DASHBOARD_BASE`, `GEMINI_API_KEY`
+- Opcional: `VITE_API_URL`, `VITE_SESSION_KEY`, `VITE_DASHBOARD_BASE`, `GEMINI_API_KEY`
 
 ## Estructura
 La app principal esta en `apps/dashboard` (React + Vite).

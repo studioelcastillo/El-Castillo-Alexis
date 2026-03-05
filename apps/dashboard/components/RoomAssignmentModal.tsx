@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, User, CheckCircle2, Search, ArrowRight } from 'lucide-react';
 import { Room, RoomAssignment, ShiftType } from '../types';
 import UserService from '../UserService';
+import { getStoredUser } from '../session';
 
 interface RoomAssignmentModalProps {
   isOpen: boolean;
@@ -60,16 +61,18 @@ const RoomAssignmentModal: React.FC<RoomAssignmentModalProps> = ({
   const handleSubmit = () => {
     if (!selectedModelId) return;
 
-    // Find the selected model from the currently available models
     const model = availableModels.find(u => u.user_id === selectedModelId);
+    const sessionUser = getStoredUser();
+    const monitorId = sessionUser?.user_id ?? sessionUser?.id ?? null;
+    const monitorName = `${sessionUser?.user_name ?? ''} ${sessionUser?.user_surname ?? ''}`.trim() || 'Monitor';
 
     const newAssignment: Partial<RoomAssignment> & { isRange?: boolean, endDate?: string } = {
       room_id: room.id,
       model_id: model?.user_id,
       model_name: `${model?.user_name} ${model?.user_surname}`,
       model_avatar: model?.user_photo_url,
-      monitor_id: 2, // Mock Monitor ID (current user)
-      monitor_name: 'Monitor Actual',
+      monitor_id: monitorId,
+      monitor_name: monitorName,
       date: selectedDate,
       shift: selectedShift as ShiftType,
       status: 'ACTIVE',
