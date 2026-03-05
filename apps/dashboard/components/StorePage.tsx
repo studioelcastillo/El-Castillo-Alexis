@@ -7,7 +7,16 @@ import {
   Truck, Wallet, X, ChevronRight, Store, LayoutGrid
 } from 'lucide-react';
 import StoreService from '../StoreService';
+import { getStoredUser } from '../session';
 import { StoreProduct, StoreCategory, StoreOrder, InventoryLot, PurchaseOrder, InstallmentPlan, Requisition, CostCenter, User as UserType } from '../types';
+
+const getSessionUser = () => {
+  const u = getStoredUser();
+  return {
+    id: u?.user_id ?? u?.id ?? null,
+    name: `${u?.user_name ?? ''} ${u?.user_surname ?? ''}`.trim() || 'Usuario',
+  };
+};
 
 const StorePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'CATALOG' | 'CART' | 'ORDERS' | 'INVENTORY' | 'FINANCE'>('CATALOG');
@@ -17,7 +26,9 @@ const StorePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   // Checkout State
-  const [selectedUser, setSelectedUser] = useState<number | null>(null);
+  const sessionUser = getSessionUser();
+  const [selectedUser, setSelectedUser] = useState<number | null>(sessionUser.id);
+  const [selectedUserName, setSelectedUserName] = useState<string>(sessionUser.name);
   const [selectedCostCenter, setSelectedCostCenter] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'PAYROLL' | 'LOAN'>('CASH');
   const [installments, setInstallments] = useState(1);
@@ -81,7 +92,7 @@ const StorePage: React.FC = () => {
       if (!selectedUser || !selectedCostCenter) return alert("Selecciona usuario y centro de costos");
 
       try {
-           const buyer_name = 'Usuario';
+           const buyer_name = selectedUserName || sessionUser.name;
            await StoreService.checkout({
                studio_id: '1',
                buyer_user_id: selectedUser,
@@ -203,15 +214,10 @@ const StorePage: React.FC = () => {
               <div className="space-y-4 mb-6">
                   <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Comprador</label>
-                      <select
-                        className="w-full p-3 bg-slate-50 border-none rounded-xl text-sm font-bold text-slate-700 outline-none"
-                        onChange={(e) => setSelectedUser(Number(e.target.value))}
-                      >
-                          <option value="">Seleccionar Usuario...</option>
-                          <option value="3990">Jennifer Zuluaga</option>
-                          <option value="3988">Sofia Mosquera</option>
-                          <option value="3989">Ana Acero</option>
-                      </select>
+                      <div className="w-full p-3 bg-slate-50 border-none rounded-xl text-sm font-bold text-slate-700">
+                        {selectedUserName || sessionUser.name}
+                      </div>
+                      <p className="mt-1 text-[10px] text-slate-400">Comprando como el usuario autenticado</p>
                   </div>
                   <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Centro de Costos</label>
