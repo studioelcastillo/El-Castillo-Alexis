@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Search, UserPlus, Download, Trash2, ChevronDown, 
+import {
+  Search, UserPlus, Download, Trash2, ChevronDown,
   User as UserIcon, Monitor, Edit2, Eye, History, CheckCircle2,
   RefreshCw, AlertCircle, ChevronLeft, ChevronRight
 } from 'lucide-react';
@@ -10,7 +10,7 @@ import { User, UserProfileData, StudioApiResponse } from '../types';
 import UserService from '../UserService';
 import ProfileService from '../ProfileService';
 import { studioService } from '../api';
-import { MOCK_USERS } from '../constants'; // Fallback for rapid lookup if needed
+import { getStoredUser } from '../session';
 
 interface UsersPageProps {
   targetUserId?: number | null;
@@ -23,7 +23,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ targetUserId, onClearTarget }) =>
   const [users, setUsers] = useState<User[]>([]);
   const [profiles, setProfiles] = useState<UserProfileData[]>([]);
   const [studiosList, setStudiosList] = useState<StudioApiResponse[]>([]);
-  
+
   // Pagination & Loading
   const [loading, setLoading] = useState(false);
   const [totalRecords, setTotalRecords] = useState(0);
@@ -133,13 +133,13 @@ const UsersPage: React.FC<UsersPageProps> = ({ targetUserId, onClearTarget }) =>
   // Handle Deep Linking / Target ID
   useEffect(() => {
     if (targetUserId) {
-      // Prioritize MOCK_USERS for immediate feedback if the API table hasn't loaded or page is wrong
-      // In a real app, this would be a specific API call like UserService.getById(targetUserId)
-      const mockFind = MOCK_USERS.find(u => u.user_id === targetUserId);
-      
-      if (mockFind) {
-         setSelectedUser(mockFind as unknown as User);
-      } else {
+      // Check if target user is current user as fallback
+      const currentUser = getStoredUser();
+      if (currentUser && currentUser.user_id === targetUserId) {
+          setSelectedUser(currentUser);
+          return;
+      }
+ else {
          // Fallback: try to find in currently loaded table
          const foundInState = users.find(u => u.user_id === targetUserId);
          if (foundInState) {
@@ -149,7 +149,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ targetUserId, onClearTarget }) =>
             setSearchTerm(targetUserId.toString());
          }
       }
-      
+
       // Clear target to prevent re-opening if user goes back
       if (onClearTarget) onClearTarget();
     }
@@ -189,7 +189,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ targetUserId, onClearTarget }) =>
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
-      
+
       {/* 1. Header & Primary Actions */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
@@ -203,8 +203,8 @@ const UsersPage: React.FC<UsersPageProps> = ({ targetUserId, onClearTarget }) =>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button 
-            onClick={() => fetchUsers()} 
+          <button
+            onClick={() => fetchUsers()}
             className="p-3 bg-white border border-slate-200 text-slate-400 hover:text-slate-900 rounded-xl transition-all"
             title="Recargar"
           >
@@ -228,15 +228,15 @@ const UsersPage: React.FC<UsersPageProps> = ({ targetUserId, onClearTarget }) =>
         <div className="flex flex-col xl:flex-row gap-2">
            <div className="relative flex-1">
               <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Buscar por nombre, email o cédula..." 
+              <input
+                type="text"
+                placeholder="Buscar por nombre, email o cédula..."
                 className="w-full pl-11 pr-4 py-3 bg-slate-50 border-transparent rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-amber-500/5 focus:border-amber-500 transition-all font-medium"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
            </div>
-           
+
            <div className="flex bg-slate-100 p-1 rounded-xl gap-1 overflow-x-auto no-scrollbar">
               {['ACTIVOS', 'INACTIVOS'].map(tab => (
                  <button
@@ -253,7 +253,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ targetUserId, onClearTarget }) =>
 
            <div className="flex gap-2 overflow-x-auto no-scrollbar">
               <div className="relative min-w-[150px]">
-                 <select 
+                 <select
                    className="w-full appearance-none bg-white border border-slate-100 rounded-xl px-4 py-2.5 pr-8 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all outline-none"
                    value={selectedProfileId}
                    onChange={(e) => setSelectedProfileId(e.target.value)}
@@ -265,7 +265,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ targetUserId, onClearTarget }) =>
               </div>
 
               <div className="relative min-w-[150px]">
-                 <select 
+                 <select
                    className="w-full appearance-none bg-white border border-slate-100 rounded-xl px-4 py-2.5 pr-8 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all outline-none"
                    value={selectedStudioId}
                    onChange={(e) => setSelectedStudioId(e.target.value)}
@@ -357,20 +357,20 @@ const UsersPage: React.FC<UsersPageProps> = ({ targetUserId, onClearTarget }) =>
                </tbody>
             </table>
          </div>
-         
+
          {/* Pagination */}
          {totalRecords > pageSize && (
             <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
                <span className="text-xs font-bold text-slate-500">Página {page} de {Math.ceil(totalRecords / pageSize)}</span>
                <div className="flex gap-2">
-                  <button 
+                  <button
                      onClick={() => setPage(p => Math.max(1, p - 1))}
                      disabled={page === 1}
                      className="p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-slate-900 disabled:opacity-50"
                   >
                      <ChevronLeft size={16} />
                   </button>
-                  <button 
+                  <button
                      onClick={() => setPage(p => Math.min(Math.ceil(totalRecords / pageSize), p + 1))}
                      disabled={page >= Math.ceil(totalRecords / pageSize)}
                      className="p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-slate-900 disabled:opacity-50"

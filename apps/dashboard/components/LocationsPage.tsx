@@ -1,5 +1,17 @@
-
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  Plus, Search, Globe, Building2, Map,
+  Edit3, Trash2, ChevronRight, MoreVertical,
+  MapPin, Check, Filter, X, Save
+} from 'lucide-react';
 import LocationService, { LocationCountry, LocationDepartment, LocationCity } from '../LocationService';
+
+interface ModalConfig {
+  type: 'country' | 'state' | 'city';
+  mode: 'add' | 'edit';
+  data?: any;
+  isOpen: boolean;
+}
 
 const LocationsPage: React.FC = () => {
   // Main Data State
@@ -26,9 +38,10 @@ const LocationsPage: React.FC = () => {
         if (data && data.data) {
             setLocations(data.data);
             if (data.data.length > 0 && !selectedCountryId) {
-                setSelectedCountryId(data.data[0].country_id);
-                if (data.data[0].departments.length > 0) {
-                    setSelectedStateId(data.data[0].departments[0].dpto_id);
+                const firstCountry = data.data[0];
+                setSelectedCountryId(firstCountry.country_id);
+                if (firstCountry.departments.length > 0) {
+                    setSelectedStateId(firstCountry.departments[0].dpto_id);
                 }
             }
         }
@@ -96,7 +109,7 @@ const LocationsPage: React.FC = () => {
                 await LocationService.editCity({ id: modal.data.id, city_name: formData.name.toUpperCase() });
             }
         }
-        fetchLocations();
+        await fetchLocations();
         closeModal();
     } catch (e: any) {
         alert("Error al guardar: " + e.message);
@@ -114,7 +127,7 @@ const LocationsPage: React.FC = () => {
         } else if (type === 'city') {
             await LocationService.delCity({ id });
         }
-        fetchLocations();
+        await fetchLocations();
     } catch (e: any) {
         alert("Error al eliminar: " + e.message);
     }
@@ -159,15 +172,16 @@ const LocationsPage: React.FC = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-            {filteredCountries.map(country => (
-              <div key={country.id} className="group relative">
+            {loading ? (
+                <div className="flex items-center justify-center h-20 text-slate-400 animate-pulse text-[10px] font-bold uppercase">Cargando...</div>
+            ) : filteredCountries.map(country => (
+              <div key={country.country_id} className="group relative">
                 <button
                   onClick={() => {
-                    setSelectedCountryId(country.id);
-                    setSelectedStateId(country.states[0]?.id || '');
+                    setSelectedCountryId(country.country_id);
+                    setSelectedStateId(country.departments[0]?.dpto_id || '');
                   }}
                   className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${
-                    selectedCountryId === country.id
                     selectedCountryId === country.country_id
                     ? 'bg-slate-900 text-white shadow-lg'
                     : 'hover:bg-slate-50 text-slate-600'
@@ -205,7 +219,7 @@ const LocationsPage: React.FC = () => {
         <div className="w-full lg:w-1/3 flex flex-col bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden h-80 lg:h-auto">
           <div className="p-4 border-b border-slate-50 bg-slate-50/50">
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-3">
-              <Building2 size={14} /> Departamentos de {selectedCountry?.name || '---'}
+              <Building2 size={14} /> Departamentos de {selectedCountry?.country_name || '---'}
             </h3>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -250,7 +264,7 @@ const LocationsPage: React.FC = () => {
                 </div>
               </div>
             ))}
-            {!selectedCountry && (
+            {!selectedCountry && !loading && (
               <div className="h-full flex flex-col items-center justify-center p-8 text-center text-slate-300">
                 <MapPin size={40} className="mb-2 opacity-20" />
                 <p className="text-[10px] font-black uppercase tracking-widest">Selecciona un País</p>
@@ -274,10 +288,10 @@ const LocationsPage: React.FC = () => {
           <div className="p-4 border-b border-slate-50 bg-slate-50/50">
              <div className="flex justify-between items-center mb-3">
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <Map size={14} /> Municipios en {selectedState?.name || '---'}
+                  <Map size={14} /> Municipios en {selectedState?.dpto_name || '---'}
                 </h3>
                 <div className="flex items-center gap-2 text-[9px] font-black text-slate-400">
-                   {String(selectedCountry?.country_id).toUpperCase()} <ChevronRight size={8} /> {selectedState?.dpto_name}
+                   {String(selectedCountry?.country_id || '').toUpperCase()} <ChevronRight size={8} /> {selectedState?.dpto_name}
                 </div>
              </div>
              <div className="relative">
@@ -297,7 +311,7 @@ const LocationsPage: React.FC = () => {
             {selectedState ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {filteredCities.map(city => (
-                  <div key={city.id} className="group flex items-center justify-between p-3.5 bg-white border border-slate-100 rounded-2xl hover:border-amber-200 hover:shadow-md hover:shadow-amber-500/5 transition-all">
+                  <div key={city.city_id} className="group flex items-center justify-between p-3.5 bg-white border border-slate-100 rounded-2xl hover:border-amber-200 hover:shadow-md hover:shadow-amber-500/5 transition-all">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-amber-50 group-hover:text-amber-600 transition-all">
                         <Map size={16} />
@@ -363,17 +377,6 @@ const LocationsPage: React.FC = () => {
             </div>
 
             <div className="p-6 space-y-4">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Código / ID</label>
-                <input
-                  type="text"
-                  placeholder="Ej: COL, ANT, MED..."
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-4 focus:ring-amber-500/5 focus:border-amber-500 transition-all disabled:opacity-50"
-                  value={formData.id}
-                  onChange={e => setFormData({ ...formData, id: e.target.value })}
-                  disabled={modal.mode === 'edit'}
-                />
-              </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Nombre</label>
                 <input

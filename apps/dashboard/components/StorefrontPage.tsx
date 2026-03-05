@@ -1,34 +1,33 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  ShoppingBag, Search, Filter, ShoppingCart, Plus, Minus, 
-  Trash2, X, ChevronRight, Star, Heart, CreditCard, 
-  Package, Truck, AlertCircle, CheckCircle2, ChevronLeft, 
+import {
+  ShoppingBag, Search, Filter, ShoppingCart, Plus, Minus,
+  Trash2, X, ChevronRight, Star, Heart, CreditCard,
+  Package, Truck, AlertCircle, CheckCircle2, ChevronLeft,
   LayoutGrid, List, Smartphone, User, Wallet, DollarSign, Calendar
 } from 'lucide-react';
 import StoreService from '../StoreService';
 import { StoreProduct, StoreCategory, ProductVariant } from '../types';
-import { MOCK_USERS } from '../constants';
 import { getStoredUser } from '../session';
 
 const StorefrontPage: React.FC = () => {
   // Data State
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [categories, setCategories] = useState<StoreCategory[]>([]);
-  
+
   // UI State
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [viewMode, setViewMode] = useState<'GRID' | 'LIST' | 'COMPACT'>('GRID');
   const [searchQuery, setSearchQuery] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
-  
+
   // Loan Request Modal State
   const [isLoanModalOpen, setIsLoanModalOpen] = useState(false);
-  
+
   // Cart State
   const [cart, setCart] = useState<{product: StoreProduct, variant: ProductVariant, qty: number}[]>([]);
-  
+
   // Checkout State
   const [checkoutStep, setCheckoutStep] = useState(1); // 1: Cart, 2: Payment, 3: Success
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'PAYROLL' | 'INSTALLMENTS'>('PAYROLL');
@@ -83,7 +82,7 @@ const StorefrontPage: React.FC = () => {
     setCart(prev => prev.map(i => {
       if (i.variant.id === variantId) {
         const newQty = Math.max(1, i.qty + delta);
-        if (newQty > i.variant.current_stock) return i; 
+        if (newQty > i.variant.current_stock) return i;
         return { ...i, qty: newQty };
       }
       return i;
@@ -98,7 +97,7 @@ const StorefrontPage: React.FC = () => {
 
   const handleCheckout = async () => {
     if (!currentUser) return alert("Error de sesión. Recarga la página.");
-    
+
     try {
         await StoreService.checkout({
             studio_id: '1',
@@ -119,8 +118,8 @@ const StorefrontPage: React.FC = () => {
             subtotal: cartTotal,
             tax_total: 0,
             total_amount: cartTotal
-        }, { periods: installments }); 
-        
+        }, { periods: installments });
+
         setCheckoutStep(3); // Success Screen
         setCart([]);
     } catch (e: any) {
@@ -131,7 +130,7 @@ const StorefrontPage: React.FC = () => {
   // --- COMPONENTS ---
 
   const ProductCard: React.FC<{ product: StoreProduct }> = ({ product }) => (
-    <div 
+    <div
         className={`
             group bg-white border border-slate-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex relative cursor-pointer
             ${viewMode === 'GRID' ? 'flex-col rounded-2xl md:rounded-[32px]' : viewMode === 'COMPACT' ? 'flex-col rounded-xl p-2' : 'flex-row rounded-2xl p-4 items-center gap-4 md:gap-6'}
@@ -147,8 +146,8 @@ const StorefrontPage: React.FC = () => {
        )}
 
        <div className={`${viewMode === 'GRID' ? 'aspect-[4/5] w-full' : viewMode === 'COMPACT' ? 'aspect-square w-full rounded-lg' : 'w-24 h-24 md:w-32 md:h-32 rounded-xl'} overflow-hidden bg-slate-100 relative shrink-0`}>
-          <img 
-            src={product.images[0]?.url_medium} 
+          <img
+            src={product.images[0]?.url_medium}
             alt={product.name}
             loading="lazy"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
@@ -157,9 +156,9 @@ const StorefrontPage: React.FC = () => {
 
        <div className={`flex flex-col ${viewMode === 'GRID' ? 'p-3 md:p-5 flex-1' : viewMode === 'COMPACT' ? 'pt-2' : 'flex-1'}`}>
           <h3 className="text-xs md:text-sm font-bold text-slate-900 leading-tight mb-1">{product.name}</h3>
-          
+
           {viewMode !== 'COMPACT' && <p className="text-[10px] md:text-xs text-slate-500 line-clamp-2 mb-2 md:mb-3">{product.description_short}</p>}
-          
+
           <div className="mt-auto flex items-center justify-between">
              <span className="text-sm md:text-lg font-black text-slate-900">${product.price_base.toLocaleString()}</span>
              {viewMode === 'LIST' && (
@@ -174,20 +173,20 @@ const StorefrontPage: React.FC = () => {
 
   return (
     <div className="relative min-h-screen bg-[#F8FAFC]">
-      
+
       {/* 1. STICKY HEADER */}
       <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-slate-200">
          <div className="max-w-[1600px] mx-auto px-4 py-3 md:px-8 md:h-20 flex flex-col md:flex-row items-center justify-between gap-3 md:gap-4">
             <div className="flex w-full md:w-auto justify-between items-center gap-4">
                 <h1 className="text-lg md:text-2xl font-black text-slate-900 tracking-tight">Tienda El Castillo</h1>
                 <div className="flex md:hidden items-center gap-2">
-                    <button 
+                    <button
                         onClick={() => setIsLoanModalOpen(true)}
                         className="p-2 bg-emerald-100 text-emerald-700 rounded-lg active:scale-95"
                     >
                         <Wallet size={18} />
                     </button>
-                    <button 
+                    <button
                         onClick={() => setCartOpen(true)}
                         className="relative p-2 bg-slate-900 text-white rounded-lg active:scale-95"
                     >
@@ -200,13 +199,13 @@ const StorefrontPage: React.FC = () => {
                     </button>
                 </div>
             </div>
-            
+
             {/* Search */}
             <div className="flex-1 w-full md:max-w-xl relative">
                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-               <input 
-                 type="text" 
-                 placeholder="Buscar productos..." 
+               <input
+                 type="text"
+                 placeholder="Buscar productos..."
                  className="w-full pl-10 pr-4 py-2 bg-slate-100 border-transparent rounded-xl text-xs md:text-sm font-medium focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all outline-none"
                  value={searchQuery}
                  onChange={e => setSearchQuery(e.target.value)}
@@ -215,7 +214,7 @@ const StorefrontPage: React.FC = () => {
 
             {/* Desktop Actions */}
             <div className="hidden md:flex items-center gap-2">
-                <button 
+                <button
                     onClick={() => setIsLoanModalOpen(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 text-[10px] font-black uppercase tracking-widest"
                 >
@@ -228,7 +227,7 @@ const StorefrontPage: React.FC = () => {
                     <button onClick={() => setViewMode('COMPACT')} className={`p-2 rounded-lg transition-all ${viewMode === 'COMPACT' ? 'bg-white shadow text-slate-900' : 'text-slate-400'}`}><Smartphone size={18} /></button>
                 </div>
 
-                <button 
+                <button
                     onClick={() => setCartOpen(true)}
                     className="relative p-3 bg-slate-900 text-white rounded-xl hover:bg-black transition-all shadow-lg active:scale-95"
                 >
@@ -244,14 +243,14 @@ const StorefrontPage: React.FC = () => {
 
          {/* Categories Chips */}
          <div className="max-w-[1600px] mx-auto px-4 md:px-8 pb-3 md:pb-4 flex gap-2 overflow-x-auto no-scrollbar pt-2 md:pt-0">
-            <button 
+            <button
                onClick={() => setActiveCategory('ALL')}
                className={`px-4 py-1.5 md:px-5 md:py-2 rounded-full text-[10px] md:text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${activeCategory === 'ALL' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
             >
                Todos
             </button>
             {categories.map(cat => (
-               <button 
+               <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
                   className={`px-4 py-1.5 md:px-5 md:py-2 rounded-full text-[10px] md:text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${activeCategory === cat.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
@@ -285,15 +284,15 @@ const StorefrontPage: React.FC = () => {
          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in" onClick={() => setSelectedProduct(null)} />
             <div className="relative bg-white w-full max-w-5xl h-full md:h-[85vh] rounded-[32px] md:rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 flex flex-col md:flex-row">
-               
+
                <button onClick={() => setSelectedProduct(null)} className="absolute top-4 right-4 md:top-6 md:right-6 z-20 p-2 bg-white/80 backdrop-blur rounded-full hover:bg-white transition-all shadow-sm">
                   <X size={24} />
                </button>
 
                {/* Gallery */}
                <div className="w-full md:w-1/2 bg-slate-100 relative h-64 md:h-full shrink-0">
-                  <img 
-                     src={selectedProduct.images[0]?.url_original} 
+                  <img
+                     src={selectedProduct.images[0]?.url_original}
                      className="w-full h-full object-cover"
                      alt={selectedProduct.name}
                   />
@@ -307,10 +306,10 @@ const StorefrontPage: React.FC = () => {
                </div>
 
                {/* Details */}
-               <ProductDetailPane 
-                  product={selectedProduct} 
-                  categories={categories} 
-                  onAddToCart={addToCart} 
+               <ProductDetailPane
+                  product={selectedProduct}
+                  categories={categories}
+                  onAddToCart={addToCart}
                   onClose={() => setSelectedProduct(null)}
                />
             </div>
@@ -322,7 +321,7 @@ const StorefrontPage: React.FC = () => {
          <div className="fixed inset-0 z-[100] flex justify-end">
             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in" onClick={() => setCartOpen(false)} />
             <div className="relative w-full md:max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-               
+
                {/* Cart Header */}
                <div className="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between bg-white z-10 sticky top-0">
                   <h3 className="text-lg md:text-xl font-black text-slate-900 tracking-tight">Tu Carrito ({cart.reduce((a,b) => a+b.qty, 0)})</h3>
@@ -337,7 +336,7 @@ const StorefrontPage: React.FC = () => {
                        </div>
                        <h3 className="text-2xl font-black text-slate-900 mb-2">¡Solicitud Enviada!</h3>
                        <p className="text-sm text-slate-500 mb-8">Tu pedido ha sido enviado a contabilidad. Recibirás una notificación cuando sea aprobado.</p>
-                       <button 
+                       <button
                           onClick={() => { setCheckoutStep(1); setCartOpen(false); }}
                           className="px-8 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-black transition-all"
                        >
@@ -386,7 +385,7 @@ const StorefrontPage: React.FC = () => {
                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Método de Pago</label>
                                    <div className="grid grid-cols-2 gap-3">
                                       {['PAYROLL', 'CASH', 'INSTALLMENTS'].map(m => (
-                                         <button 
+                                         <button
                                             key={m}
                                             onClick={() => setPaymentMethod(m as any)}
                                             className={`p-4 rounded-xl border text-left transition-all ${paymentMethod === m ? 'bg-slate-900 text-white border-slate-900 ring-2 ring-slate-900 ring-offset-2' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}
@@ -404,7 +403,7 @@ const StorefrontPage: React.FC = () => {
                                    <div className="bg-amber-50 p-6 rounded-2xl border border-amber-100">
                                       <label className="text-[10px] font-black text-amber-800 uppercase tracking-widest block mb-4">Periodos a descontar</label>
                                       <div className="flex items-center gap-4">
-                                         <input 
+                                         <input
                                             type="range" min="1" max="12" step="1"
                                             value={installments}
                                             onChange={(e) => setInstallments(Number(e.target.value))}
@@ -418,7 +417,7 @@ const StorefrontPage: React.FC = () => {
                                       </div>
                                    </div>
                                 )}
-                                
+
                                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex gap-2 items-start">
                                     <AlertCircle size={16} className="text-slate-400 mt-0.5" />
                                     <p className="text-[10px] text-slate-500 leading-relaxed">
@@ -438,9 +437,9 @@ const StorefrontPage: React.FC = () => {
                              <span>Total</span>
                              <span>${cartTotal.toLocaleString()}</span>
                           </div>
-                          
+
                           {checkoutStep === 1 ? (
-                             <button 
+                             <button
                                 onClick={() => setCheckoutStep(2)}
                                 disabled={cart.length === 0}
                                 className="w-full py-4 bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-black transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
@@ -449,13 +448,13 @@ const StorefrontPage: React.FC = () => {
                              </button>
                           ) : (
                              <div className="flex gap-3">
-                                <button 
+                                <button
                                    onClick={() => setCheckoutStep(1)}
                                    className="px-4 md:px-6 py-4 bg-white border border-slate-200 text-slate-500 rounded-2xl hover:bg-slate-50 transition-all"
                                 >
                                    <ChevronLeft size={20} />
                                 </button>
-                                <button 
+                                <button
                                    onClick={handleCheckout}
                                    className="flex-1 py-4 bg-emerald-500 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20"
                                 >
@@ -495,7 +494,7 @@ const LoanRequestModal: React.FC<{ isOpen: boolean, onClose: () => void, current
             setDisplayAmount('');
             return;
         }
-        
+
         const numValue = parseInt(rawValue, 10);
         setAmount(numValue);
         // Format with dots
@@ -536,14 +535,14 @@ const LoanRequestModal: React.FC<{ isOpen: boolean, onClose: () => void, current
                     </h3>
                     <button onClick={onClose}><X size={20} className="text-slate-400" /></button>
                 </div>
-                
+
                 <div className="space-y-4">
                     <div>
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Monto a Solicitar</label>
                         <div className="relative">
                             <DollarSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 text-lg"
                                 placeholder="0"
                                 value={displayAmount}
@@ -555,7 +554,7 @@ const LoanRequestModal: React.FC<{ isOpen: boolean, onClose: () => void, current
                     <div>
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Periodos a descontar</label>
                         <div className="flex items-center gap-3">
-                            <input 
+                            <input
                                 type="range" min="1" max="12"
                                 value={periods}
                                 onChange={e => setPeriods(Number(e.target.value))}
@@ -566,7 +565,7 @@ const LoanRequestModal: React.FC<{ isOpen: boolean, onClose: () => void, current
                     </div>
                     <div>
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Motivo</label>
-                        <textarea 
+                        <textarea
                             rows={3}
                             className="w-full p-4 bg-slate-50 border-none rounded-xl text-sm font-medium outline-none resize-none"
                             placeholder="Describe brevemente el motivo..."
@@ -574,7 +573,7 @@ const LoanRequestModal: React.FC<{ isOpen: boolean, onClose: () => void, current
                             onChange={e => setReason(e.target.value)}
                         />
                     </div>
-                    
+
                     <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl flex gap-2 items-start">
                         <AlertCircle size={16} className="text-blue-500 mt-0.5" />
                         <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
@@ -585,8 +584,8 @@ const LoanRequestModal: React.FC<{ isOpen: boolean, onClose: () => void, current
 
                 <div className="mt-8 pt-6 border-t border-slate-100 flex gap-3">
                     <button onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl text-xs uppercase tracking-widest">Cancelar</button>
-                    <button 
-                        onClick={handleSubmit} 
+                    <button
+                        onClick={handleSubmit}
                         disabled={loading || amount <= 0 || !reason}
                         className="flex-1 py-3 bg-slate-900 text-emerald-400 font-bold rounded-xl hover:bg-black transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-xs uppercase tracking-widest"
                     >
@@ -599,11 +598,11 @@ const LoanRequestModal: React.FC<{ isOpen: boolean, onClose: () => void, current
 };
 
 // ... ProductDetailPane ... (No changes needed, already present in previous turn)
-const ProductDetailPane: React.FC<{ 
-    product: StoreProduct, 
-    categories: StoreCategory[], 
+const ProductDetailPane: React.FC<{
+    product: StoreProduct,
+    categories: StoreCategory[],
     onAddToCart: (p: StoreProduct, v: ProductVariant, q: number) => void,
-    onClose: () => void 
+    onClose: () => void
 }> = ({ product, categories, onAddToCart, onClose }) => {
     // 1. Extract Unique Attributes
     const colors = useMemo(() => {
@@ -649,7 +648,7 @@ const ProductDetailPane: React.FC<{
                 </span>
                 <h2 className="text-2xl md:text-4xl font-black text-slate-900 leading-tight mb-2 md:mb-4">{product.name}</h2>
                 <p className="text-xl md:text-2xl font-medium text-slate-900 mb-6">${price.toLocaleString()}</p>
-                
+
                 {/* Color Swatches */}
                 {colors.length > 0 && (
                     <div className="mb-6">
@@ -665,8 +664,8 @@ const ProductDetailPane: React.FC<{
                                         className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${selectedColor === name ? 'border-slate-900 scale-110' : 'border-slate-100 hover:border-slate-300'}`}
                                         title={name}
                                     >
-                                        <div 
-                                            className="w-8 h-8 rounded-full shadow-sm relative" 
+                                        <div
+                                            className="w-8 h-8 rounded-full shadow-sm relative"
                                             style={{ backgroundColor: hex }}
                                         >
                                             {!isColorAvailable && (
@@ -689,8 +688,8 @@ const ProductDetailPane: React.FC<{
                         <div className="flex flex-wrap gap-2">
                             {sizes.map(size => {
                                 // Check if this size is available for selected color
-                                const variantForSize = product.variants.find(v => 
-                                    (!selectedColor || v.attributes.color === selectedColor) && 
+                                const variantForSize = product.variants.find(v =>
+                                    (!selectedColor || v.attributes.color === selectedColor) &&
                                     v.attributes.size === size
                                 );
                                 const sizeAvailable = variantForSize && variantForSize.current_stock > 0;
@@ -700,8 +699,8 @@ const ProductDetailPane: React.FC<{
                                         key={size}
                                         onClick={() => setSelectedSize(size)}
                                         className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
-                                            selectedSize === size 
-                                            ? 'bg-slate-900 text-white border-slate-900' 
+                                            selectedSize === size
+                                            ? 'bg-slate-900 text-white border-slate-900'
                                             : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                                         } ${!sizeAvailable ? 'opacity-50 cursor-not-allowed decoration-slice' : ''}`}
                                     >
@@ -729,7 +728,7 @@ const ProductDetailPane: React.FC<{
                             <span className="w-8 md:w-10 text-center font-bold">{qty}</span>
                             <button onClick={() => setQty(Math.min(activeVariant!.current_stock, qty + 1))} className="p-3 hover:bg-white rounded-xl transition-all"><Plus size={16} /></button>
                         </div>
-                        <button 
+                        <button
                             onClick={() => { if(activeVariant) { onAddToCart(product, activeVariant, qty); onClose(); } }}
                             className="flex-1 py-4 bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-black transition-all shadow-xl shadow-slate-900/20 active:scale-95 flex items-center justify-center gap-3"
                         >

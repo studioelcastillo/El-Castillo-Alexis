@@ -1,8 +1,7 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, User, CheckCircle2, Search, ArrowRight } from 'lucide-react';
 import { Room, RoomAssignment, ShiftType } from '../types';
-import { MOCK_USERS } from '../constants';
+import UserService from '../UserService';
 
 interface RoomAssignmentModalProps {
   isOpen: boolean;
@@ -13,35 +12,62 @@ interface RoomAssignmentModalProps {
   onSubmit: (assignment: Partial<RoomAssignment> & { isRange?: boolean, endDate?: string }) => void;
 }
 
-const RoomAssignmentModal: React.FC<RoomAssignmentModalProps> = ({ 
-  isOpen, onClose, room, selectedDate, selectedShift, onSubmit 
+const RoomAssignmentModal: React.FC<RoomAssignmentModalProps> = ({
+  isOpen, onClose, room, selectedDate, selectedShift, onSubmit
 }) => {
   if (!isOpen) return null;
 
   const [modelSearch, setModelSearch] = useState('');
   const [selectedModelId, setSelectedModelId] = useState<number | null>(null);
+  const [availableModels, setAvailableModels] = useState<any[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
   const [notes, setNotes] = useState('');
-  
+
   // Range Logic
   const [isRange, setIsRange] = useState(false);
   const [endDate, setEndDate] = useState(selectedDate);
 
-  // Filter only models from mock users
-  const models = MOCK_USERS.filter(u => 
-    u.profile?.prof_name === 'MODELO' && 
-    (u.user_name.toLowerCase().includes(modelSearch.toLowerCase()) || u.user_surname.toLowerCase().includes(modelSearch.toLowerCase()))
+  // Fetch models when the modal opens or search term changes
+  useEffect(() => {
+    const fetchModels = async () => {
+      setLoadingModels(true);
+      try {
+        // In a real app, this should be a dynamic search to the API
+        const response = await UserService.getUsersDatatable({
+          start: 0,
+          length: 100,
+          profiles: '3', // 3 = MODELO
+        });
+        setAvailableModels(response.data?.data || []);
+      } catch (error) {
+        console.error("Failed to fetch models:", error);
+        setAvailableModels([]);
+      } finally {
+        setLoadingModels(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchModels();
+    }
+  }, [isOpen]);
+
+  const filteredModels = availableModels.filter(u =>
+    (u.user_name?.toLowerCase().includes(modelSearch.toLowerCase()) ||
+     u.user_surname?.toLowerCase().includes(modelSearch.toLowerCase()))
   );
 
   const handleSubmit = () => {
     if (!selectedModelId) return;
-    
-    const model = MOCK_USERS.find(u => u.user_id === selectedModelId);
-    
+
+    // Find the selected model from the currently available models
+    const model = availableModels.find(u => u.user_id === selectedModelId);
+
     const newAssignment: Partial<RoomAssignment> & { isRange?: boolean, endDate?: string } = {
       room_id: room.id,
       model_id: model?.user_id,
       model_name: `${model?.user_name} ${model?.user_surname}`,
-      model_avatar: model?.image, 
+      model_avatar: model?.user_photo_url,
       monitor_id: 2, // Mock Monitor ID (current user)
       monitor_name: 'Monitor Actual',
       date: selectedDate,
@@ -58,9 +84,9 @@ const RoomAssignmentModal: React.FC<RoomAssignmentModalProps> = ({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in" onClick={onClose} />
-      
+
       <div className="relative bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-        
+
         {/* Header */}
         <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
           <div>
@@ -77,15 +103,15 @@ const RoomAssignmentModal: React.FC<RoomAssignmentModalProps> = ({
 
         {/* Body */}
         <div className="p-6 space-y-6">
-           
+
            {/* Date Range Selection */}
            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
               <div className="flex items-center justify-between mb-3">
                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rango de Fechas</label>
                  <div className="flex items-center gap-2">
-                    <input 
-                      type="checkbox" 
-                      id="rangeCheck" 
+                    <input
+                      type="checkbox"
+                      id="rangeCheck"
                       className="rounded text-amber-500 focus:ring-amber-500"
                       checked={isRange}
                       onChange={e => setIsRange(e.target.checked)}
@@ -93,7 +119,7 @@ const RoomAssignmentModal: React.FC<RoomAssignmentModalProps> = ({
                     <label htmlFor="rangeCheck" className="text-xs font-bold text-slate-600 cursor-pointer">Asignar varios días</label>
                  </div>
               </div>
-              
+
               <div className="flex items-center gap-3">
                  <div className="flex-1">
                     <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Desde</span>
@@ -107,7 +133,7 @@ const RoomAssignmentModal: React.FC<RoomAssignmentModalProps> = ({
                        <ArrowRight size={16} className="text-slate-300 mt-4" />
                        <div className="flex-1 animate-in slide-in-from-left-2">
                           <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Hasta</span>
-                          <input 
+                          <input
                              type="date"
                              min={selectedDate}
                              value={endDate}
@@ -125,39 +151,45 @@ const RoomAssignmentModal: React.FC<RoomAssignmentModalProps> = ({
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Seleccionar Modelo</label>
               <div className="relative mb-2">
                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                 <input 
-                    type="text" 
-                    placeholder="Buscar modelo..." 
+                 <input
+                    type="text"
+                    placeholder="Buscar modelo..."
                     className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500/10"
                     value={modelSearch}
                     onChange={(e) => setModelSearch(e.target.value)}
                  />
               </div>
-              
+
               <div className="h-40 overflow-y-auto custom-scrollbar border border-slate-100 rounded-xl">
-                 {models.map(user => (
-                    <button 
-                       key={user.user_id}
-                       onClick={() => setSelectedModelId(user.user_id)}
-                       className={`w-full flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 ${selectedModelId === user.user_id ? 'bg-amber-50' : ''}`}
-                    >
-                       <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center font-bold text-xs text-slate-500">
-                          {user.user_name[0]}{user.user_surname[0]}
-                       </div>
-                       <div className="flex-1 text-left">
-                          <p className="text-xs font-bold text-slate-800">{user.user_name} {user.user_surname}</p>
-                          <p className="text-[10px] text-slate-400">{user.user_identification}</p>
-                       </div>
-                       {selectedModelId === user.user_id && <CheckCircle2 size={16} className="text-amber-500" />}
-                    </button>
-                 ))}
+                 {loadingModels ? (
+                   <div className="p-4 text-center text-sm text-slate-500">Cargando modelos...</div>
+                 ) : filteredModels.length === 0 ? (
+                   <div className="p-4 text-center text-sm text-slate-500">No se encontraron modelos.</div>
+                 ) : (
+                   filteredModels.map(user => (
+                      <button
+                         key={user.user_id}
+                         onClick={() => setSelectedModelId(user.user_id)}
+                         className={`w-full flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 ${selectedModelId === user.user_id ? 'bg-amber-50' : ''}`}
+                      >
+                         <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center font-bold text-xs text-slate-500">
+                            {user.user_name?.[0]}{user.user_surname?.[0]}
+                         </div>
+                         <div className="flex-1 text-left">
+                            <p className="text-xs font-bold text-slate-800">{user.user_name} {user.user_surname}</p>
+                            <p className="text-[10px] text-slate-400">{user.user_identification}</p>
+                         </div>
+                         {selectedModelId === user.user_id && <CheckCircle2 size={16} className="text-amber-500" />}
+                      </button>
+                   ))
+                 )}
               </div>
            </div>
 
            {/* Notes */}
            <div>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Observaciones</label>
-              <textarea 
+              <textarea
                  rows={2}
                  className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium outline-none resize-none"
                  placeholder="Instrucciones especiales..."
@@ -173,7 +205,7 @@ const RoomAssignmentModal: React.FC<RoomAssignmentModalProps> = ({
            <button onClick={onClose} className="flex-1 py-3.5 bg-white border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-100 transition-all">
               Cancelar
            </button>
-           <button 
+           <button
               disabled={!selectedModelId}
               onClick={handleSubmit}
               className="flex-[2] py-3.5 bg-slate-900 text-amber-400 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-black transition-all shadow-xl shadow-slate-900/20 disabled:opacity-50 disabled:cursor-not-allowed"

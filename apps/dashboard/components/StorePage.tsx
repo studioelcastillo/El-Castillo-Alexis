@@ -1,14 +1,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  ShoppingBag, Search, Filter, ShoppingCart, Plus, Minus, 
-  Trash2, CreditCard, User, Building2, Calendar, CheckCircle2, 
-  Package, Box, TrendingUp, FileText, AlertCircle, History, 
+import {
+  ShoppingBag, Search, Filter, ShoppingCart, Plus, Minus,
+  Trash2, CreditCard, User, Building2, Calendar, CheckCircle2,
+  Package, Box, TrendingUp, FileText, AlertCircle, History,
   Truck, Wallet, X, ChevronRight, Store, LayoutGrid
 } from 'lucide-react';
 import StoreService from '../StoreService';
 import { StoreProduct, StoreCategory, StoreOrder, InventoryLot, PurchaseOrder, InstallmentPlan, Requisition, CostCenter, User as UserType } from '../types';
-import { MOCK_USERS } from '../constants';
+// import { MOCK_USERS } from '../constants'; // Removed
 
 const StorePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'CATALOG' | 'CART' | 'ORDERS' | 'INVENTORY' | 'FINANCE'>('CATALOG');
@@ -16,7 +16,7 @@ const StorePage: React.FC = () => {
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [cart, setCart] = useState<{product: StoreProduct, qty: number}[]>([]);
   const [loading, setLoading] = useState(false);
-  
+
   // Checkout State
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
   const [selectedCostCenter, setSelectedCostCenter] = useState<string>('');
@@ -37,7 +37,7 @@ const StorePage: React.FC = () => {
   const loadCatalog = async () => {
     setLoading(true);
     const [p, c, cc] = await Promise.all([
-        StoreService.getProducts(), 
+        StoreService.getProducts(),
         StoreService.getCategories(),
         StoreService.getCostCenters()
     ]);
@@ -80,13 +80,13 @@ const StorePage: React.FC = () => {
 
   const handleCheckout = async () => {
       if (!selectedUser || !selectedCostCenter) return alert("Selecciona usuario y centro de costos");
-      
+
       try {
-          const buyer = MOCK_USERS.find(u => u.user_id === selectedUser);
-          await StoreService.checkout({
-              studio_id: '1',
-              buyer_user_id: selectedUser,
-              buyer_name: buyer?.user_name || 'Unknown',
+           const buyer_name = 'Usuario';
+           await StoreService.checkout({
+               studio_id: '1',
+               buyer_user_id: selectedUser,
+               buyer_name: buyer_name,
               cost_center_id: selectedCostCenter,
               payment_method: paymentMethod,
               items: cart.map(i => ({
@@ -100,7 +100,7 @@ const StorePage: React.FC = () => {
               })),
               total_amount: cartTotal
           }, { periods: installments }); // 5% Interest for Loan is handled in service
-          
+
           alert("¡Pedido procesado con éxito!");
           setCart([]);
           setActiveTab('ORDERS');
@@ -135,7 +135,7 @@ const StorePage: React.FC = () => {
                       <img src={p.images[0]?.url_medium} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       <div className="absolute top-3 right-3">
                           <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${
-                              p.status === 'IN_STOCK' ? 'bg-emerald-500 text-white' : 
+                              p.status === 'IN_STOCK' ? 'bg-emerald-500 text-white' :
                               p.status === 'LOW_STOCK' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white'
                           }`}>
                               {p.status === 'IN_STOCK' ? 'Disponible' : p.status === 'LOW_STOCK' ? 'Poco Stock' : 'Agotado'}
@@ -150,16 +150,16 @@ const StorePage: React.FC = () => {
                         </div>
                         <p className="text-xs text-slate-500 line-clamp-2 mb-4">{p.description_short}</p>
                       </div>
-                      
+
                       {p.total_stock > 0 ? (
-                          <button 
+                          <button
                             onClick={() => addToCart(p)}
                             className="w-full py-3 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2 active:scale-95"
                           >
                               <Plus size={14} /> Agregar
                           </button>
                       ) : (
-                          <button 
+                          <button
                             onClick={() => handleRequisition(p.name)}
                             className="w-full py-3 bg-white border-2 border-amber-500 text-amber-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-amber-50 transition-all"
                           >
@@ -200,21 +200,23 @@ const StorePage: React.FC = () => {
 
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl h-fit">
               <h3 className="text-lg font-black text-slate-900 mb-6">Resumen de Orden</h3>
-              
+
               <div className="space-y-4 mb-6">
                   <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Comprador</label>
-                      <select 
+                      <select
                         className="w-full p-3 bg-slate-50 border-none rounded-xl text-sm font-bold text-slate-700 outline-none"
                         onChange={(e) => setSelectedUser(Number(e.target.value))}
                       >
                           <option value="">Seleccionar Usuario...</option>
-                          {MOCK_USERS.map(u => <option key={u.user_id} value={u.user_id}>{u.user_name} {u.user_surname}</option>)}
+                          <option value="3990">Jennifer Zuluaga</option>
+                          <option value="3988">Sofia Mosquera</option>
+                          <option value="3989">Ana Acero</option>
                       </select>
                   </div>
                   <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Centro de Costos</label>
-                      <select 
+                      <select
                         className="w-full p-3 bg-slate-50 border-none rounded-xl text-sm font-bold text-slate-700 outline-none"
                         onChange={(e) => setSelectedCostCenter(e.target.value)}
                       >
@@ -226,8 +228,8 @@ const StorePage: React.FC = () => {
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Método de Pago</label>
                       <div className="grid grid-cols-3 gap-2">
                           {['CASH', 'PAYROLL', 'LOAN'].map(m => (
-                              <button 
-                                key={m} 
+                              <button
+                                key={m}
                                 onClick={() => setPaymentMethod(m as any)}
                                 className={`py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${paymentMethod === m ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200'}`}
                               >
@@ -236,16 +238,16 @@ const StorePage: React.FC = () => {
                           ))}
                       </div>
                   </div>
-                  
+
                   {(paymentMethod === 'PAYROLL' || paymentMethod === 'LOAN') && (
                       <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 animate-in fade-in">
                           <label className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-2">Cuotas / Plazo</label>
                           <div className="flex items-center gap-3">
-                              <input 
-                                type="range" min="1" max="12" 
-                                value={installments} 
+                              <input
+                                type="range" min="1" max="12"
+                                value={installments}
                                 onChange={e => setInstallments(Number(e.target.value))}
-                                className="flex-1 accent-amber-500" 
+                                className="flex-1 accent-amber-500"
                               />
                               <span className="font-black text-amber-900 w-8">{installments}m</span>
                           </div>
@@ -259,7 +261,7 @@ const StorePage: React.FC = () => {
                   <span className="text-2xl font-black text-slate-900">${cartTotal.toLocaleString()}</span>
               </div>
 
-              <button 
+              <button
                 disabled={cart.length === 0}
                 onClick={handleCheckout}
                 className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-emerald-500/30 hover:bg-emerald-600 transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none"
@@ -377,7 +379,7 @@ const StorePage: React.FC = () => {
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6 animate-in fade-in duration-500">
-      
+
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-end gap-4">
         <div>
@@ -386,7 +388,7 @@ const StorePage: React.FC = () => {
           </h1>
           <p className="text-sm text-slate-500 mt-2 font-medium">Gestión integral de compras, ventas internas y almacén.</p>
         </div>
-        
+
         {/* NAV PILLS */}
         <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm overflow-x-auto">
             {[
@@ -395,7 +397,7 @@ const StorePage: React.FC = () => {
                 { id: 'INVENTORY', label: 'Almacén FIFO', icon: Box },
                 { id: 'FINANCE', label: 'Finanzas', icon: Wallet },
             ].map(tab => (
-                <button 
+                <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
                     className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}

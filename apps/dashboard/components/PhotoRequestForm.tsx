@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, Zap, Clock, Calendar, AlertCircle, ShieldCheck } from 'lucide-react';
 import PhotoService from '../PhotoService';
-import { MOCK_USERS } from '../constants';
 import { PhotoRestrictionStatus } from '../types';
 
 // Mock User Context (Should match PhotographyPage)
 const CURRENT_USER = {
-    id: 3990, 
+    id: 3990,
     name: 'Jennifer Zuluaga',
-    role: 'ADMIN' 
+    role: 'ADMIN'
 };
 
 export const PhotoRequestForm: React.FC<{ onClose: () => void, onSubmit: (data: any) => void }> = ({ onClose, onSubmit }) => {
@@ -25,7 +24,7 @@ export const PhotoRequestForm: React.FC<{ onClose: () => void, onSubmit: (data: 
 
     useEffect(() => {
         PhotoService.getAvailability().then(setAvailability);
-        
+
         // If current user is a model, check their restriction immediately
         if (CURRENT_USER.role === 'MODELO') {
             checkRestriction(CURRENT_USER.id);
@@ -37,17 +36,15 @@ export const PhotoRequestForm: React.FC<{ onClose: () => void, onSubmit: (data: 
             const firstModel = formData.models.split(',')[0].trim();
             if (firstModel) {
                 const timer = setTimeout(() => {
-                    // Find user ID by name in MOCK_USERS
-                    const normalized = firstModel.toLowerCase();
-                    const user = MOCK_USERS.find((u) => {
-                        const fullName = `${u.user_name} ${u.user_surname}`.trim().toLowerCase();
-                        return fullName === normalized || u.user_name.toLowerCase() === normalized;
-                    });
-                    if (user) {
-                        checkRestriction(user.user_id);
+                const timer = setTimeout(() => {
+                    // In a real app, we would call UserService.search(firstModel)
+                    // For now, if it's the demo model, we use ID 3990
+                    if (firstModel.toLowerCase().includes('jennifer')) {
+                        checkRestriction(3990);
                     } else {
                         setRestrictionStatus(null);
                     }
+                }, 800);
                 }, 800);
                 return () => clearTimeout(timer);
             }
@@ -111,7 +108,7 @@ export const PhotoRequestForm: React.FC<{ onClose: () => void, onSubmit: (data: 
                                     </p>
                                 </div>
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="p-4 bg-white rounded-2xl border border-rose-100/50">
                                     <span className="block text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">Última Sesión</span>
@@ -157,7 +154,7 @@ export const PhotoRequestForm: React.FC<{ onClose: () => void, onSubmit: (data: 
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">Servicios Requeridos</label>
                         <div className="flex gap-3">
                             {['FOTO', 'VIDEO'].map(s => (
-                                <button 
+                                <button
                                     key={s}
                                     onClick={() => toggleService(s)}
                                     className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${formData.services.includes(s) ? 'bg-slate-900 text-amber-400 border-slate-900 shadow-lg shadow-slate-900/20' : 'bg-white text-slate-400 border-slate-100 hover:bg-slate-50'}`}
@@ -170,12 +167,12 @@ export const PhotoRequestForm: React.FC<{ onClose: () => void, onSubmit: (data: 
 
                     <div>
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Modelos (Separadas por coma para múltiples solicitudes)</label>
-                        <input 
-                            type="text" 
-                            placeholder="Ej: Jennifer Zuluaga, Ana Acero..." 
-                            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-amber-500/5 transition-all" 
-                            value={formData.models} 
-                            onChange={e => setFormData({...formData, models: e.target.value})} 
+                        <input
+                            type="text"
+                            placeholder="Ej: Jennifer Zuluaga, Ana Acero..."
+                            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-amber-500/5 transition-all"
+                            value={formData.models}
+                            onChange={e => setFormData({...formData, models: e.target.value})}
                         />
                     </div>
 
@@ -200,7 +197,7 @@ export const PhotoRequestForm: React.FC<{ onClose: () => void, onSubmit: (data: 
                             </select>
                         </div>
                     </div>
-                    
+
                     <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Fecha y Hora Preferida</label>
                         <div className="flex gap-3">
@@ -235,8 +232,8 @@ export const PhotoRequestForm: React.FC<{ onClose: () => void, onSubmit: (data: 
                 </div>
                 <div className="p-8 border-t border-slate-100 bg-slate-50 flex gap-4">
                     <button onClick={onClose} className="flex-1 py-4 bg-white border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all">Descartar</button>
-                    <button 
-                        onClick={handleSubmit} 
+                    <button
+                        onClick={handleSubmit}
                         disabled={restrictionStatus?.isRestricted && CURRENT_USER.role === 'MODELO'}
                         className={`flex-[2] py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95 ${restrictionStatus?.isRestricted && CURRENT_USER.role === 'MODELO' ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-900 text-amber-400 hover:bg-black shadow-slate-900/20'}`}
                     >

@@ -12,6 +12,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 import PhotoService from '../PhotoService';
+import UserService from '../UserService';
 import { PhotoRequestForm } from './PhotoRequestForm';
 import { PhotoRequest, PhotoRequestStatus, PhotoAsset, PhotoCalendarEvent, PhotoDashboardKPI, PhotoRating, PhotoRestrictionConfig } from '../types';
 import Avatar from './Avatar';
@@ -23,11 +24,7 @@ const CURRENT_USER = {
     role: 'ADMIN' // Standardized to 'ADMIN'
 };
 
-const TEAM_MOCK = [
-    { id: 101, name: 'Carlos Foto', role: 'FOTOGRAFO', active: true },
-    { id: 102, name: 'Laura Video', role: 'FOTOGRAFO', active: true },
-    { id: 3988, name: 'Sofia MUA', role: 'MAQUILLADORA', active: true },
-];
+// Team members will be fetched dynamically from UserService
 
 // --- SUB-COMPONENTS ---
 
@@ -62,8 +59,9 @@ const PhotoCalendar: React.FC<{
     selectedDate: string,
     setSelectedDate: (d: string) => void,
     selectedTeamMemberIds: number[],
-    setSelectedTeamMemberIds: React.Dispatch<React.SetStateAction<number[]>>
-}> = ({ events, onRefresh, selectedDate, setSelectedDate, selectedTeamMemberIds, setSelectedTeamMemberIds }) => {
+    setSelectedTeamMemberIds: React.Dispatch<React.SetStateAction<number[]>>,
+    team: any[]
+}> = ({ events, onRefresh, selectedDate, setSelectedDate, selectedTeamMemberIds, setSelectedTeamMemberIds, team }) => {
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
     const [availability, setAvailability] = useState<any>(null);
 
@@ -185,7 +183,7 @@ const PhotoCalendar: React.FC<{
                             <span className="text-xs font-bold">Todos los Miembros</span>
                             {selectedTeamMemberIds.length === 0 && <Check size={14} />}
                         </button>
-                        {TEAM_MOCK.map(member => (
+                        {team.map(member => (
                             <div
                                 key={member.id}
                                 onClick={() => toggleTeamMember(member.id)}
@@ -425,6 +423,7 @@ const PhotographyPage: React.FC = () => {
     const [isRequestFormOpen, setIsRequestFormOpen] = useState(false);
     const [isRatingOpen, setIsRatingOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [team, setTeam] = useState<any[]>([]);
 
     // Calendar Persistence States
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -444,18 +443,38 @@ const PhotographyPage: React.FC = () => {
 
     const refreshData = async () => {
         setLoading(true);
-        const [reqs, evs, kpis, avail, restr] = await Promise.all([
-            PhotoService.getRequests({ studioId: '1', role: CURRENT_USER.role, userId: CURRENT_USER.id }),
-            PhotoService.getCalendarEvents(),
-            PhotoService.getDashboardStats(),
-            PhotoService.getAvailability(),
-            PhotoService.getRestrictionConfig()
-        ]);
-        setRequests(reqs);
-        setEvents(evs);
-        setStats(kpis);
-        setAvailability(avail);
-        setRestrictionConfig(restr);
+        try {
+            const [reqs, evs, kpis, avail, restr, usersRes] = await Promise.all([
+                PhotoService.getRequests({ studioId: '1', role: CURRENT_USER.role, userId: CURRENT_USER.id }),
+                PhotoService.getCalendarEvents(),
+                PhotoService.getDashboardStats(),
+                PhotoService.getAvailability(),
+                PhotoService.getRestrictionConfig(),
+                UserService.getUsersDatatable({ start: 0, length: 100, activeusers: 'true' })
+            ]);
+            setRequests(reqs);
+            setEvents(evs);
+            setStats(kpis);
+            setAvailability(avail);
+            setRestrictionConfig(restr);
+
+            // Filter team members (Photographers and Makeup Artists)
+            const allUsers = usersRes.data?.data || [];
+            const photoTeam = allUsers.filter((u: any) =>
+                u.prof_name?.includes('FOTO') || u.prof_name?.includes('MAQUIL')
+            ).map((u: any) => ({
+                id: u.user_id,
+                name: `${u.user_name} ${u.user_surname || ''}`,
+                role: u.prof_name,
+                active: u.user_active
+            }));
+            setTeam(photoTeam.length > 0 ? photoTeam : [
+                { id: 101, name: 'Carlos Foto', role: 'FOTOGRAFO', active: true },
+                { id: 102, name: 'Laura Video', role: 'FOTOGRAFO', active: true }
+            ]);
+        } catch (error) {
+            console.error("Error refreshing Photography data:", error);
+        }
         setLoading(false);
     };
 
@@ -1368,6 +1387,7 @@ const PhotographyPage: React.FC = () => {
                                 setSelectedDate={setSelectedDate}
                                 selectedTeamMemberIds={selectedTeamMemberIds}
                                 setSelectedTeamMemberIds={setSelectedTeamMemberIds}
+                                team={team}
                             />
                         )}
                         {activeTab === 'DASHBOARD' && renderDashboard()}

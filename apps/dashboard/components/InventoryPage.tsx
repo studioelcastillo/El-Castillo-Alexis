@@ -1,23 +1,25 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { 
-  Package, DollarSign, Archive, Settings, 
+import {
+  Package, DollarSign, Archive, Settings,
   ArrowRightLeft, RefreshCw, Briefcase, CheckCircle2, XCircle,
-  Plus, Search, Filter, Edit2, Copy, Trash2, Save, X, ShoppingCart, 
-  Image as ImageIcon, MoreVertical, Tag, Truck, UploadCloud, ChevronDown, 
+  Plus, Search, Filter, Edit2, Copy, Trash2, Save, X, ShoppingCart,
+  Image as ImageIcon, MoreVertical, Tag, Truck, UploadCloud, ChevronDown,
   Layers, Palette, Ruler, AlertTriangle, Eye, CreditCard, Wallet, Users,
   Percent, CalendarClock, ShieldCheck, BarChart3, TrendingUp, TrendingDown,
   Download, Calendar, AlertOctagon, ArrowUp, ArrowDown, Clock, ChevronLeft, ChevronRight,
   Target, Shield
 } from 'lucide-react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, AreaChart, Area, Cell, Pie, Legend, PieChart
 } from 'recharts';
+import { supabase } from '../supabaseClient';
+import { getStoredUser } from '../session';
 import StoreService from '../StoreService';
 import { InventoryLot, StockMovement, InstallmentPlan, FinancialRule, FinanceTermType, LoanRequest, StoreOrder, StoreProduct, StoreCategory, ProductVariant, VariantAttributes, AnalyticsSummary, SalesSeriesData, ProductPerformance, InventoryAging, PurchaseOrder, ProductVariant as PVType, CategoryPerformance, CostCenter } from '../types';
 
-const ROLES_MOCK = [
+const STORE_ROLES = [
     { id: 1, name: 'ADMINISTRADOR' },
     { id: 2, name: 'MONITOR' },
     { id: 3, name: 'MODELO' },
@@ -27,7 +29,7 @@ const ROLES_MOCK = [
 
 const InventoryPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'PRODUCTS' | 'PURCHASES' | 'KARDEX' | 'FINANCE' | 'CONFIG'>('ANALYTICS');
-  
+
   // Data States
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [categories, setCategories] = useState<StoreCategory[]>([]);
@@ -38,11 +40,11 @@ const InventoryPage: React.FC = () => {
   const [pendingOrders, setPendingOrders] = useState<StoreOrder[]>([]);
   const [financialRules, setFinancialRules] = useState<FinancialRule[]>([]);
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
-  
+
   // UI States
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  
+
   // Modals
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<StoreProduct | null>(null);
@@ -97,7 +99,7 @@ const InventoryPage: React.FC = () => {
             StoreService.getCategories(),
             StoreService.getCostCenters()
         ]);
-        
+
         setLots(inv.lots);
         setMovements(inv.movements);
         setLoans(loanData);
@@ -108,7 +110,7 @@ const InventoryPage: React.FC = () => {
         setCostCenters(ccRes);
 
         // Fetch rules for all roles
-        const rulesPromises = ROLES_MOCK.map(role => StoreService.getFinancialRules(role.id));
+        const rulesPromises = STORE_ROLES.map(role => StoreService.getFinancialRules(role.id));
         const allRules = await Promise.all(rulesPromises);
         setFinancialRules(allRules.flat());
 
@@ -149,7 +151,7 @@ const InventoryPage: React.FC = () => {
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
-      
+
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div className="space-y-1">
@@ -159,17 +161,17 @@ const InventoryPage: React.FC = () => {
           </div>
           <p className="text-sm text-slate-500 font-medium pl-14">Centralización total de suministros, activos y flujo de caja interno.</p>
         </div>
-        
+
         <div className="flex items-center gap-3 w-full md:w-auto">
-            <button 
-                onClick={loadData} 
+            <button
+                onClick={loadData}
                 className="p-3 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 hover:border-slate-300 transition-all text-slate-500 shadow-sm active:scale-95"
                 title="Recargar Sincronización"
             >
                 <RefreshCw size={20} className={loading ? 'animate-spin text-amber-500' : ''} />
             </button>
             {activeTab === 'PRODUCTS' && (
-                <button 
+                <button
                     onClick={() => { setEditingProduct(null); setIsProductFormOpen(true); }}
                     className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3.5 bg-slate-900 text-amber-400 font-black rounded-2xl transition-all shadow-xl shadow-slate-900/10 active:scale-95 text-[10px] uppercase tracking-[0.2em]"
                 >
@@ -177,7 +179,7 @@ const InventoryPage: React.FC = () => {
                 </button>
             )}
             {activeTab === 'PURCHASES' && (
-                <button 
+                <button
                     onClick={() => setIsPurchaseModalOpen(true)}
                     className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl transition-all shadow-xl shadow-emerald-600/20 active:scale-95 text-[10px] uppercase tracking-[0.2em]"
                 >
@@ -195,7 +197,7 @@ const InventoryPage: React.FC = () => {
 
         {/* Scroll Buttons */}
         {showLeftArrow && (
-            <button 
+            <button
                 onClick={() => scrollTabs('left')}
                 className="absolute left-1 top-1/2 -translate-y-1/2 z-20 p-2 bg-white rounded-full shadow-lg border border-slate-100 text-slate-600 hover:text-amber-500 hover:scale-110 transition-all animate-in fade-in zoom-in"
             >
@@ -203,7 +205,7 @@ const InventoryPage: React.FC = () => {
             </button>
         )}
         {showRightArrow && (
-            <button 
+            <button
                 onClick={() => scrollTabs('right')}
                 className="absolute right-1 top-1/2 -translate-y-1/2 z-20 p-2 bg-white rounded-full shadow-lg border border-slate-100 text-slate-600 hover:text-amber-500 hover:scale-110 transition-all animate-in fade-in zoom-in"
             >
@@ -211,7 +213,7 @@ const InventoryPage: React.FC = () => {
             </button>
         )}
 
-        <div 
+        <div
             ref={tabsRef}
             className="flex bg-white/50 backdrop-blur-sm p-2 rounded-[28px] border border-slate-200/60 w-full shadow-sm overflow-x-auto no-scrollbar gap-1"
         >
@@ -225,13 +227,13 @@ const InventoryPage: React.FC = () => {
             ].map(tab => {
                 const isActive = activeTab === tab.id;
                 return (
-                    <button 
+                    <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
                         className={`
                             flex items-center gap-2.5 px-6 py-3.5 rounded-[22px] text-[10px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap relative
-                            ${isActive 
-                                ? 'bg-slate-900 text-amber-400 shadow-xl shadow-slate-900/30 ring-1 ring-slate-800 scale-[1.02]' 
+                            ${isActive
+                                ? 'bg-slate-900 text-amber-400 shadow-xl shadow-slate-900/30 ring-1 ring-slate-800 scale-[1.02]'
                                 : 'text-slate-500 hover:text-slate-900 hover:bg-white transition-all hover:shadow-sm'
                             }
                         `}
@@ -252,9 +254,9 @@ const InventoryPage: React.FC = () => {
                   <div className="p-8 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center gap-4">
                       <div className="relative flex-1 max-w-md group">
                           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-amber-500 transition-colors" />
-                          <input 
-                            type="text" 
-                            placeholder="Buscar en el catálogo maestro..." 
+                          <input
+                            type="text"
+                            placeholder="Buscar en el catálogo maestro..."
                             className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-amber-500/5 focus:border-amber-400 transition-all shadow-sm"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
@@ -316,24 +318,151 @@ const InventoryPage: React.FC = () => {
                   </div>
               </div>
           )}
-          
-          {activeTab === 'PURCHASES' && ( <div className="p-20 text-center text-slate-300 flex flex-col items-center"><Truck size={64} className="opacity-10 mb-4" /><p className="font-black uppercase tracking-[0.2em] text-xs">Módulo Compras en Desarrollo</p></div> )}
-          {activeTab === 'KARDEX' && ( <div className="p-20 text-center text-slate-300 flex flex-col items-center"><ArrowRightLeft size={64} className="opacity-10 mb-4" /><p className="font-black uppercase tracking-[0.2em] text-xs">Historial de Movimientos</p></div> )}
-          {activeTab === 'FINANCE' && ( <div className="p-20 text-center text-slate-300 flex flex-col items-center"><DollarSign size={64} className="opacity-10 mb-4" /><p className="font-black uppercase tracking-[0.2em] text-xs">Cartera y Créditos</p></div> )}
-          {activeTab === 'CONFIG' && ( 
-              <InventoryConfig 
-                categories={categories} 
-                financialRules={financialRules} 
-                costCenters={costCenters} 
-                roles={ROLES_MOCK}
-              /> 
+
+          {activeTab === 'PURCHASES' && (
+              <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="p-8 border-b border-slate-50 bg-slate-50/30">
+                      <h3 className="text-xl font-black text-slate-900 tracking-tight">Entradas de Mercancía y Lotes</h3>
+                      <p className="text-xs text-slate-500 font-medium">Historial de recepciones y valoración de existencias por lotes.</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                          <thead className="bg-slate-50/50">
+                              <tr>
+                                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">ID Lote</th>
+                                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Variante</th>
+                                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Fecha Rec.</th>
+                                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Costo Unit.</th>
+                                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Cant. Inicial</th>
+                                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Stock Actual</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50">
+                              {lots.map(lot => (
+                                  <tr key={lot.id} className="hover:bg-slate-50/50">
+                                      <td className="px-8 py-4 font-mono text-xs font-bold text-slate-500">#{lot.id}</td>
+                                      <td className="px-8 py-4 text-sm font-bold text-slate-900">ID: {lot.product_variant_id}</td>
+                                      <td className="px-8 py-4 text-center text-xs font-bold text-slate-600">{lot.received_at}</td>
+                                      <td className="px-8 py-4 text-right font-mono text-sm font-bold text-emerald-700">${lot.unit_cost.toLocaleString()}</td>
+                                      <td className="px-8 py-4 text-center text-sm font-bold text-slate-400">{lot.initial_qty}</td>
+                                      <td className="px-8 py-4 text-center">
+                                          <span className="px-3 py-1 bg-slate-100 rounded-lg text-xs font-black text-slate-700">{lot.current_qty}</span>
+                                      </td>
+                                  </tr>
+                              ))}
+                          </tbody>
+                      </table>
+                  </div>
+              </div>
+          )}
+
+          {activeTab === 'KARDEX' && (
+              <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="p-8 border-b border-slate-50 bg-slate-50/30">
+                      <h3 className="text-xl font-black text-slate-900 tracking-tight">Kardex de Inventario</h3>
+                      <p className="text-xs text-slate-500 font-medium">Movimientos detallados de entrada, salida y ajustes.</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                          <thead className="bg-slate-50/50">
+                              <tr>
+                                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipo</th>
+                                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Variante</th>
+                                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Cantidad</th>
+                                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Fecha / Hora</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50">
+                              {movements.map(mov => (
+                                  <tr key={mov.id} className="hover:bg-slate-50/50">
+                                      <td className="px-8 py-4">
+                                          <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${mov.type.includes('_IN') ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                              {mov.type}
+                                          </span>
+                                      </td>
+                                      <td className="px-8 py-4 text-sm font-bold text-slate-900">ID: {mov.variant_id}</td>
+                                      <td className={`px-8 py-4 text-center font-bold ${mov.type.includes('_IN') ? 'text-emerald-700' : 'text-red-700'}`}>
+                                          {mov.type.includes('_IN') ? '+' : '-'}{mov.qty}
+                                      </td>
+                                      <td className="px-8 py-4 text-center text-xs font-bold text-slate-500">
+                                          {new Date(mov.date).toLocaleString()}
+                                      </td>
+                                  </tr>
+                              ))}
+                          </tbody>
+                      </table>
+                  </div>
+              </div>
+          )}
+
+          {activeTab === 'FINANCE' && (
+              <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="p-8 border-b border-slate-50 bg-slate-50/30">
+                      <h3 className="text-xl font-black text-slate-900 tracking-tight">Gestión de Créditos y Cartera</h3>
+                      <p className="text-xs text-slate-500 font-medium">Control de libranzas, cuotas y solicitudes de financiamiento.</p>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-8">
+                      <div className="space-y-4">
+                          <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Planes de Pago Activos</h4>
+                          <div className="bg-slate-50 rounded-3xl border border-slate-100 overflow-hidden text-xs">
+                              <table className="w-full text-left">
+                                  <thead className="bg-slate-100/50">
+                                      <tr>
+                                          <th className="px-4 py-3 font-black text-slate-500">Model/Usuario</th>
+                                          <th className="px-4 py-3 text-right font-black text-slate-500">Deuda Total</th>
+                                          <th className="px-4 py-3 text-center font-black text-slate-500">Cuota</th>
+                                      </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-white">
+                                      {loans.map(loan => (
+                                          <tr key={loan.id}>
+                                              <td className="px-4 py-3 font-bold text-slate-800">{loan.user_name}</td>
+                                              <td className="px-4 py-3 text-right font-mono font-bold text-red-600">${loan.total_amount.toLocaleString()}</td>
+                                              <td className="px-4 py-3 text-center font-bold text-slate-600">${loan.monthly_payment.toLocaleString()}</td>
+                                          </tr>
+                                      ))}
+                                  </tbody>
+                              </table>
+                          </div>
+                      </div>
+                      <div className="space-y-4">
+                          <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Solicitudes Pendientes</h4>
+                          <div className="space-y-2">
+                              {pendingLoans.map(req => (
+                                  <div key={req.id} className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm flex justify-between items-center group">
+                                      <div>
+                                          <p className="font-bold text-slate-900 text-sm">Usuario ID: {req.user_id}</p>
+                                          <p className="text-xs text-slate-500 font-medium">Monto: <span className="text-slate-900 font-bold">${req.amount.toLocaleString()}</span> ({req.periods} Meses)</p>
+                                          <p className="text-[10px] text-slate-400 mt-1 italic">"{req.reason}"</p>
+                                      </div>
+                                      <div className="flex gap-2">
+                                          <button onClick={() => StoreService.approveLoan(req.id).then(loadData)} className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all"><CheckCircle2 size={18} /></button>
+                                          <button onClick={() => StoreService.rejectLoan(req.id).then(loadData)} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all"><XCircle size={18} /></button>
+                                      </div>
+                                  </div>
+                              ))}
+                              {pendingLoans.length === 0 && <p className="text-center py-10 text-slate-300 font-bold text-xs uppercase tracking-widest">Sin solicitudes pendientes</p>}
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {activeTab === 'CONFIG' && (
+              <InventoryConfig
+                categories={categories}
+                financialRules={financialRules}
+                costCenters={costCenters}
+                roles={STORE_ROLES}
+                onRefresh={loadData}
+              />
           )}
       </div>
 
-      <ProductForm 
-        isOpen={isProductFormOpen} 
-        onClose={() => setIsProductFormOpen(false)} 
-        product={editingProduct} 
+      <ProductForm
+        isOpen={isProductFormOpen}
+        onClose={() => setIsProductFormOpen(false)}
+        product={editingProduct}
         onSave={handleSaveProduct}
         categories={categories}
       />
@@ -349,8 +478,46 @@ const InventoryPage: React.FC = () => {
 };
 
 // --- CONFIGURATION MODULE COMPONENT ---
-const InventoryConfig: React.FC<{ categories: StoreCategory[], financialRules: FinancialRule[], costCenters: CostCenter[], roles: any[] }> = ({ categories, financialRules, costCenters, roles }) => {
+const InventoryConfig: React.FC<{
+  categories: StoreCategory[],
+  financialRules: FinancialRule[],
+  costCenters: CostCenter[],
+  roles: any[],
+  onRefresh: () => void
+}> = ({ categories, financialRules, costCenters, roles, onRefresh }) => {
     const [configTab, setConfigTab] = useState<'CATEGORIES' | 'FINANCE' | 'COST_CENTERS'>('CATEGORIES');
+
+    const handleAddCategory = async () => {
+        const name = prompt('Nombre de la nueva categoría:');
+        if (!name) return;
+        try {
+            await supabase.from('categories').insert([{ cate_name: name }]);
+            onRefresh();
+            alert('Categoría creada.');
+        } catch (e) {
+            alert('Error al crear categoría.');
+        }
+    };
+
+    const handleAddCostCenter = async () => {
+        const name = prompt('Nombre del centro de costos:');
+        const code = prompt('Código (ej: CC-001):');
+        if (!name || !code) return;
+        try {
+            // Get studio id from session for CC
+            const stdId = Number(getStoredUser()?.std_id || 1);
+            await supabase.from('cost_centers').insert([{
+                std_id: stdId,
+                cost_center_name: name,
+                cost_center_code: code,
+                cost_center_active: true
+            }]);
+            onRefresh();
+            alert('Centro de costos creado.');
+        } catch (e) {
+            alert('Error al crear centro de costos.');
+        }
+    };
 
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -361,7 +528,7 @@ const InventoryConfig: React.FC<{ categories: StoreCategory[], financialRules: F
                     { id: 'FINANCE', label: 'Reglas Financieras', icon: ShieldCheck },
                     { id: 'COST_CENTERS', label: 'Centros de Costos', icon: Target }
                 ].map(tab => (
-                    <button 
+                    <button
                         key={tab.id}
                         onClick={() => setConfigTab(tab.id as any)}
                         className={`
@@ -380,7 +547,10 @@ const InventoryConfig: React.FC<{ categories: StoreCategory[], financialRules: F
                     <div className="space-y-6 max-w-4xl">
                         <div className="flex justify-between items-center">
                             <h3 className="text-xl font-black text-slate-900 tracking-tight">Categorías del Sistema</h3>
-                            <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-amber-400 font-black rounded-xl text-[9px] uppercase tracking-widest">
+                            <button
+                                onClick={handleAddCategory}
+                                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-amber-400 font-black rounded-xl text-[9px] uppercase tracking-widest hover:bg-black transition-all"
+                            >
                                 <Plus size={14} /> AÑADIR CATEGORÍA
                             </button>
                         </div>
@@ -468,7 +638,10 @@ const InventoryConfig: React.FC<{ categories: StoreCategory[], financialRules: F
                     <div className="space-y-6 max-w-4xl">
                         <div className="flex justify-between items-center">
                             <h3 className="text-xl font-black text-slate-900 tracking-tight">Centros de Costos Operativos</h3>
-                            <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-amber-400 font-black rounded-xl text-[9px] uppercase tracking-widest">
+                            <button
+                                onClick={handleAddCostCenter}
+                                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-amber-400 font-black rounded-xl text-[9px] uppercase tracking-widest hover:bg-black transition-all"
+                            >
                                 <Plus size={14} /> NUEVO CENTRO
                             </button>
                         </div>
@@ -508,7 +681,7 @@ const AnalyticsDashboard: React.FC = () => {
 
     const [startDate, setStartDate] = useState(past);
     const [endDate, setEndDate] = useState(today);
-    
+
     const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
     const [salesSeries, setSalesSeries] = useState<SalesSeriesData[]>([]);
     const [topSelling, setTopSelling] = useState<ProductPerformance[]>([]);
@@ -554,24 +727,24 @@ const AnalyticsDashboard: React.FC = () => {
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-[20px] shadow-inner">
                         <div className="flex items-center gap-3 px-4 border-r border-slate-200">
                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Desde</span>
-                            <input 
-                                type="date" 
-                                value={startDate} 
-                                onChange={e => setStartDate(e.target.value)} 
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={e => setStartDate(e.target.value)}
                                 className="bg-transparent text-xs font-black text-slate-800 outline-none w-32"
                             />
                         </div>
                         <div className="flex items-center gap-3 px-4">
                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Hasta</span>
-                            <input 
-                                type="date" 
-                                value={endDate} 
-                                onChange={e => setEndDate(e.target.value)} 
+                            <input
+                                type="date"
+                                value={endDate}
+                                onChange={e => setEndDate(e.target.value)}
                                 className="bg-transparent text-xs font-black text-slate-800 outline-none w-32"
                             />
                         </div>
                     </div>
-                    <button 
+                    <button
                         onClick={loadAnalytics}
                         className="px-6 py-3 bg-slate-900 text-amber-400 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-black hover:shadow-xl transition-all active:scale-95 shadow-lg shadow-slate-900/10"
                     >
@@ -597,7 +770,7 @@ const AnalyticsDashboard: React.FC = () => {
                 </div>
             ) : (
                 <div className="p-8 space-y-10 animate-in fade-in duration-700">
-                    
+
                     {/* KPI CARDS - FINANCIALS */}
                     <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
                         <KPICard title="Ventas Netas" value={`$${summary.net_sales.toLocaleString()}`} sub="Base Imponible" color="indigo" />
@@ -661,16 +834,16 @@ const AnalyticsDashboard: React.FC = () => {
 
                     {/* TABLES ROW */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-12">
-                        <ProductRankingTable 
-                            title="Líderes de Rotación" 
-                            data={topSelling} 
-                            type="sales" 
+                        <ProductRankingTable
+                            title="Líderes de Rotación"
+                            data={topSelling}
+                            type="sales"
                             onSelectProduct={(id) => setSelectedProductForAnalysis(id)}
                         />
-                        <ProductRankingTable 
-                            title="Líderes de Rentabilidad" 
-                            data={topProfitable} 
-                            type="profit" 
+                        <ProductRankingTable
+                            title="Líderes de Rentabilidad"
+                            data={topProfitable}
+                            type="profit"
                             onSelectProduct={(id) => setSelectedProductForAnalysis(id)}
                         />
                     </div>
@@ -679,9 +852,9 @@ const AnalyticsDashboard: React.FC = () => {
             )}
 
             {selectedProductForAnalysis && (
-                <ProductAnalyticsModal 
-                    productId={selectedProductForAnalysis} 
-                    onClose={() => setSelectedProductForAnalysis(null)} 
+                <ProductAnalyticsModal
+                    productId={selectedProductForAnalysis}
+                    onClose={() => setSelectedProductForAnalysis(null)}
                 />
             )}
         </div>
@@ -732,8 +905,8 @@ const ProductRankingTable: React.FC<{ title: string, data: ProductPerformance[],
                         <tr><td colSpan={4} className="p-12 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">Sin registros</td></tr>
                     ) : (
                         data.map((p, idx) => (
-                            <tr 
-                                key={p.id} 
+                            <tr
+                                key={p.id}
                                 className="hover:bg-slate-50 cursor-pointer transition-all active:bg-slate-100"
                                 onClick={() => onSelectProduct && onSelectProduct(p.id)}
                             >

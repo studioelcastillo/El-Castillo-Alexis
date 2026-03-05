@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Share2, Search, Filter, Plus, CheckCircle2, Clock, 
+import {
+  Share2, Search, Filter, Plus, CheckCircle2, Clock,
   MoreVertical, Calendar as CalIcon, LayoutGrid, List,
-  Smartphone, UserCheck, Users, ShieldCheck, Zap, 
+  Smartphone, UserCheck, Users, ShieldCheck, Zap,
   Instagram, Twitter, Facebook, Music2, ArrowRight,
   ExternalLink, ChevronRight, CheckCircle, AlertCircle, RefreshCw,
   Settings, X, Check, FileText, Image as ImageIcon, Video, Link2, Lock,
@@ -12,7 +12,7 @@ import {
 import ContentSalesService from '../ContentSalesService';
 import { ContentTask, ContentPlatform, ContentAsset, ContentTaskStatus } from '../types';
 import Avatar from './Avatar';
-import { MOCK_USERS } from '../constants';
+import UserService from '../UserService';
 
 const ContentSalesPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'PRIORITY' | 'CALENDAR' | 'INBOX' | 'CONFIG'>('PRIORITY');
@@ -21,7 +21,7 @@ const ContentSalesPage: React.FC = () => {
   const [inboxAssets, setInboxAssets] = useState<ContentAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
   useEffect(() => {
@@ -63,7 +63,7 @@ const ContentSalesPage: React.FC = () => {
   };
 
   const filteredTasks = useMemo(() => {
-    return tasks.filter(t => 
+    return tasks.filter(t =>
         t.model_name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [tasks, searchTerm]);
@@ -78,7 +78,7 @@ const ContentSalesPage: React.FC = () => {
            </h2>
            <p className="text-sm text-slate-500 mt-2 font-medium">Gestión de redes y cumplimiento operativo (Regla 10h SM).</p>
         </div>
-        
+
         <div className="flex gap-2 w-full md:w-auto">
             <button onClick={loadData} className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-slate-900 shadow-sm transition-all">
                 <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
@@ -96,7 +96,7 @@ const ContentSalesPage: React.FC = () => {
               { id: 'INBOX', label: 'Contenido Recibido', icon: Smartphone },
               { id: 'CONFIG', label: 'Plataformas', icon: Settings },
           ].map(tab => (
-              <button 
+              <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex items-center gap-2.5 px-6 py-3.5 rounded-[22px] text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${activeTab === tab.id ? 'bg-slate-900 text-amber-400 shadow-xl shadow-slate-900/30' : 'text-slate-500 hover:text-slate-900 hover:bg-white'}`}
@@ -196,16 +196,18 @@ const ContentTaskModal: React.FC<{ onClose: () => void, onSubmit: () => void, pl
             return;
         }
         setIsSubmitting(true);
-        const model = MOCK_USERS.find(u => u.user_id.toString() === selectedModelId);
-        
+        const response = await UserService.getUsersDatatable({ start: 0, length: 100, profiles: '3' }); // 3 = MODELO
+        const models = response.data?.data || [];
+        const model = models.find((u: any) => u.user_id.toString() === selectedModelId);
+
         await ContentSalesService.createTask({
             model_user_id: Number(selectedModelId),
-            model_name: `${model?.user_name} ${model?.user_surname}`,
-            model_avatar: model?.image,
-            streamate_hours: 0, // Mock default
-            platforms: platforms.map(p => p.id) // Select all by default for now
+            model_name: model ? `${model.user_name} ${model.user_surname || ''}` : 'Modelo',
+            model_avatar: model?.user_photo_url,
+            streamate_hours: 0,
+            platforms: platforms.map(p => p.id)
         });
-        
+
         setIsSubmitting(false);
         onSubmit();
     };
@@ -218,17 +220,19 @@ const ContentTaskModal: React.FC<{ onClose: () => void, onSubmit: () => void, pl
                 <div className="space-y-6">
                     <div>
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Seleccionar Modelo</label>
-                        <select 
+                        <select
                             value={selectedModelId}
                             onChange={(e) => setSelectedModelId(e.target.value)}
                             className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-amber-500"
                         >
                             <option value="">-- Elegir Modelo --</option>
-                            {MOCK_USERS.filter(u => u.profile?.prof_name === 'MODELO').map(m => <option key={m.user_id} value={m.user_id}>{m.user_name} {m.user_surname}</option>)}
+                            <option value="3990">Jennifer Zuluaga</option>
+                            <option value="3988">Sofia Mosquera</option>
+                            <option value="3989">Ana Acero</option>
                         </select>
                     </div>
-                    <button 
-                        onClick={handleSubmit} 
+                    <button
+                        onClick={handleSubmit}
                         disabled={isSubmitting}
                         className="w-full py-4 bg-slate-900 text-amber-400 rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-900/20 disabled:opacity-50"
                     >

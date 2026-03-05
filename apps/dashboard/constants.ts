@@ -111,74 +111,9 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
   }
 ];
 
-// --- MOCK DATA ---
-
-export const MOCK_USERS: User[] = [
-    {
-        user_id: 3990,
-        user_name: 'Jennifer',
-        user_surname: 'Zuluaga',
-        user_email: 'jennifer@example.com',
-        user_identification: '12345678',
-        user_active: 1,
-        user_age: 25,
-        image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
-        profile: { prof_id: 3, prof_name: 'MODELO' }
-    },
-    {
-        user_id: 3988,
-        user_name: 'Sofia',
-        user_surname: 'Mosquera',
-        user_email: 'sofia@example.com',
-        user_identification: '87654321',
-        user_active: 1,
-        profile: { prof_id: 2, prof_name: 'MONITOR' }
-    },
-    {
-        user_id: 3989,
-        user_name: 'Ana',
-        user_surname: 'Acero',
-        user_email: 'ana@example.com',
-        user_identification: '11223344',
-        user_active: 1,
-        profile: { prof_id: 3, prof_name: 'MODELO' }
-    },
-    {
-        user_id: 1,
-        user_name: 'Admin',
-        user_surname: 'Castillo',
-        user_email: 'admin@elcastillo.app',
-        user_identification: '1144184353',
-        user_active: 1,
-        profile: { prof_id: 1, prof_name: 'ADMINISTRADOR' }
-    }
-];
-
-// MOCK_REQUESTS removed - using PetitionService and PhotoService
-
-export const MOCK_LOCATIONS = [
-    { id: 'col', name: 'COLOMBIA', states: [
-        { id: 'ant', name: 'ANTIOQUIA', cities: [{ id: 'med', name: 'MEDELLÍN' }] },
-        { id: 'vac', name: 'VALLE DEL CAUCA', cities: [{ id: 'cal', name: 'CALI' }] }
-    ]}
-];
-
-export const MOCK_PAYROLL = [
-    { id: '1', modelName: 'Jennifer Zuluaga', studio: 'Red Dreams', usd: 1200, eur: 0, copConversion: 4800000, discounts: 200000, netTotal: 4600000, retefuente: 0, totalPayable: 4600000, status: 'PENDIENTE' },
-    { id: '2', modelName: 'Ana Acero', studio: 'Red Dreams', usd: 800, eur: 0, copConversion: 3200000, discounts: 50000, netTotal: 3150000, retefuente: 0, totalPayable: 3150000, status: 'PAGADO' }
-];
-
-export const MOCK_ROOMS: Room[] = [
-    { id: 'r1', code: 'H-101', type: 'Standard', status: 'ACTIVE', inventory: [], incidents_count: 0 },
-    { id: 'r2', code: 'H-102', type: 'Premium', status: 'ACTIVE', inventory: [], incidents_count: 0 }
-];
-
-export const MOCK_CHAT_ROLES = [
-    { id: 1, name: 'ADMINISTRADOR' },
-    { id: 2, name: 'MONITOR' },
-    { id: 3, name: 'MODELO' },
-    { id: 5, name: 'SOPORTE' }
-];
+// --- MOCK DATA REMOVED ---
+// All functional modules (Locations, Petitions, Inventory, Payroll, Users)
+// now use real data from Supabase or the Backend API.
 
 export const SUBSCRIPTION_TIERS: PricingTier[] = [
     { id: 't1', name: '1 a 15 Licencias', min: 1, max: 15, monthly_price: 45, annual_price: 490 },
@@ -189,5 +124,5 @@ export const SUBSCRIPTION_TIERS: PricingTier[] = [
     { id: 't6', name: '151 a 200 Licencias', min: 151, max: 200, monthly_price: 200, annual_price: 2200 },
     { id: 't7', name: '201 a 250 Licencias', min: 201, max: 250, monthly_price: 250, annual_price: 2800 },
     { id: 't8', name: '251 a 300 Licencias', min: 251, max: 300, monthly_price: 290, annual_price: 3300 },
-    { id: 't9', name: 'Más de 300 Licencias', min: 301, max: 9999, monthly_price: 0, annual_price: 0 } // Custom pricing
+    { id: 't9', name: 'Más de 300 Licencias', min: 301, max: 9999, monthly_price: 0, annual_price: 0 }
 ];

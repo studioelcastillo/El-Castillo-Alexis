@@ -1,18 +1,18 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Users, Calendar, AlertTriangle, CheckCircle2, 
-  Search, Filter, DollarSign, ChevronRight, 
+import {
+  Users, Calendar, AlertTriangle, CheckCircle2,
+  Search, Filter, DollarSign, ChevronRight,
   CreditCard, Zap, Building2, MoreVertical, ShieldCheck, Mail,
   Edit, X, Save, Infinity, TrendingUp, Award, BarChart3, List,
   ArrowUpRight, ArrowDownRight, CalendarDays, TrendingDown
 } from 'lucide-react';
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   AreaChart, Area, PieChart, Pie, Cell, Legend
 } from 'recharts';
 
-// --- MOCK DATA ---
-const MOCK_REVENUE_DATA = [
+// --- INITIAL DATA ---
+const INITIAL_REVENUE_DATA = [
   { month: 'Ene', revenue: 4200, licenses: 120 },
   { month: 'Feb', revenue: 4800, licenses: 145 },
   { month: 'Mar', revenue: 5100, licenses: 160 },
@@ -21,7 +21,7 @@ const MOCK_REVENUE_DATA = [
   { month: 'Jun', revenue: 7200, licenses: 240 },
 ];
 
-const MOCK_CLIENTS = [
+const INITIAL_CLIENTS = [
   {
     id: 'c1',
     studioName: 'Red Dreams (Principal)',
@@ -131,13 +131,13 @@ const SubscriptionManagementPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'LIST'>('DASHBOARD');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [clients, setClients] = useState(MOCK_CLIENTS);
-  
+  const [clients, setClients] = useState(INITIAL_CLIENTS);
+
   // Time Filter State
   const [timeFilter, setTimeFilter] = useState<'MONTH' | 'QUARTER' | 'SEMESTER' | 'YEAR' | 'CUSTOM'>('MONTH');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  
+
   // Edit Modal State
   const [editingClient, setEditingClient] = useState<any>(null);
   const [editDate, setEditDate] = useState('');
@@ -150,8 +150,8 @@ const SubscriptionManagementPage: React.FC = () => {
           return {
             ...c,
             status: 'ACTIVE',
-            daysUntilDue: 30, // Mock reset
-            nextBillingDate: '2025-07-15' // Mock next date
+            daysUntilDue: 30, // Reset
+            nextBillingDate: '2025-07-15' // Next date
           };
         }
         return c;
@@ -171,15 +171,15 @@ const SubscriptionManagementPage: React.FC = () => {
 
   const handleSaveEdit = () => {
     if (!editingClient) return;
-    
+
     setClients(prev => prev.map(c => {
       if (c.id === editingClient.id) {
-        // Calculate new days until due (mock logic for UI)
-        const today = new Date('2025-06-01'); // Mock current date
+        // Calculate new days until due
+        const today = new Date('2025-06-01'); // Current date
         const targetDate = new Date(editDate);
         const diffTime = targetDate.getTime() - today.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         let newStatus = 'ACTIVE';
         if (!editIsExempt) {
             if (diffDays < 0) newStatus = 'EXPIRED';
@@ -198,13 +198,13 @@ const SubscriptionManagementPage: React.FC = () => {
       }
       return c;
     }));
-    
+
     setEditingClient(null);
   };
 
   const filteredClients = useMemo(() => {
     return clients.filter(c => {
-      const matchesSearch = c.studioName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      const matchesSearch = c.studioName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             c.adminName.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'ALL' || c.status === statusFilter;
       return matchesSearch && matchesStatus;
@@ -252,16 +252,16 @@ const SubscriptionManagementPage: React.FC = () => {
     return [...combinedPlanStats].sort((a, b) => b.count - a.count)[0].name;
   }, [combinedPlanStats]);
 
-  // Mock Comparison Logic based on timeFilter
+  // Comparison Logic based on timeFilter
   const comparison = useMemo(() => {
     let multiplier = 0.85; // Default: previous was 15% lower (growth)
     if (timeFilter === 'QUARTER') multiplier = 0.70;
     if (timeFilter === 'SEMESTER') multiplier = 0.50;
     if (timeFilter === 'YEAR') multiplier = 0.40;
-    
+
     const prevRevenue = stats.totalRevenue * multiplier;
     const growth = ((stats.totalRevenue - prevRevenue) / prevRevenue) * 100;
-    
+
     return {
       prevRevenue,
       growth,
@@ -281,7 +281,7 @@ const SubscriptionManagementPage: React.FC = () => {
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
-      
+
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div className="space-y-1">
@@ -291,17 +291,17 @@ const SubscriptionManagementPage: React.FC = () => {
           </div>
           <p className="text-sm text-slate-500 font-medium pl-14">Supervisa el estado de pago de todos los estudios y sedes aliadas.</p>
         </div>
-        
+
         {/* Tabs */}
         <div className="flex bg-slate-100 p-1 rounded-2xl w-full md:w-auto">
-           <button 
-             onClick={() => setActiveTab('DASHBOARD')} 
+           <button
+             onClick={() => setActiveTab('DASHBOARD')}
              className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'DASHBOARD' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
            >
              <BarChart3 size={16} /> Resumen
            </button>
-           <button 
-             onClick={() => setActiveTab('LIST')} 
+           <button
+             onClick={() => setActiveTab('LIST')}
              className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'LIST' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
            >
              <List size={16} /> Listado
@@ -349,7 +349,7 @@ const SubscriptionManagementPage: React.FC = () => {
 
       {activeTab === 'DASHBOARD' ? (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          
+
           {/* Time Filter Banner */}
           <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-2 text-slate-700 font-bold text-sm">
@@ -362,29 +362,29 @@ const SubscriptionManagementPage: React.FC = () => {
                   key={filter}
                   onClick={() => setTimeFilter(filter as any)}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                    timeFilter === filter 
-                    ? 'bg-slate-900 text-white shadow-md' 
+                    timeFilter === filter
+                    ? 'bg-slate-900 text-white shadow-md'
                     : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
                   }`}
                 >
-                  {filter === 'MONTH' ? 'Mensual' : 
-                   filter === 'QUARTER' ? 'Trimestral' : 
-                   filter === 'SEMESTER' ? 'Semestral' : 
+                  {filter === 'MONTH' ? 'Mensual' :
+                   filter === 'QUARTER' ? 'Trimestral' :
+                   filter === 'SEMESTER' ? 'Semestral' :
                    filter === 'YEAR' ? 'Anual' : 'Personalizado'}
                 </button>
               ))}
             </div>
             {timeFilter === 'CUSTOM' && (
               <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   value={customStartDate}
                   onChange={(e) => setCustomStartDate(e.target.value)}
                   className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 outline-none focus:border-indigo-500"
                 />
                 <span className="text-slate-400 text-xs font-bold">a</span>
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   value={customEndDate}
                   onChange={(e) => setCustomEndDate(e.target.value)}
                   className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 outline-none focus:border-indigo-500"
@@ -403,8 +403,8 @@ const SubscriptionManagementPage: React.FC = () => {
                 Resumen Comparativo ({timeFilter === 'MONTH' ? 'Mes Anterior' : timeFilter === 'QUARTER' ? 'Trimestre Anterior' : timeFilter === 'SEMESTER' ? 'Semestre Anterior' : timeFilter === 'YEAR' ? 'Año Anterior' : 'Periodo Anterior'})
               </h4>
               <p className={`text-xs font-medium mt-0.5 ${comparison.isPositive ? 'text-emerald-700' : 'text-red-700'}`}>
-                {comparison.isPositive ? 'Crecimos un' : 'Bajamos un'} <strong className="font-black">{Math.abs(comparison.growth).toFixed(1)}%</strong> en ingresos. 
-                El periodo anterior generó <strong className="font-black">${comparison.prevRevenue.toFixed(0)}</strong>, 
+                {comparison.isPositive ? 'Crecimos un' : 'Bajamos un'} <strong className="font-black">{Math.abs(comparison.growth).toFixed(1)}%</strong> en ingresos.
+                El periodo anterior generó <strong className="font-black">${comparison.prevRevenue.toFixed(0)}</strong>,
                 mientras que el actual genera <strong className="font-black">${stats.totalRevenue}</strong>.
               </p>
             </div>
@@ -412,7 +412,7 @@ const SubscriptionManagementPage: React.FC = () => {
 
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
+
             {/* Revenue Chart */}
             <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
               <div className="flex justify-between items-center mb-6">
@@ -429,11 +429,11 @@ const SubscriptionManagementPage: React.FC = () => {
               </div>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={MOCK_REVENUE_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <BarChart data={INITIAL_REVENUE_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} tickFormatter={(val) => `$${val}`} />
-                    <RechartsTooltip 
+                    <RechartsTooltip
                       cursor={{ fill: '#f8fafc' }}
                       contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)', fontWeight: 'bold' }}
                       formatter={(value: number) => [`$${value}`, 'Ingresos']}
@@ -460,7 +460,7 @@ const SubscriptionManagementPage: React.FC = () => {
               </div>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={MOCK_REVENUE_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <AreaChart data={INITIAL_REVENUE_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorLicenses" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
@@ -470,7 +470,7 @@ const SubscriptionManagementPage: React.FC = () => {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} />
-                    <RechartsTooltip 
+                    <RechartsTooltip
                       contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)', fontWeight: 'bold' }}
                       formatter={(value: number) => [value, 'Licencias']}
                     />
@@ -490,13 +490,13 @@ const SubscriptionManagementPage: React.FC = () => {
                   <p className="text-xs text-slate-500 font-medium mt-1">Análisis combinado de cantidad de estudios y dinero generado por categoría</p>
                 </div>
               </div>
-              
+
               <div className="flex flex-col md:flex-row items-center gap-8">
                 {/* Chart Side */}
                 <div className="h-80 w-full md:w-1/2 flex items-center justify-center relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <RechartsTooltip 
+                      <RechartsTooltip
                         contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)', fontWeight: 'bold' }}
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
@@ -574,7 +574,7 @@ const SubscriptionManagementPage: React.FC = () => {
                 <p className="text-sm text-slate-500 font-medium mt-1">Los clientes que más aportan al MRR.</p>
               </div>
               {topLicensees.length > 3 && (
-                <button 
+                <button
                   onClick={() => setShowAllTop(!showAllTop)}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors text-xs uppercase tracking-widest"
                 >
@@ -598,7 +598,7 @@ const SubscriptionManagementPage: React.FC = () => {
                       <Award size={20} />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-4">
                     <div className="flex justify-between items-center p-3 bg-white rounded-xl border border-slate-100">
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Aporte Mensual</span>
@@ -624,9 +624,9 @@ const SubscriptionManagementPage: React.FC = () => {
           <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
             <div className="relative w-full md:w-96">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input 
-                type="text" 
-                placeholder="Buscar por estudio o administrador..." 
+              <input
+                type="text"
+                placeholder="Buscar por estudio o administrador..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 outline-none"
@@ -638,13 +638,13 @@ const SubscriptionManagementPage: React.FC = () => {
                   key={status}
                   onClick={() => setStatusFilter(status)}
                   className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                    statusFilter === status 
-                    ? 'bg-slate-900 text-white shadow-md' 
+                    statusFilter === status
+                    ? 'bg-slate-900 text-white shadow-md'
                     : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
                   }`}
                 >
-                  {status === 'ALL' ? 'Todos' : 
-                  status === 'ACTIVE' ? 'Activos' : 
+                  {status === 'ALL' ? 'Todos' :
+                  status === 'ACTIVE' ? 'Activos' :
                   status === 'EXPIRING_SOON' ? 'Por Vencer' : 'Vencidos'}
                 </button>
               ))}
@@ -704,10 +704,10 @@ const SubscriptionManagementPage: React.FC = () => {
                             <>
                                 <p className="text-sm font-bold text-slate-700">{client.nextBillingDate}</p>
                                 <p className={`text-[10px] font-bold ${
-                                client.daysUntilDue < 0 ? 'text-red-500' : 
+                                client.daysUntilDue < 0 ? 'text-red-500' :
                                 client.daysUntilDue <= 5 ? 'text-amber-500' : 'text-slate-400'
                                 }`}>
-                                {client.daysUntilDue < 0 ? `Vencido hace ${Math.abs(client.daysUntilDue)} días` : 
+                                {client.daysUntilDue < 0 ? `Vencido hace ${Math.abs(client.daysUntilDue)} días` :
                                 client.daysUntilDue === 0 ? 'Vence hoy' : `En ${client.daysUntilDue} días`}
                                 </p>
                             </>
@@ -721,7 +721,7 @@ const SubscriptionManagementPage: React.FC = () => {
                           'bg-red-50 text-red-600 border-red-100'
                         }`}>
                           {client.isExempt ? 'Exento' :
-                          client.status === 'ACTIVE' ? 'Activo' : 
+                          client.status === 'ACTIVE' ? 'Activo' :
                           client.status === 'EXPIRING_SOON' ? 'Por Vencer' : 'Bloqueado'}
                         </span>
                       </td>
@@ -733,7 +733,7 @@ const SubscriptionManagementPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button 
+                          <button
                             onClick={() => openEditModal(client)}
                             className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
                             title="Editar Licencia (Exento / Fecha)"
@@ -741,7 +741,7 @@ const SubscriptionManagementPage: React.FC = () => {
                             <Edit size={16} />
                           </button>
                           {!client.isExempt && client.status !== 'ACTIVE' && (
-                            <button 
+                            <button
                               onClick={() => handleSendReminder(client.email)}
                               className="p-2 text-amber-600 hover:bg-amber-50 rounded-xl transition-colors"
                               title="Enviar Recordatorio"
@@ -750,7 +750,7 @@ const SubscriptionManagementPage: React.FC = () => {
                             </button>
                           )}
                           {!client.isExempt && (
-                              <button 
+                              <button
                                 onClick={() => handleMarkAsPaid(client.id)}
                                 className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
                                 title="Marcar como Pagado Manualmente"
@@ -794,8 +794,8 @@ const SubscriptionManagementPage: React.FC = () => {
 
               <div className="space-y-4">
                 <label className="flex items-center gap-3 p-4 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={editIsExempt}
                     onChange={(e) => setEditIsExempt(e.target.checked)}
                     className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
@@ -811,8 +811,8 @@ const SubscriptionManagementPage: React.FC = () => {
                     <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">
                       Fecha de Próximo Pago
                     </label>
-                    <input 
-                      type="date" 
+                    <input
+                      type="date"
                       value={editDate}
                       onChange={(e) => setEditDate(e.target.value)}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 outline-none"
@@ -822,13 +822,13 @@ const SubscriptionManagementPage: React.FC = () => {
               </div>
             </div>
             <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-              <button 
+              <button
                 onClick={() => setEditingClient(null)}
                 className="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 onClick={handleSaveEdit}
                 className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20 flex items-center gap-2"
               >

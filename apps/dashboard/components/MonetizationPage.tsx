@@ -1,19 +1,19 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Banknote, Plus, Search, Filter, Printer, Save, 
-  Trash2, DollarSign, Calculator, ChevronRight, CheckCircle2, 
+import {
+  Banknote, Plus, Search, Filter, Printer, Save,
+  Trash2, DollarSign, Calculator, ChevronRight, CheckCircle2,
   FileText, Download, TrendingUp, Settings, Lock, Eye, EyeOff,
   User, Briefcase, Globe, Calendar, RefreshCw, LayoutDashboard,
   ArrowUpRight, ArrowDownRight, Activity, BarChart3, PieChart as PieChartIcon, Users
 } from 'lucide-react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import MonetizationService from '../MonetizationService';
+import { getStoredUser } from '../session';
 import { Liquidation, MonetizationBeneficiary, MonetizationPlatform, LiquidationItem, LiquidationDiscount, LiquidationRetention } from '../types';
-import { MOCK_USERS } from '../constants'; // For permission check mock
 
 const MonetizationDashboard: React.FC = () => {
     const [data, setData] = useState<any>(null);
@@ -96,19 +96,19 @@ const MonetizationDashboard: React.FC = () => {
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis 
-                                    dataKey="month" 
-                                    axisLine={false} 
-                                    tickLine={false} 
+                                <XAxis
+                                    dataKey="month"
+                                    axisLine={false}
+                                    tickLine={false}
                                     tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}}
                                     dy={10}
                                 />
-                                <YAxis 
-                                    axisLine={false} 
-                                    tickLine={false} 
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
                                     tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}}
                                 />
-                                <Tooltip 
+                                <Tooltip
                                     contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
                                 />
                                 <Area type="monotone" dataKey="income" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
@@ -171,8 +171,8 @@ const MonetizationDashboard: React.FC = () => {
                                 <span className="text-sm font-black text-slate-900">${b.total.toLocaleString()} COP</span>
                             </div>
                             <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
-                                <div 
-                                    className="h-full bg-emerald-500 rounded-full" 
+                                <div
+                                    className="h-full bg-emerald-500 rounded-full"
                                     style={{width: `${100 - (i * 20)}%`}}
                                 />
                             </div>
@@ -192,7 +192,8 @@ const MonetizationPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   // User Role Mock (Superadmin check)
-  const isSuperAdmin = MOCK_USERS.find(u => u.user_id === 1)?.profile?.prof_name === 'ADMINISTRADOR'; // Simulating current user
+  const currentUser = getStoredUser();
+  const isSuperAdmin = currentUser?.profile?.prof_name === 'ADMINISTRADOR';
 
   useEffect(() => {
     loadData();
@@ -223,11 +224,11 @@ const MonetizationPage: React.FC = () => {
       if (!name) return;
       const type = prompt("Tipo (PERSONA / EMPRESA):", "PERSONA");
       const id = prompt("Identificación:");
-      
+
       if (name && type && id) {
           await MonetizationService.saveBeneficiary({
-              name, 
-              type: type as 'PERSONA' | 'EMPRESA', 
+              name,
+              type: type as 'PERSONA' | 'EMPRESA',
               identification: id,
               active: true,
               retentions_enabled: false
@@ -242,7 +243,7 @@ const MonetizationPage: React.FC = () => {
       if (!name) return;
       const type = prompt("Tipo (USD_DIRECT / TOKENS):", "USD_DIRECT");
       const commission = prompt("Comisión por defecto (%):", "10");
-      
+
       if (name && type) {
           await MonetizationService.savePlatform({
               name,
@@ -256,7 +257,7 @@ const MonetizationPage: React.FC = () => {
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6 animate-in fade-in duration-500">
-        
+
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-end gap-6">
             <div>
@@ -266,7 +267,7 @@ const MonetizationPage: React.FC = () => {
                 </h1>
                 <p className="text-sm text-slate-500 mt-2 font-medium">Gestión de pagos a terceros, conversión de divisas y utilidades.</p>
             </div>
-            
+
             {/* Nav Tabs */}
             <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm overflow-x-auto no-scrollbar gap-1">
                 {[
@@ -276,7 +277,7 @@ const MonetizationPage: React.FC = () => {
                     { id: 'PLATFORMS', label: 'Plataformas', icon: Globe },
                     { id: 'DASHBOARD', label: 'Reportes', icon: TrendingUp },
                 ].map(tab => (
-                    <button 
+                    <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
@@ -285,7 +286,7 @@ const MonetizationPage: React.FC = () => {
                     </button>
                 ))}
                 {isSuperAdmin && (
-                    <button 
+                    <button
                         onClick={() => setActiveTab('PRIVATE')}
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'PRIVATE' ? 'bg-amber-500 text-slate-900 shadow-md' : 'text-amber-600 bg-amber-50 hover:bg-amber-100'}`}
                     >
@@ -321,12 +322,12 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
     const [retentionEnabled, setRetentionEnabled] = useState(false);
     const [retentionPct, setRetentionPct] = useState(0);
     const [errors, setErrors] = useState<{[key: string]: boolean}>({});
-    
+
     // Private (Optional input here or only in private view, prompt implies it might be separate but calculation needs it for internal record)
-    // I'll add TRM Real here but hidden unless superadmin or just default to 0 for now. 
+    // I'll add TRM Real here but hidden unless superadmin or just default to 0 for now.
     // Actually prompt says "vista privada para TRM real que a mi me pagaron". So maybe we input it here too if I am admin?
     // Let's keep it simple: Standard liquidation doesn't show TRM Real input to avoid confusion for "Contabilidad".
-    const [trmReal, setTrmReal] = useState<number>(0); 
+    const [trmReal, setTrmReal] = useState<number>(0);
 
     // Derived
     const selectedBeneficiary = beneficiaries.find(b => b.id === beneficiaryId);
@@ -346,15 +347,15 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
         const rets: LiquidationRetention[] = [];
         // Base calculation logic handled by service, we just prepare the payload
         // But for UI preview we need reactive calculation.
-        
+
         // Let's use the service function logic here reactively
         // Reconstruct basic payload
         let rawItems = items.map(i => ({...i, id: i.id || `temp_${Date.now()}_${Math.random()}`, token_value_snapshot: 0.05})) as LiquidationItem[];
-        
+
         // Mock calculating retentions if enabled
         // This is circular because base depends on retentions? No, retentions depend on base.
         // We pass empty retentions first to get base
-        
+
         const partialCalc = MonetizationService.calculateLiquidation({
             trm_pago: trmPago,
             commission_percentage: commissionPct,
@@ -447,9 +448,9 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
 
         if (isValid) {
             onSave({
-                ...liquidationData, 
-                beneficiary_id: beneficiaryId, 
-                beneficiary_name: selectedBeneficiary?.name, 
+                ...liquidationData,
+                beneficiary_id: beneficiaryId,
+                beneficiary_name: selectedBeneficiary?.name,
                 beneficiary_doc: selectedBeneficiary?.identification,
                 date: date
             });
@@ -461,7 +462,7 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
-                
+
                 {/* SECTION A: General */}
                 <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
                     <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -474,8 +475,8 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
                         </div>
                         <div>
                             <label className={`text-[10px] font-bold uppercase block mb-1 ${errors['beneficiary'] ? 'text-red-500' : 'text-slate-400'}`}>Beneficiario</label>
-                            <select 
-                                value={beneficiaryId} 
+                            <select
+                                value={beneficiaryId}
                                 onChange={e => {
                                     setBeneficiaryId(e.target.value);
                                     if(errors['beneficiary']) {
@@ -483,7 +484,7 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
                                         delete newErrors['beneficiary'];
                                         setErrors(newErrors);
                                     }
-                                }} 
+                                }}
                                 className={`w-full p-3 border-none rounded-xl text-sm font-bold outline-none ${errors['beneficiary'] ? 'bg-red-50 ring-2 ring-red-500/20 text-red-900' : 'bg-slate-50'}`}
                             >
                                 <option value="">Seleccionar...</option>
@@ -510,15 +511,15 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
                             + Agregar Línea
                         </button>
                     </div>
-                    
+
                     <div className="space-y-3">
                         {items.map((item, idx) => (
                             <div key={idx} className="flex gap-3 items-end">
                                 <div className="flex-1">
                                     <label className={`text-[9px] font-bold uppercase block mb-1 ${errors[`item_${idx}_platform`] ? 'text-red-500' : 'text-slate-400'}`}>Plataforma</label>
-                                    <select 
-                                        value={item.platform_id} 
-                                        onChange={e => updateItem(idx, 'platform_id', e.target.value)} 
+                                    <select
+                                        value={item.platform_id}
+                                        onChange={e => updateItem(idx, 'platform_id', e.target.value)}
                                         className={`w-full p-2.5 border-none rounded-xl text-xs font-bold outline-none transition-all ${errors[`item_${idx}_platform`] ? 'bg-red-50 ring-2 ring-red-500/20 text-red-900' : 'bg-slate-50'}`}
                                     >
                                         <option value="">Elegir...</option>
@@ -533,11 +534,11 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
                                 {item.type === 'TOKENS' ? (
                                     <div className="w-32">
                                         <label className={`text-[9px] font-bold uppercase block mb-1 ${errors[`item_${idx}_amount`] ? 'text-red-500' : 'text-slate-400'}`}>Tokens</label>
-                                        <input 
-                                            type="number" 
-                                            value={item.tokens || ''} 
-                                            onChange={e => updateItem(idx, 'tokens', Number(e.target.value))} 
-                                            className={`w-full p-2.5 border-none rounded-xl text-xs font-bold outline-none transition-all ${errors[`item_${idx}_amount`] ? 'bg-red-50 ring-2 ring-red-500/20 text-red-900 placeholder:text-red-300' : 'bg-slate-50'}`} 
+                                        <input
+                                            type="number"
+                                            value={item.tokens || ''}
+                                            onChange={e => updateItem(idx, 'tokens', Number(e.target.value))}
+                                            className={`w-full p-2.5 border-none rounded-xl text-xs font-bold outline-none transition-all ${errors[`item_${idx}_amount`] ? 'bg-red-50 ring-2 ring-red-500/20 text-red-900 placeholder:text-red-300' : 'bg-slate-50'}`}
                                             placeholder="0"
                                         />
                                         {errors[`item_${idx}_amount`] && <p className="text-[8px] text-red-500 font-bold mt-1 uppercase">Requerido</p>}
@@ -545,11 +546,11 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
                                 ) : (
                                     <div className="w-32">
                                         <label className={`text-[9px] font-bold uppercase block mb-1 ${errors[`item_${idx}_amount`] ? 'text-red-500' : 'text-slate-400'}`}>Monto USD</label>
-                                        <input 
-                                            type="number" 
-                                            value={item.amount_usd || ''} 
-                                            onChange={e => updateItem(idx, 'amount_usd', Number(e.target.value))} 
-                                            className={`w-full p-2.5 border-none rounded-xl text-xs font-bold outline-none transition-all ${errors[`item_${idx}_amount`] ? 'bg-red-50 ring-2 ring-red-500/20 text-red-900 placeholder:text-red-300' : 'bg-slate-50'}`} 
+                                        <input
+                                            type="number"
+                                            value={item.amount_usd || ''}
+                                            onChange={e => updateItem(idx, 'amount_usd', Number(e.target.value))}
+                                            className={`w-full p-2.5 border-none rounded-xl text-xs font-bold outline-none transition-all ${errors[`item_${idx}_amount`] ? 'bg-red-50 ring-2 ring-red-500/20 text-red-900 placeholder:text-red-300' : 'bg-slate-50'}`}
                                             placeholder="0.00"
                                         />
                                         {errors[`item_${idx}_amount`] && <p className="text-[8px] text-red-500 font-bold mt-1 uppercase">Requerido</p>}
@@ -577,12 +578,12 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Retención</label>
                             <input type="checkbox" checked={retentionEnabled} onChange={e => setRetentionEnabled(e.target.checked)} className="rounded text-emerald-500 focus:ring-emerald-500" />
                         </div>
-                        <input 
-                            type="number" 
+                        <input
+                            type="number"
                             disabled={!retentionEnabled}
-                            value={retentionPct} 
-                            onChange={e => setRetentionPct(Number(e.target.value))} 
-                            className="w-full p-3 bg-slate-50 border-none rounded-xl text-lg font-black text-slate-900 outline-none disabled:opacity-50" 
+                            value={retentionPct}
+                            onChange={e => setRetentionPct(Number(e.target.value))}
+                            className="w-full p-3 bg-slate-50 border-none rounded-xl text-lg font-black text-slate-900 outline-none disabled:opacity-50"
                             placeholder="% Ret"
                         />
                     </div>
@@ -594,7 +595,7 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                             <TrendingUp className="rotate-180 text-red-500" size={16} /> Descuentos / Préstamos
                         </h3>
-                        <button 
+                        <button
                             onClick={() => setDiscounts([...discounts, { id: `d_${Date.now()}`, description: '', amount_cop: 0 }])}
                             className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded hover:bg-slate-100"
                         >
@@ -653,13 +654,13 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
                     </div>
 
                     <div className="flex flex-col gap-3">
-                        <button 
+                        <button
                             onClick={validateAndSave}
                             className="w-full py-4 bg-emerald-500 text-white font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-emerald-600 transition-all shadow-lg active:scale-95 text-xs flex items-center justify-center gap-2"
                         >
                             <Save size={16} /> Guardar Liquidación
                         </button>
-                        <button 
+                        <button
                             onClick={handlePreview}
                             className="w-full py-4 bg-white/10 text-white font-bold uppercase tracking-widest rounded-2xl hover:bg-white/20 transition-all text-[10px] flex items-center justify-center gap-2"
                         >
@@ -734,7 +735,7 @@ const PrivateSpreadDashboard: React.FC<{ liquidations: Liquidation[] }> = ({ liq
         <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[40px] p-10 text-white shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-[100px] -mr-32 -mt-32"></div>
-                
+
                 <div className="flex items-center gap-4 mb-8 relative z-10">
                     <div className="p-3 bg-amber-500 text-slate-900 rounded-2xl shadow-lg shadow-amber-500/20"><Lock size={24} /></div>
                     <div>
@@ -816,7 +817,7 @@ const BeneficiariesList: React.FC<{data: MonetizationBeneficiary[], onCreate: ()
                 </div>
             </div>
         ))}
-        <button 
+        <button
             onClick={onCreate}
             className="flex flex-col items-center justify-center p-6 rounded-[32px] border-2 border-dashed border-slate-200 text-slate-400 hover:border-emerald-400 hover:text-emerald-500 transition-all bg-slate-50/50"
         >
@@ -840,7 +841,7 @@ const PlatformsList: React.FC<{data: MonetizationPlatform[], onCreate: () => voi
                 </div>
             </div>
         ))}
-        <button 
+        <button
             onClick={onCreate}
             className="flex flex-col items-center justify-center p-6 rounded-[32px] border-2 border-dashed border-slate-200 text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all bg-slate-50/50"
         >

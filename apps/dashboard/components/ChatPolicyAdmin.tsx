@@ -1,23 +1,30 @@
 
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Info, Check, X, ShieldAlert, Megaphone, Zap, BookOpen, Settings, CheckCheck, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
-import { MOCK_CHAT_ROLES } from '../constants';
+const ROLES = [
+    { id: 1, name: 'ADMINISTRADOR' },
+    { id: 2, name: 'MONITOR' },
+    { id: 3, name: 'MODELO' },
+    { id: 5, name: 'SOPORTE' }
+];
 import ChatTemplatesAdmin from './ChatTemplatesAdmin';
 import ChatBroadcastAdmin from './ChatBroadcastAdmin';
 import ChatAutomationsAdmin from './ChatAutomationsAdmin';
 import ChatService from '../ChatService';
+import UserService from '../UserService';
+import { getStoredUser } from '../session';
 import { RoleChatPolicy } from '../types';
 
 const ChatPolicyAdmin: React.FC = () => {
-  const roles = MOCK_CHAT_ROLES;
+  const roles = ROLES;
   const [activeMainTab, setActiveMainTab] = useState<'politicas' | 'broadcast' | 'plantillas' | 'automatizaciones' | 'defaults'>('politicas');
   const [activePolicySubTab, setActivePolicySubTab] = useState<'matriz' | 'excepciones'>('matriz');
   const [selectedRoleForDefaults, setSelectedRoleForDefaults] = useState<number | null>(null);
-  
+
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
-  
+
   // Matrix State for Policies
   const [matrix, setMatrix] = useState<Record<number, Record<number, {initiate: boolean, receive: boolean}>>>(() => {
     // Default initial state (admin only)
@@ -146,7 +153,7 @@ const ChatPolicyAdmin: React.FC = () => {
       });
 
        await ChatService.updatePolicies(policies);
-      
+
       setNotification({
         type: 'success',
         message: 'Cambios guardados exitosamente'
@@ -165,13 +172,13 @@ const ChatPolicyAdmin: React.FC = () => {
   const renderPolicies = () => (
     <div className="space-y-6 animate-in fade-in duration-500 relative">
         <div className="flex bg-slate-200/50 p-1 rounded-2xl w-fit">
-            <button 
+            <button
                 onClick={() => setActivePolicySubTab('matriz')}
                 className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activePolicySubTab === 'matriz' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
             >
                 Matriz de Roles
             </button>
-            <button 
+            <button
                 onClick={() => setActivePolicySubTab('excepciones')}
                 className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activePolicySubTab === 'excepciones' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
             >
@@ -181,7 +188,7 @@ const ChatPolicyAdmin: React.FC = () => {
 
         {activePolicySubTab === 'matriz' ? (
             <div className="bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden relative">
-                
+
                 {/* LOADING OVERLAY FOR INITIAL FETCH */}
                 {isLoadingData && (
                   <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center">
@@ -198,7 +205,7 @@ const ChatPolicyAdmin: React.FC = () => {
                             <p className="text-xs text-slate-500">Define permisos globales por perfil operativo.</p>
                         </div>
                     </div>
-                    <button 
+                    <button
                         onClick={handleSaveChanges}
                         disabled={isSaving || isLoadingData}
                         className={`px-6 py-3 bg-slate-900 text-amber-400 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl hover:bg-black transition-all flex items-center gap-2 ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -218,13 +225,13 @@ const ChatPolicyAdmin: React.FC = () => {
                                     <div className="flex flex-col gap-2">
                                         <span>DESDE (ROL) \ HACIA</span>
                                         <div className="flex gap-2 mt-2">
-                                            <button 
+                                            <button
                                                 onClick={() => toggleGlobalType('initiate')}
                                                 className="flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md border border-emerald-200 hover:bg-emerald-200 transition-all text-[8px] font-black"
                                             >
                                                 <CheckCheck size={10} /> INICIAR TODO
                                             </button>
-                                            <button 
+                                            <button
                                                 onClick={() => toggleGlobalType('receive')}
                                                 className="flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded-md border border-indigo-200 hover:bg-indigo-200 transition-all text-[8px] font-black"
                                             >
@@ -247,13 +254,13 @@ const ChatPolicyAdmin: React.FC = () => {
                                         <div className="flex flex-col gap-2">
                                             <span className="font-black text-slate-900 text-xs uppercase">{rFrom.name}</span>
                                             <div className="flex flex-wrap gap-1.5 mt-1">
-                                                <button 
+                                                <button
                                                     onClick={() => toggleAllInRow(rFrom.id, 'initiate')}
                                                     className="px-2 py-1 bg-white border border-emerald-200 text-emerald-600 rounded-lg text-[8px] font-black hover:bg-emerald-50 transition-colors uppercase tracking-tighter"
                                                 >
                                                     Iniciar Fila
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => toggleAllInRow(rFrom.id, 'receive')}
                                                     className="px-2 py-1 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-[8px] font-black hover:bg-indigo-50 transition-colors uppercase tracking-tighter"
                                                 >
@@ -266,7 +273,7 @@ const ChatPolicyAdmin: React.FC = () => {
                                         <td key={rTo.id} className="px-6 py-5">
                                             <div className="flex flex-col gap-2 items-center">
                                                 <label className="flex items-center gap-2 cursor-pointer group">
-                                                    <div 
+                                                    <div
                                                         onClick={() => togglePolicy(rFrom.id, rTo.id, 'initiate')}
                                                         className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all border ${matrix[rFrom.id][rTo.id].initiate ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-slate-50 border-slate-200 text-transparent'}`}
                                                     >
@@ -275,7 +282,7 @@ const ChatPolicyAdmin: React.FC = () => {
                                                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter group-hover:text-slate-900 transition-colors">Iniciar</span>
                                                 </label>
                                                 <label className="flex items-center gap-2 cursor-pointer group">
-                                                    <div 
+                                                    <div
                                                         onClick={() => togglePolicy(rFrom.id, rTo.id, 'receive')}
                                                         className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all border ${matrix[rFrom.id][rTo.id].receive ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-slate-50 border-slate-200 text-transparent'}`}
                                                     >
@@ -307,7 +314,7 @@ const ChatPolicyAdmin: React.FC = () => {
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">Seleccionar Rol</h3>
             <div className="space-y-2">
                 {roles.map(role => (
-                    <button 
+                    <button
                         key={role.id}
                         onClick={() => setSelectedRoleForDefaults(role.id)}
                         className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all ${
@@ -347,12 +354,12 @@ const ChatPolicyAdmin: React.FC = () => {
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-      
+
       {/* NOTIFICATION TOAST */}
       {notification && (
         <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[200] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border animate-in slide-in-from-top-4 duration-300 min-w-[320px] ${
-          notification.type === 'success' 
-          ? 'bg-emerald-100 border-emerald-200 text-slate-900' 
+          notification.type === 'success'
+          ? 'bg-emerald-100 border-emerald-200 text-slate-900'
           : 'bg-red-100 border-red-200 text-slate-900'
         }`}>
           <div className={`p-2 rounded-xl ${notification.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
@@ -384,12 +391,12 @@ const ChatPolicyAdmin: React.FC = () => {
              { id: 'plantillas', label: 'Plantillas de Mensaje', icon: BookOpen },
              { id: 'automatizaciones', label: 'Automatizaciones', icon: Zap }
            ].map(tab => (
-             <button 
+             <button
               key={tab.id}
               onClick={() => setActiveMainTab(tab.id as any)}
               className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                activeMainTab === tab.id 
-                ? 'bg-slate-900 text-amber-400 shadow-xl shadow-slate-900/20' 
+                activeMainTab === tab.id
+                ? 'bg-slate-900 text-amber-400 shadow-xl shadow-slate-900/20'
                 : 'text-slate-500 hover:bg-slate-50'
               }`}
              >
