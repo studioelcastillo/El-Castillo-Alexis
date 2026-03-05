@@ -7,6 +7,23 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies (dashboard)
+        working-directory: apps/dashboard
+        run: npm install
+
+      - name: Security audit
+        working-directory: apps/dashboard
+        run: npm audit --audit-level=critical
+        continue-on-error: false
+
       - name: Trigger Easypanel Deploy
         env:
           WEBHOOK_URL: ${{ secrets.EASYPANEL_PRODUCTION_WEBHOOK }}

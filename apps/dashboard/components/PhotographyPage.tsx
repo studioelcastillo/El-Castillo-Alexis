@@ -1427,3 +1427,4 @@ const TrendingUp: React.FC<{ size?: number, className?: string }> = ({ size = 20
 
 export default PhotographyPage;
 
+

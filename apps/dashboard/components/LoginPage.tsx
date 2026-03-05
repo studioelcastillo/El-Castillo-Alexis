@@ -13,16 +13,16 @@ interface LoginPageProps {
 type NotificationType = 'success' | 'error' | null;
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
-  // Form State - Pre-filled with provided test credentials
-  const [email, setEmail] = useState('1144184353');
-  const [password, setPassword] = useState('84353');
+  // Form State
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Notification State
   const [notification, setNotification] = useState<{type: NotificationType, message: string} | null>(null);
 
-  // Policy State - Pre-accepted for rapid testing
-  const [policyAccepted, setPolicyAccepted] = useState(true);
+  // Policy State
+  const [policyAccepted, setPolicyAccepted] = useState(false);
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
   const [policy, setPolicy] = useState<Policy | null>(null);
 
@@ -74,10 +74,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       });
 
       const resData = loginResponse.data;
-      
+
       // Lógica de validación robusta para éxito:
-      const isSuccessful = (resData as any).success === true || 
-                          (resData as any).status?.toLowerCase() === 'success' || 
+      const isSuccessful = (resData as any).success === true ||
+                          (resData as any).status?.toLowerCase() === 'success' ||
                           (resData as any).message === 'User logged';
 
       if (isSuccessful && resData.data) {
@@ -95,7 +95,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         encryptSession('token', access_token);
 
         showNotification('success', resData.message || '¡Ingreso exitoso!');
-        
+
         // Redirigir al dashboard
         setTimeout(() => {
           onLogin();
@@ -105,7 +105,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       }
     } catch (err: any) {
       console.error("Full Login Error:", err);
-      
+
       if (err.response) {
         const status = err.response.status;
         const message = err.response.data?.message;
@@ -127,12 +127,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen w-full flex bg-[#F8FAFC]">
-      
+
       {/* --- Notification Toast --- */}
       {notification && (
         <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[200] w-[90%] max-w-md p-4 rounded-2xl shadow-2xl flex items-center gap-4 border animate-in slide-in-from-top-4 duration-300 ${
-          notification.type === 'success' 
-          ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
+          notification.type === 'success'
+          ? 'bg-emerald-50 border-emerald-100 text-emerald-800'
           : 'bg-red-50 border-red-100 text-red-800'
         }`}>
           <div className={`p-2 rounded-xl ${notification.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
@@ -190,8 +190,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-2 block">Usuario / Identificación</label>
                      <div className="relative group">
                         <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-amber-500 transition-colors" />
-                        <input 
-                           type="text" 
+                        <input
+                           type="text"
                            required
                            value={email}
                            onChange={(e) => setEmail(e.target.value)}
@@ -200,7 +200,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                         />
                      </div>
                   </div>
-                  
+
                   <div>
                      <div className="flex justify-between items-center mb-2">
                         <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Contraseña</label>
@@ -210,8 +210,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                      </div>
                      <div className="relative group">
                         <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-amber-500 transition-colors" />
-                        <input 
-                           type="password" 
+                        <input
+                           type="password"
                            required
                            value={password}
                            onChange={(e) => setPassword(e.target.value)}
@@ -225,7 +225,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                {/* Policy Checkbox Section */}
                <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-start gap-4">
                   <div className="pt-1">
-                     <input 
+                     <input
                         type="checkbox"
                         id="policy-check"
                         checked={policyAccepted}
@@ -234,8 +234,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                      />
                   </div>
                   <label htmlFor="policy-check" className="text-xs font-medium text-slate-500 cursor-pointer leading-relaxed">
-                     Acepto el tratamiento de mis datos personales conforme a la 
-                     <button 
+                     Acepto el tratamiento de mis datos personales conforme a la
+                     <button
                         type="button"
                         onClick={() => setPolicyModalOpen(true)}
                         className="text-slate-900 font-black ml-1 hover:text-amber-600 underline flex items-center gap-1 inline-flex"
@@ -245,7 +245,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   </label>
                </div>
 
-               <button 
+               <button
                   type="submit"
                   disabled={isLoading || !policy}
                   className="w-full bg-slate-900 hover:bg-black text-amber-400 font-bold py-4 rounded-xl shadow-xl shadow-slate-900/10 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -272,14 +272,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </form>
 
             <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-               <ShieldCheck size={14} className="text-emerald-500" /> 
+               <ShieldCheck size={14} className="text-emerald-500" />
                Conexión Segura de Extremo a Extremo
             </div>
          </div>
       </div>
 
       {/* Policy Modal Integration */}
-      <PolicyModal 
+      <PolicyModal
         open={policyModalOpen}
         onClose={() => setPolicyModalOpen(false)}
         onAccept={() => setPolicyAccepted(true)}

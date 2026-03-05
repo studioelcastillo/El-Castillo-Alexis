@@ -118,12 +118,22 @@ const AuthSupabaseService = {
       await AuthSupabaseService.getUserProfile(data.user.id);
     if (profileError) throw profileError;
 
+    // Attempt to get the client's real IP for audit logging
+    let clientIp = 'unknown';
+    try {
+      const ipRes = await fetch('https://api.ipify.org?format=json');
+      const ipData = await ipRes.json();
+      clientIp = ipData.ip ?? 'unknown';
+    } catch {
+      clientIp = 'fetch-failed';
+    }
+
     const { data: logData } = await supabase
       .from("login_history")
       .insert([
         {
           user_id: profile.user_id,
-          lhist_ip: "local",
+          lhist_ip: clientIp,
           lhist_success: true,
         },
       ])

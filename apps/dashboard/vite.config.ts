@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
       )
     );
     const env = { ...fileEnv, ...runtimeEnv };
+    const geminiKey = env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY;
     return {
       base: env.VITE_DASHBOARD_BASE || '/',
       server: {
@@ -38,8 +39,8 @@ export default defineConfig(({ mode }) => {
         }
       },
       define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+        'process.env.API_KEY': JSON.stringify(geminiKey),
+        'process.env.GEMINI_API_KEY': JSON.stringify(geminiKey)
       },
       resolve: {
         alias: {

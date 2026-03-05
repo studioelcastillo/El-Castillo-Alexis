@@ -84,7 +84,7 @@ const ChangePasswordPage: React.FC = () => {
               className="mt-2 w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:ring-4 focus:ring-amber-500/10"
             />
             <p className="mt-1 text-[10px] text-slate-400">
-              💡 Si nunca cambiaste tu contraseña, es los <strong>últimos 5 dígitos de tu número de cédula</strong>.
+              💡 Si nunca cambiaste tu contraseña, es los <strong>últimos 5 dígitos de tu número de documento</strong> (cédula, NIT o pasaporte).
             </p>
           </div>
           <div>
