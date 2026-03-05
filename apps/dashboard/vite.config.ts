@@ -17,6 +17,26 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
       },
       plugins: [react()],
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: (id) => {
+              if (!id.includes('node_modules')) return;
+              if (id.includes('node_modules/react-router')) return 'vendor-router';
+              if (id.includes('node_modules/react-dom')) return 'vendor-react';
+              if (id.includes('node_modules/react/')) return 'vendor-react';
+              if (id.includes('node_modules/@tanstack/react-query')) return 'vendor-query';
+              if (id.includes('node_modules/@supabase/')) return 'vendor-supabase';
+              if (id.includes('node_modules/recharts')) return 'vendor-charts';
+              if (id.includes('node_modules/lucide-react')) return 'vendor-icons';
+              if (id.includes('node_modules/date-fns') || id.includes('node_modules/moment')) return 'vendor-dates';
+              if (id.includes('node_modules/crypto-js')) return 'vendor-crypto';
+              if (id.includes('node_modules/axios')) return 'vendor-axios';
+              return undefined;
+            }
+          }
+        }
+      },
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)

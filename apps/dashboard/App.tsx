@@ -1,52 +1,57 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import Dashboard from './components/Dashboard';
-import UsersPage from './components/UsersPage';
-import ResourcePage from './components/admin/ResourcePage';
-import ModelPayrollPage from './components/ModelPayrollPage';
-import StudioLiquidationPage from './components/StudioLiquidationPage';
-import Users2Page from './components/Users2Page';
-import UserPermissions2Page from './components/UserPermissions2Page';
-import RecoveryPasswordPage from './components/RecoveryPasswordPage';
-import ChangePasswordPage from './components/ChangePasswordPage';
-import AuthCallbackPage from './components/AuthCallbackPage';
-import MyProfilePage from './components/MyProfilePage';
-import StudiosPage from './components/StudiosPage';
-import Onboarding from './components/Onboarding';
 import LoginPage from './components/LoginPage';
-import ChatPage from './components/ChatPage';
-import ChatPolicyAdmin from './components/ChatPolicyAdmin';
-import ChatWidget from './components/ChatWidget';
-import RoomControlPage from './components/RoomControlPage';
-import StorefrontPage from './components/StorefrontPage';
-import InventoryPage from './components/InventoryPage';
-import PhotographyPage from './components/PhotographyPage';
-import CategoriesPage from './components/CategoriesPage';
-import TransactionTypesPage from './components/TransactionTypesPage';
-import ExchangeRatesPage from './components/ExchangeRatesPage';
-import UtilityDashboard from './components/UtilityDashboard'; // NUEVO
-import MembershipPage from './components/MembershipPage';
-import WalletPage from './components/WalletPage';
-import MasterSettingsPage from './components/MasterSettingsPage';
-import BirthdaysPage from './components/BirthdaysPage';
-import AttendancePage from './components/AttendancePage';
-import MonetizationPage from './components/MonetizationPage'; // NUEVO
-import ContentSalesPage from './components/ContentSalesPage'; // NUEVO
-import RemoteDesktopPage from './components/RemoteDesktopPage'; // NUEVO
-import ShiftAssignmentPage from './components/ShiftAssignmentPage'; // NUEVO
-import SubscriptionManagementPage from './components/SubscriptionManagementPage'; // NUEVO
-import RequestsPage from './components/RequestsPage'; // UNIFICADO
-import LocationsPage from './components/LocationsPage'; // UNIFICADO
-import AdminDataPage from './components/AdminDataPage'; // UNIFICADO
-import SubscriptionLockScreen from './components/SubscriptionLockScreen';
+import Onboarding from './components/Onboarding';
+import RecoveryPasswordPage from './components/RecoveryPasswordPage';
+import AuthCallbackPage from './components/AuthCallbackPage';
 import LogoutConfirmDialog from './components/LogoutConfirmDialog';
 import AuthService from './AuthService';
 import { Lock, AlertTriangle, X, Crown } from 'lucide-react';
 import { getStoredUser } from './session';
 import BillingService from './BillingService';
+
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const UsersPage = lazy(() => import('./components/UsersPage'));
+const ResourcePage = lazy(() => import('./components/admin/ResourcePage'));
+const ModelPayrollPage = lazy(() => import('./components/ModelPayrollPage'));
+const StudioLiquidationPage = lazy(() => import('./components/StudioLiquidationPage'));
+const Users2Page = lazy(() => import('./components/Users2Page'));
+const UserPermissions2Page = lazy(() => import('./components/UserPermissions2Page'));
+const ChangePasswordPage = lazy(() => import('./components/ChangePasswordPage'));
+const MyProfilePage = lazy(() => import('./components/MyProfilePage'));
+const StudiosPage = lazy(() => import('./components/StudiosPage'));
+const ChatPage = lazy(() => import('./components/ChatPage'));
+const ChatPolicyAdmin = lazy(() => import('./components/ChatPolicyAdmin'));
+const ChatWidget = lazy(() => import('./components/ChatWidget'));
+const RoomControlPage = lazy(() => import('./components/RoomControlPage'));
+const StorefrontPage = lazy(() => import('./components/StorefrontPage'));
+const InventoryPage = lazy(() => import('./components/InventoryPage'));
+const PhotographyPage = lazy(() => import('./components/PhotographyPage'));
+const CategoriesPage = lazy(() => import('./components/CategoriesPage'));
+const TransactionTypesPage = lazy(() => import('./components/TransactionTypesPage'));
+const ExchangeRatesPage = lazy(() => import('./components/ExchangeRatesPage'));
+const UtilityDashboard = lazy(() => import('./components/UtilityDashboard'));
+const MembershipPage = lazy(() => import('./components/MembershipPage'));
+const WalletPage = lazy(() => import('./components/WalletPage'));
+const MasterSettingsPage = lazy(() => import('./components/MasterSettingsPage'));
+const BirthdaysPage = lazy(() => import('./components/BirthdaysPage'));
+const AttendancePage = lazy(() => import('./components/AttendancePage'));
+const MonetizationPage = lazy(() => import('./components/MonetizationPage'));
+const ContentSalesPage = lazy(() => import('./components/ContentSalesPage'));
+const RemoteDesktopPage = lazy(() => import('./components/RemoteDesktopPage'));
+const ShiftAssignmentPage = lazy(() => import('./components/ShiftAssignmentPage'));
+const SubscriptionManagementPage = lazy(() => import('./components/SubscriptionManagementPage'));
+const RequestsPage = lazy(() => import('./components/RequestsPage'));
+const LocationsPage = lazy(() => import('./components/LocationsPage'));
+const AdminDataPage = lazy(() => import('./components/AdminDataPage'));
+const SubscriptionLockScreen = lazy(() => import('./components/SubscriptionLockScreen'));
+
+const PageFallback = () => (
+  <div className="p-8 text-center text-slate-400 text-sm">Cargando...</div>
+);
 
 const PAGE_TO_PATH: Record<string, string> = {
   inicio: '/dashboard',
@@ -455,7 +460,9 @@ function App() {
         )}
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[#F8FAFC]">
-            {renderContent()}
+            <Suspense fallback={<PageFallback />}>
+              {renderContent()}
+            </Suspense>
 
             {subscriptionStatus === 'ACTIVE' && (
               <footer className="p-8 text-center text-slate-400 text-sm flex flex-col items-center gap-2">
@@ -471,7 +478,11 @@ function App() {
         </div>
       </div>
 
-      {subscriptionStatus === 'ACTIVE' && <ChatWidget />}
+      {subscriptionStatus === 'ACTIVE' && (
+        <Suspense fallback={null}>
+          <ChatWidget />
+        </Suspense>
+      )}
 
       <LogoutConfirmDialog
         open={isLogoutDialogOpen}
