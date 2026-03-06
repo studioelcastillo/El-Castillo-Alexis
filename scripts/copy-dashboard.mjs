@@ -10,12 +10,20 @@ const root = path.resolve(__dirname, '..');
 const src = path.join(root, 'apps', 'dashboard', 'dist');
 const distDir = process.env.DIST_DIR || path.join('dist', 'spa');
 const distRoot = path.isAbsolute(distDir) ? distDir : path.join(root, distDir);
-const dest = distRoot;
-const htaccessPath = path.join(distRoot, '.htaccess');
+const normalizeBase = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw || raw === '/') return '/';
+  const withLeading = raw.startsWith('/') ? raw : `/${raw}`;
+  return withLeading.endsWith('/') ? withLeading : `${withLeading}/`;
+};
+const base = normalizeBase(process.env.VITE_DASHBOARD_BASE || process.env.DASHBOARD_APP_URL || '/dashboard-app/');
+const basePath = base === '/' ? '' : base.replace(/^\/+|\/+$/g, '');
+const dest = basePath ? path.join(distRoot, basePath) : distRoot;
+const htaccessPath = path.join(dest, '.htaccess');
 const dashboardRewriteRule = [
   '  RewriteCond %{REQUEST_FILENAME} !-f',
   '  RewriteCond %{REQUEST_FILENAME} !-d',
-  '  RewriteRule . /index.html [L]',
+  '  RewriteRule . index.html [L]',
 ].join('\n');
 
 if (!existsSync(src)) {
@@ -29,7 +37,7 @@ await cp(src, dest, { recursive: true });
 
 if (existsSync(htaccessPath)) {
   const content = await readFile(htaccessPath, 'utf8');
-  if (!content.includes('dashboard-app/index.html')) {
+  if (!content.includes('RewriteRule . index.html')) {
     let updated = content;
     if (content.includes('RewriteEngine On')) {
       updated = content.replace(
@@ -51,4 +59,31 @@ if (existsSync(htaccessPath)) {
   await writeFile(htaccessPath, initial, 'utf8');
 }
 
+const nginxConfig = `server {
+    listen 80;
+    listen 3000;
+    listen 3032;
+    listen 3033;
+
+    # Root location handles base redirection if app is not at root
+    location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+        ${basePath ? `rewrite ^/$ /${basePath}/ redirect;` : ''}
+        try_files $uri $uri/ /${basePath ? basePath + '/' : ''}index.html;
+    }
+
+    ${basePath ? `
+    # SPA routing for the subfolder
+    location /${basePath}/ {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+        try_files $uri $uri/ /${basePath}/index.html;
+    }
+    ` : ''}
+}
+`;
+await writeFile(path.join(distRoot, 'nginx.conf'), nginxConfig, 'utf8');
+
 console.log(`Copied dashboard build to ${dest}`);
+console.log(`Generated nginx.conf at ${path.join(distRoot, 'nginx.conf')}`);
