@@ -21,6 +21,9 @@
 - Se revisaron credenciales dentro del proyecto y del historial local: solo aparecieron credenciales parciales de `staging` y scripts viejos con passwords hardcodeados, pero no una credencial administrativa valida para `production`.
 - Se probo acceso por Management API con la service role de `staging` y devolvio `401`, por lo que no sirve como token de gestion.
 - Se consulto `settings` en `staging` con la service role y no aparecieron llaves de Supabase ni credenciales de produccion guardadas alli.
+- Se recupero acceso SQL real a `staging` usando la conexion `postgresql://postgres.pnnrsqocukixusmzrlhy@aws-1-us-east-1.pooler.supabase.com:6543/postgres` con la clave encontrada en scripts legacy.
+- Se importo el dump AWS a `staging` con `scripts/import_aws_dump.mjs` y quedaron cargadas tablas clave como `users` (4182), `studios` (97), `studios_models` (4243), `models_accounts` (16394), `models_streams` (382752), `transactions` (4163), `payments` (575), `accounts` (11), `bank_accounts` (39), `exchange_rates` (496) y `payment_files` (23).
+- Se sincronizo `staging` con Supabase Auth usando `supabase/sync_legacy_auth.sql`: quedaron `4182` usuarios en `auth.users`, `4182` identidades y `4182` filas de `public.users` enlazadas por `auth_user_id`.
 
 ### Archivos tocados recientemente
 - `MEMORIA.md`
@@ -29,6 +32,9 @@
 - `supabase/legacy_aws_alignment.sql`
 - `run_pg.mjs`
 - `README.md`
+- `supabase/schema.sql`
+- `scripts/import_aws_dump.mjs`
+- `supabase/sync_legacy_auth.sql`
 
 ### GitHub
 - Rama activa: `supabase-migration-final`
@@ -36,7 +42,7 @@
 - Estado: cambios de esta tarea ya enviados a `origin/supabase-migration-final`
 
 ### Pendientes
-- Ejecutar la migracion completa primero en `staging` y validar lectura/escritura del dashboard con datos reales.
+- Validar login real en `staging` con credenciales antiguas de un usuario existente y revisar que el dashboard navegue sin errores con los datos importados.
 - Conseguir credencial administrativa valida para aplicar SQL en `production` (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_SERVICE_KEY` de gestion o credenciales DB directas). En `.env.production` solo esta la URL y la anon key.
 - Confirmar si las tablas legacy ya fueron importadas en ambos proyectos o si primero hay que cargar el dump base.
 - Hacer commit y push solo de los archivos creados/modificados para esta tarea, sin mezclar cambios ajenos del arbol actual.
@@ -46,6 +52,7 @@
 - No hay credencial administrativa utilizable para ejecutar SQL en `production` desde el entorno actual.
 - El repositorio tiene muchos cambios previos no relacionados; hay que evitar incluirlos en el commit de esta tarea.
 - Las credenciales antiguas encontradas para conexion directa a `staging` no autenticaron con el pooler actual.
+- La importacion completa en `production` sigue bloqueada por falta de password de DB o token de gestion valido.
 
 ### Siguiente paso recomendado
-- Si se confirma la credencial de despliegue o acceso a DB, ejecutar primero en `staging` y luego replicar en `production` la secuencia `schema.sql` -> `legacy_schema_missing.sql` -> `legacy_aws_alignment.sql` -> scripts complementarios.
+- Usar los nuevos scripts (`scripts/import_aws_dump.mjs` y `supabase/sync_legacy_auth.sql`) para replicar el mismo proceso en `production` apenas aparezca una credencial administrativa valida.

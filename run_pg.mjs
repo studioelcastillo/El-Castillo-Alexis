@@ -30,7 +30,10 @@ const filesToRun = [
 ];
 
 async function run() {
-  const client = new Client({ connectionString });
+  const client = new Client({
+    connectionString,
+    ssl: { rejectUnauthorized: false }
+  });
   try {
     await client.connect();
     console.log('Connected to PostgreSQL successfully.');

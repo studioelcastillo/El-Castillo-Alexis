@@ -1,7 +1,7 @@
 -- ==========================================================
 -- EL CASTILLO GROUP SAS — Supabase Database Schema
 -- Generado automáticamente desde los servicios del proyecto
--- URL: https://wukvaemawvjavwqocxyb.supabase.co
+-- URL de referencia: https://ysorlqfwqccsgxxkpzdx.supabase.co
 -- ==========================================================
 
 -- Habilitar extensiones necesarias
@@ -237,8 +237,20 @@ CREATE TABLE IF NOT EXISTS studios (
   parent_std_id INT REFERENCES studios(std_id)
 );
 
--- Ahora sí podemos agregar el FK a users
-ALTER TABLE users ADD CONSTRAINT fk_user_std FOREIGN KEY (std_id) REFERENCES studios(std_id) ON DELETE SET NULL;
+-- Ahora si podemos agregar el FK a users
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'fk_user_std'
+      AND conrelid = 'public.users'::regclass
+  ) THEN
+    ALTER TABLE users
+      ADD CONSTRAINT fk_user_std
+      FOREIGN KEY (std_id) REFERENCES studios(std_id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- Cuentas del estudio (para pagos y liquidaciones)
 CREATE TABLE IF NOT EXISTS studios_accounts (
