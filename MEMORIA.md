@@ -17,7 +17,7 @@
 - Se detecto que el dump AWS tenia una tabla legacy faltante en el proyecto: `payments_files`.
 - Se agrego `supabase/legacy_aws_alignment.sql` para alinear tablas legacy con las tablas que usa la app: `accounts`, `bank_accounts`, `exchange_rates`, `payment_files` y `settings`.
 - Se actualizo `run_pg.mjs` para ejecutar tambien `supabase/legacy_aws_alignment.sql`.
-- Se actualizo `README.md` con la nueva pieza del flujo de migracion.
+- Se hizo commit y push de estos cambios en la rama `supabase-migration-final` con el commit `c74cd12`.
 
 ### Archivos tocados recientemente
 - `MEMORIA.md`
@@ -26,6 +26,11 @@
 - `supabase/legacy_aws_alignment.sql`
 - `run_pg.mjs`
 - `README.md`
+
+### GitHub
+- Rama activa: `supabase-migration-final`
+- Ultimo commit propio: `c74cd12` (`fix: align legacy AWS schema for Supabase sync`)
+- Estado: cambios de esta tarea ya enviados a `origin/supabase-migration-final`
 
 ### Pendientes
 - Ejecutar la migracion completa primero en `staging` y validar lectura/escritura del dashboard con datos reales.
