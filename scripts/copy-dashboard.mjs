@@ -16,7 +16,7 @@ const normalizeBase = (value) => {
   const withLeading = raw.startsWith('/') ? raw : `/${raw}`;
   return withLeading.endsWith('/') ? withLeading : `${withLeading}/`;
 };
-const base = normalizeBase(process.env.VITE_DASHBOARD_BASE || process.env.DASHBOARD_APP_URL || '/dashboard-app/');
+const base = normalizeBase(process.env.VITE_DASHBOARD_BASE || process.env.DASHBOARD_APP_URL || '/');
 const basePath = base === '/' ? '' : base.replace(/^\/+|\/+$/g, '');
 const dest = basePath ? path.join(distRoot, basePath) : distRoot;
 const htaccessPath = path.join(dest, '.htaccess');
@@ -84,7 +84,8 @@ const nginxConfig = `server {
     ` : ''}
 }
 `;
-await writeFile(path.join(distRoot, 'nginx.conf'), nginxConfig, 'utf8');
+// console.log(`Generated nginx.conf at ${path.join(distRoot, 'nginx.conf')}`);
+// await writeFile(path.join(distRoot, 'nginx.conf'), nginxConfig, 'utf8');
 
 console.log(`Copied dashboard build to ${dest}`);
 console.log(`Generated nginx.conf at ${path.join(distRoot, 'nginx.conf')}`);
