@@ -1,5 +1,5 @@
 import { existsSync } from 'fs';
-import { cp, mkdir, rm } from 'fs/promises';
+import { cp, mkdir, readFile, rm, writeFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -10,7 +10,13 @@ const root = path.resolve(__dirname, '..');
 const src = path.join(root, 'apps', 'dashboard', 'dist');
 const distDir = process.env.DIST_DIR || path.join('dist', 'spa');
 const distRoot = path.isAbsolute(distDir) ? distDir : path.join(root, distDir);
-const dest = path.join(distRoot, 'dashboard-app');
+const dest = distRoot;
+const htaccessPath = path.join(distRoot, '.htaccess');
+const dashboardRewriteRule = [
+  '  RewriteCond %{REQUEST_FILENAME} !-f',
+  '  RewriteCond %{REQUEST_FILENAME} !-d',
+  '  RewriteRule . /index.html [L]',
+].join('\n');
 
 if (!existsSync(src)) {
   console.error(`Dashboard build not found at ${src}`);
@@ -20,5 +26,29 @@ if (!existsSync(src)) {
 await rm(dest, { recursive: true, force: true });
 await mkdir(dest, { recursive: true });
 await cp(src, dest, { recursive: true });
+
+if (existsSync(htaccessPath)) {
+  const content = await readFile(htaccessPath, 'utf8');
+  if (!content.includes('dashboard-app/index.html')) {
+    let updated = content;
+    if (content.includes('RewriteEngine On')) {
+      updated = content.replace(
+        /RewriteEngine On\s*/i,
+        (match) => `${match}${dashboardRewriteRule}\n`
+      );
+    } else if (content.includes('<IfModule mod_rewrite.c>')) {
+      updated = content.replace(
+        /<IfModule mod_rewrite\.c>\s*/i,
+        (match) => `${match}  RewriteEngine On\n${dashboardRewriteRule}\n`
+      );
+    } else {
+      updated = `<IfModule mod_rewrite.c>\n  RewriteEngine On\n${dashboardRewriteRule}\n</IfModule>\n`;
+    }
+    await writeFile(htaccessPath, updated, 'utf8');
+  }
+} else {
+  const initial = `<IfModule mod_rewrite.c>\n  RewriteEngine On\n${dashboardRewriteRule}\n</IfModule>\n`;
+  await writeFile(htaccessPath, initial, 'utf8');
+}
 
 console.log(`Copied dashboard build to ${dest}`);
