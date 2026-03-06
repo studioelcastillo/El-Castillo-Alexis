@@ -1,5 +1,8 @@
 providers = ["node"]
 
+[phases.setup]
+nixPkgs = ["nodePackages.npm", "nodejs"]
+
 [phases.build]
 cmds = ["npm install", "npm run build", "rm -f dist/spa/nginx.conf dist/spa/.htaccess"]
 

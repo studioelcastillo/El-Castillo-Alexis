@@ -106,12 +106,12 @@ app.get('/debug-config', (req, res) => {
 // Root redirect to the dashboard base path
 if (basePath) {
   app.get('/', (req, res) => {
-    const protocol = req.get('x-forwarded-proto') || req.protocol;
-    const host = req.get('x-forwarded-host') || req.get('host');
-    // Remove port 3000 if it's there
-    const cleanHost = host ? host.split(':')[0] : '';
     console.log('Redirecting root to:', `/${basePath}/`);
-    res.redirect(`${protocol}://${cleanHost}/${basePath}/`);
+    res.redirect(`/${basePath}/`);
+  });
+
+  app.get(`/${basePath}`, (req, res) => {
+    res.redirect(`/${basePath}/`);
   });
 
 
