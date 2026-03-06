@@ -2,14 +2,58 @@ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
+const repoRoot = path.resolve(__dirname, '..', '..');
+const appRoot = path.resolve(__dirname);
+const envPrefixes = ['VITE_', 'DASHBOARD_'];
+
+const normalizeBase = (value: string | undefined) => {
+  const raw = String(value || '').trim();
+  if (!raw || raw === '/') return '/';
+  const withLeading = raw.startsWith('/') ? raw : `/${raw}`;
+  return withLeading.endsWith('/') ? withLeading : `${withLeading}/`;
+};
+
 export default defineConfig(({ mode }) => {
-  const fileEnv = loadEnv(mode, '.', '');
-  const runtimeEnv = Object.fromEntries(
-    Object.entries(process.env).filter(([key]) => key.startsWith('VITE_'))
+  const repoEnv = loadEnv(mode, repoRoot, '');
+  const appEnv = mode === 'development' ? loadEnv(mode, appRoot, '') : {};
+  const env = { ...repoEnv, ...appEnv, ...process.env };
+  const base = normalizeBase(env.VITE_DASHBOARD_BASE || env.DASHBOARD_APP_URL || '/');
+  const isLocalhostUrl = (value: string) => {
+    const lower = value.toLowerCase();
+    return (
+      lower.startsWith('http://localhost') ||
+      lower.startsWith('http://127.0.0.1') ||
+      lower.startsWith('https://localhost') ||
+      lower.startsWith('https://127.0.0.1')
+    );
+  };
+  const shouldExposeApiUrl = (value: string) => {
+    if (!value) return false;
+    if (mode === 'production' && isLocalhostUrl(value)) return false;
+    return true;
+  };
+  const defineEnv = Object.fromEntries(
+    Object.entries(env)
+      .filter(([key, value]) => envPrefixes.some((prefix) => key.startsWith(prefix)) && value !== undefined)
+      .map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)])
   );
-  const env = { ...fileEnv, ...runtimeEnv };
+  const supabaseUrl = env.VITE_SUPABASE_URL || env.SUPABASE_URL;
+  const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY;
+  const apiUrl = String(env.VITE_API_URL || env.API_URL || '').trim();
+  if (supabaseUrl !== undefined) {
+    defineEnv['import.meta.env.VITE_SUPABASE_URL'] = JSON.stringify(supabaseUrl);
+  }
+  if (supabaseAnonKey !== undefined) {
+    defineEnv['import.meta.env.VITE_SUPABASE_ANON_KEY'] = JSON.stringify(supabaseAnonKey);
+  }
+  if (shouldExposeApiUrl(apiUrl)) {
+    defineEnv['import.meta.env.VITE_API_URL'] = JSON.stringify(apiUrl);
+  }
   return {
-    base: env.VITE_DASHBOARD_BASE || '/',
+    envDir: repoRoot,
+    envPrefix: envPrefixes,
+    define: defineEnv,
+    base,
     server: {
       port: 3000,
       host: '0.0.0.0',
