@@ -82,6 +82,27 @@ app.use((req, res, next) => {
 // Serve static files from the dist directory
 app.use(express.static(distRoot));
 
+// Diagnostic route
+app.get('/debug-config', (req, res) => {
+  res.json({
+    currentTime: new Date().toISOString(),
+    base,
+    basePath,
+    env: {
+      VITE_DASHBOARD_BASE: process.env.VITE_DASHBOARD_BASE,
+      DASHBOARD_APP_URL: process.env.DASHBOARD_APP_URL,
+      PORT: process.env.PORT,
+      NODE_ENV: process.env.NODE_ENV
+    },
+    headers: req.headers,
+    protocol: req.get('x-forwarded-proto') || req.protocol,
+    host: req.get('x-forwarded-host') || req.get('host'),
+    distRoot,
+    distExists: fs.existsSync(distRoot),
+    rootFiles: fs.readdirSync(root)
+  });
+});
+
 // Root redirect to the dashboard base path
 if (basePath) {
   app.get('/', (req, res) => {
