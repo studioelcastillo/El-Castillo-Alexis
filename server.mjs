@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -8,6 +9,22 @@ const __dirname = path.dirname(__filename);
 const root = path.resolve(__dirname);
 const distDir = process.env.DIST_DIR || path.join('dist', 'spa');
 const distRoot = path.isAbsolute(distDir) ? distDir : path.join(root, distDir);
+
+console.log('--- DIAGNOSTICS ---');
+console.log('Root directory:', root);
+console.log('Distribution directory:', distRoot);
+if (fs.existsSync(distRoot)) {
+  console.log('Distribution directory EXISTS');
+  try {
+    const files = fs.readdirSync(distRoot);
+    console.log('Files in distRoot:', files);
+  } catch (e) {
+    console.error('Error reading distRoot:', e.message);
+  }
+} else {
+  console.error('Distribution directory DOES NOT EXIST');
+}
+console.log('-------------------');
 
 const normalizeBase = (value) => {
   const raw = String(value || '').trim();
