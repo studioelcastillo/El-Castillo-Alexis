@@ -70,8 +70,9 @@ const nginxConfig = `server {
         root /usr/share/nginx/html;
         index index.html index.htm;
         ${basePath ? `rewrite ^/$ /${basePath}/ redirect;` : ''}
-        try_files $uri $uri/ /${basePath ? basePath + '/' : ''}index.html;
+        try_files $uri $uri/ /${basePath ? basePath + '/' : 'index.html'};
     }
+
 
     ${basePath ? `
     # SPA routing for the subfolder

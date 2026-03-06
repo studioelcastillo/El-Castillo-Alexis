@@ -67,15 +67,32 @@ const basePath = base === '/' ? '' : base.replace(/^\/+|\/+$/g, '');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy for Easypanel/Nginx
+app.set('trust proxy', true);
+
+// Log headers for debugging
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log('Forwarded-Proto:', req.get('x-forwarded-proto'));
+  console.log('Forwarded-Host:', req.get('x-forwarded-host'));
+  next();
+});
+
+
 // Serve static files from the dist directory
 app.use(express.static(distRoot));
 
 // Root redirect to the dashboard base path
 if (basePath) {
   app.get('/', (req, res) => {
+    const protocol = req.get('x-forwarded-proto') || req.protocol;
+    const host = req.get('x-forwarded-host') || req.get('host');
+    // Remove port 3000 if it's there
+    const cleanHost = host ? host.split(':')[0] : '';
     console.log('Redirecting root to:', `/${basePath}/`);
-    res.redirect(`/${basePath}/`);
+    res.redirect(`${protocol}://${cleanHost}/${basePath}/`);
   });
+
 
   // SPA routing for the subfolder
   app.get(`/${basePath}/*`, (req, res) => {
