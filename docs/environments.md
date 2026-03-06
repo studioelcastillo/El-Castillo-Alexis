@@ -15,7 +15,7 @@ Se han designado dos proyectos independientes para separar los datos reales de l
 
 Para agilizar el desarrollo, se establecen las siguientes reglas de operación:
 
-1. **Autorización Delegada**: El sistema tiene permiso para modificar y mover cualquier parte del proyecto de forma autónoma. Solo se requerirá autorización explícita para la **eliminación definitiva** de archivos o datos.
+1. **Autorización Delegada**: El sistema tiene permiso pleno para modificar, mover y ejecutar comandos (`run_command`) de forma autónoma para agilizar el desarrollo. Solo se requerirá autorización explícita para la **eliminación definitiva** de archivos críticos o datos sensibles.
 2. **Sincronización Total**: Cualquier cambio realizado localmente debe reflejarse en:
    - **GitHub**: Repositorio oficial (ramas `main` para producción y `staging` para pruebas).
    - **Carpeta del Proyecto**: Sincronización continua con el entorno local.
