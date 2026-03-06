@@ -61,7 +61,7 @@ const normalizeBase = (value) => {
   return withLeading.endsWith('/') ? withLeading : `${withLeading}/`;
 };
 
-const base = normalizeBase(process.env.VITE_DASHBOARD_BASE || process.env.DASHBOARD_APP_URL || '/dashboard-app/');
+const base = normalizeBase(process.env.VITE_DASHBOARD_BASE || process.env.DASHBOARD_APP_URL || '/');
 const basePath = base === '/' ? '' : base.replace(/^\/+|\/+$/g, '');
 
 const app = express();
