@@ -1,11 +1,12 @@
 
 import { api } from './api';
-import { getStoredUser } from './session';
+import { getCurrentStudioId } from './tenant';
 
 // ==================== TYPES ====================
 
 export interface StreamPayload {
   modacc_id: number | string;
+  std_id?: number | string;
   modstr_date: string;
   modstr_period?: string;
   modstr_earnings_tokens?: number | string | null;
@@ -25,11 +26,21 @@ export interface StreamTotals {
 const StreamService = {
   // --- List by model/user ---
   getStreamsByModel: (userId: number | string) => {
-    return api.get(`/models_streams/model?user_id=${userId}`);
+    const params = new URLSearchParams({ user_id: String(userId) });
+    const stdId = getCurrentStudioId();
+    if (stdId) {
+      params.set('std_id', String(stdId));
+    }
+    return api.get(`/models_streams/model?${params.toString()}`);
   },
 
   getStreams: (query: string) => {
-    return api.get(`/models_streams?${query}`);
+    const params = new URLSearchParams(query);
+    const stdId = getCurrentStudioId();
+    if (stdId && !params.has('std_id')) {
+      params.set('std_id', String(stdId));
+    }
+    return api.get(`/models_streams?${params.toString()}`);
   },
 
   getStream: (id: number | string) => {
@@ -37,11 +48,17 @@ const StreamService = {
   },
 
   addStream: (data: StreamPayload) => {
-    return api.post('/models_streams', data);
+    return api.post('/models_streams', {
+      ...data,
+      std_id: data.std_id || getCurrentStudioId() || undefined,
+    });
   },
 
   editStream: (id: number | string, data: StreamPayload) => {
-    return api.put(`/models_streams/${id}`, data);
+    return api.put(`/models_streams/${id}`, {
+      ...data,
+      std_id: data.std_id || getCurrentStudioId() || undefined,
+    });
   },
 
   deleteStream: (id: number | string) => {
@@ -50,13 +67,20 @@ const StreamService = {
 
   // --- Model accounts for dropdown (by user) ---
   getModelAccountsByUser: (userId: number | string) => {
-    return api.get(`/models_accounts/model?user_id=${userId}`);
+    const params = new URLSearchParams({ user_id: String(userId) });
+    const stdId = getCurrentStudioId();
+    if (stdId) {
+      params.set('std_id', String(stdId));
+    }
+    return api.get(`/models_accounts/model?${params.toString()}`);
   },
 
   // --- Export Excel URL ---
-  getExportUrl: (userId: number | string): string => {
-    const token = getStoredUser()?.access_token || '';
-    return `${api.defaults.baseURL}/models_streams/export?access_token=${token}&user_id=${userId}`;
+  downloadExport: (userId: number | string) => {
+    return api.get('/models_streams/export', {
+      params: { user_id: userId },
+      responseType: 'blob',
+    });
   },
 };
 

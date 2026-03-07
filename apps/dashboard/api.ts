@@ -1,6 +1,7 @@
 
 import axios from 'axios';
 import { StudioApiResponse, Studio } from './types';
+import { supabase } from './supabaseClient';
 import { getStoredUser } from './session';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://el-castillo-api.bygeckode.com/api';
@@ -14,11 +15,29 @@ export const api = axios.create({
 });
 
 // Interceptor para agregar el token automáticamente
-api.interceptors.request.use((config) => {
-  const user = getStoredUser();
-  const accessToken = user?.access_token;
-  if (accessToken) {
-    config.headers.Authorization = `Bearer ${accessToken}`;
+api.interceptors.request.use(async (config) => {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const accessToken = data.session?.access_token;
+    const studioId = getStoredUser()?.std_id;
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    if (studioId) {
+      config.headers['X-Studio-Id'] = String(studioId);
+
+      const method = String(config.method || 'get').toLowerCase();
+      if (method === 'get' || method === 'delete') {
+        const params = new URLSearchParams((config.params || {}) as Record<string, string>);
+        if (!params.has('std_id')) {
+          params.set('std_id', String(studioId));
+        }
+        config.params = Object.fromEntries(params.entries());
+      }
+    }
+  } catch (error) {
+    // ignore token injection errors
   }
   return config;
 });

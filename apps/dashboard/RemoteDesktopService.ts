@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { getStoredUser } from './session';
+import { getCurrentStudioId } from './tenant';
 
 // --- TYPES ---
 
@@ -62,6 +63,15 @@ const getActorName = () => {
   const first = user.user_name || user.user_username || user.user_email || 'Usuario';
   const last = user.user_surname || '';
   return `${first} ${last}`.trim();
+};
+
+const belongsToCurrentStudio = (row: any) => {
+  const studioId = getCurrentStudioId();
+  if (!studioId) return true;
+  if (row && typeof row === 'object' && 'std_id' in row && row.std_id != null) {
+    return Number(row.std_id) === studioId;
+  }
+  return true;
 };
 
 const logAudit = async (payload: {
@@ -134,7 +144,7 @@ const RemoteDesktopService = {
       return [];
     }
 
-    return (data || []).map(mapDevice);
+    return (data || []).filter(belongsToCurrentStudio).map(mapDevice);
   },
 
   getSession: async (sessionId: string): Promise<RemoteSession | undefined> => {
@@ -144,7 +154,7 @@ const RemoteDesktopService = {
       .eq('remote_session_id', Number(sessionId))
       .single();
 
-    if (error || !data) return undefined;
+    if (error || !data || !belongsToCurrentStudio(data)) return undefined;
     return mapSession(data);
   },
 
@@ -155,7 +165,7 @@ const RemoteDesktopService = {
       .eq('remote_device_id', Number(deviceId))
       .single();
 
-    if (deviceError || !device) throw new Error('Dispositivo no encontrado');
+    if (deviceError || !device || !belongsToCurrentStudio(device)) throw new Error('Dispositivo no encontrado');
     if ((device.device_status || '').toUpperCase() === 'OFFLINE') {
       throw new Error('El dispositivo esta desconectado');
     }
@@ -264,7 +274,7 @@ const RemoteDesktopService = {
       return [];
     }
 
-    return (data || []).map((row: any) => ({
+    return (data || []).filter(belongsToCurrentStudio).map((row: any) => ({
       id: String(row.remote_audit_id),
       timestamp: row.created_at,
       actor: row.actor_name || 'Sistema',
@@ -287,7 +297,7 @@ const RemoteDesktopService = {
       return [];
     }
 
-    return (data || []).map((row: any) => ({
+    return (data || []).filter(belongsToCurrentStudio).map((row: any) => ({
       id: String(row.remote_policy_id),
       name: row.policy_name,
       allow_unattended: row.allow_unattended === true,
@@ -336,6 +346,8 @@ const RemoteDesktopService = {
     os: 'WINDOWS' | 'MAC' | 'LINUX';
     version: string;
     monitors: number;
+    ip_address?: string | null;
+    preview_url?: string | null;
   }) => {
     const { data, error } = await supabase
       .from('remote_devices')
@@ -347,14 +359,13 @@ const RemoteDesktopService = {
           last_seen: new Date().toISOString(),
           os: deviceData.os,
           device_version: deviceData.version,
-          ip_address: '10.0.0.' + Math.floor(Math.random() * 255),
+          ip_address: deviceData.ip_address || null,
           unattended_enabled: false,
           groups_json: ['Sin Asignar'],
           tags_json: ['Auto-Enrolled'],
           monitors_count: deviceData.monitors,
-          preview_url:
-            'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=400&auto=format&fit=crop',
-          preview_updated_at: new Date().toISOString(),
+          preview_url: deviceData.preview_url || null,
+          preview_updated_at: deviceData.preview_url ? new Date().toISOString() : null,
         },
       ])
       .select('*')

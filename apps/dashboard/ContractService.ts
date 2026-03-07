@@ -1,6 +1,6 @@
 
 import { api } from './api';
-import { getStoredUser } from './session';
+import { getCurrentStudioId } from './tenant';
 
 // ==================== TYPES ====================
 
@@ -63,7 +63,12 @@ export const ARL_RISK_LEVELS = [
 const ContractService = {
   // --- Studios ---
   getStudios: () => {
-    return api.get('/studios?std_active=true');
+    const params = new URLSearchParams({ std_active: 'true' });
+    const stdId = getCurrentStudioId();
+    if (stdId) {
+      params.set('std_id', String(stdId));
+    }
+    return api.get(`/studios?${params.toString()}`);
   },
 
   // --- Studio Rooms (filtered by studio) ---
@@ -91,11 +96,17 @@ const ContractService = {
 
   // --- CRUD Contracts (studios_models) ---
   addContract: (data: ContractPayload) => {
-    return api.post('/studios_models', data);
+    return api.post('/studios_models', {
+      ...data,
+      std_id: data.std_id || getCurrentStudioId() || undefined,
+    });
   },
 
   editContract: (id: number | string, data: ContractPayload) => {
-    return api.put(`/studios_models/${id}`, data);
+    return api.put(`/studios_models/${id}`, {
+      ...data,
+      std_id: data.std_id || getCurrentStudioId() || undefined,
+    });
   },
 
   getContract: (id: number | string) => {
@@ -103,7 +114,12 @@ const ContractService = {
   },
 
   getUserContracts: (userId: number | string) => {
-    return api.get(`/studios_models?parentfield=user_id_model&parentid=${userId}`);
+    const params = new URLSearchParams({ parentfield: 'user_id_model', parentid: String(userId) });
+    const stdId = getCurrentStudioId();
+    if (stdId) {
+      params.set('std_id', String(stdId));
+    }
+    return api.get(`/studios_models?${params.toString()}`);
   },
 
   // --- Activate / Deactivate (dedicated routes) ---
@@ -116,14 +132,21 @@ const ContractService = {
   },
 
   // --- Documents (PDF download URL) ---
-  getDocumentUrl: (contractId: number | string, type: string): string => {
-    const token = getStoredUser()?.access_token || '';
-    return `${api.defaults.baseURL}/studios_models/pdf/${type}/${contractId}?access_token=${token}&type=${type}`;
+  downloadDocument: (contractId: number | string, type: string) => {
+    return api.get(`/studios_models/pdf/${type}/${contractId}`, {
+      params: { type },
+      responseType: 'blob',
+    });
   },
 
   // --- Model Accounts ---
   getAccounts: (contractId: number | string) => {
-    return api.get(`/models_accounts?stdmod_id=${contractId}`);
+    const params = new URLSearchParams({ stdmod_id: String(contractId) });
+    const stdId = getCurrentStudioId();
+    if (stdId) {
+      params.set('std_id', String(stdId));
+    }
+    return api.get(`/models_accounts?${params.toString()}`);
   },
 
   addAccount: (data: any) => {

@@ -37,6 +37,10 @@
 - Se ajustaron servicios criticos para respetar el estudio actual y aislar configuraciones por sede: `PhotoService`, `ContentSalesService`, `RoomControlService`, `StoreService`, `BillingService`, `LicenseService`, `MasterSettingsService`, `MonetizationService`, `BirthdayService`, `AttendanceService` y `ReportSupabaseService`.
 - Las configuraciones guardadas en `settings` ahora usan clave por sede con formato `studio:{std_id}:{set_key}` y mantienen compatibilidad de lectura con claves legacy globales.
 - Verificacion tecnica completada: `npm run lint` y `npm run build` ejecutaron correctamente y se regenero `dist/spa` local.
+- Segunda fase aplicada: `api.ts` ahora adjunta `X-Studio-Id` y propaga `std_id` en requests GET/DELETE del backend legacy cuando falta.
+- Se endurecieron tambien `DashboardService`, `TransactionService`, `StreamService` y `ContractService` para enviar o preservar `std_id` del tenant activo hacia el API legado.
+- Se aislaron configuraciones y defaults de `ChatService` y `WalletService` por tenant; ademas chat ahora evita crear conversaciones con usuarios fuera de la sede activa y filtra usuarios en linea por `std_id` cuando puede resolverlo desde `users`.
+- `RemoteDesktopService` ahora filtra client-side los registros con `std_id` cuando ese dato existe en la tabla remota, aunque todavia depende de que el backend/esquema remoto exponga ese campo.
 
 ### Archivos tocados recientemente
 - `MEMORIA.md`
@@ -64,6 +68,14 @@
 - `apps/dashboard/RoomControlService.ts`
 - `apps/dashboard/StoreService.ts`
 - `apps/dashboard/services/supabase/ReportSupabaseService.ts`
+- `apps/dashboard/api.ts`
+- `apps/dashboard/DashboardService.ts`
+- `apps/dashboard/TransactionService.ts`
+- `apps/dashboard/StreamService.ts`
+- `apps/dashboard/ContractService.ts`
+- `apps/dashboard/ChatService.ts`
+- `apps/dashboard/WalletService.ts`
+- `apps/dashboard/RemoteDesktopService.ts`
 
 ### GitHub
 - Rama activa: `supabase-migration-final-safe`
@@ -76,15 +88,16 @@
 - Abrir PR o merge desde `supabase-migration-final-safe` cuando haya herramienta GitHub disponible (`gh` no esta instalada en este entorno).
 - Confirmar si las tablas legacy ya fueron importadas en ambos proyectos o si primero hay que cargar el dump base.
 - Revisar y sanear archivos locales con secretos expuestos o credenciales antiguas que ya no son validas.
-- Auditar y aislar los modulos que todavia dependen fuerte de API legacy o no tienen `std_id` claro en esquema, especialmente `RemoteDesktopService`, `ChatService`, `WalletService`, `DashboardService`, `TransactionService`, `StreamService` y `ContractService`.
+- Validar en navegador con usuarios de distintas sedes que los datos visibles no se mezclen entre tenants en dashboard, transacciones, streams, contratos, chat, wallet y escritorio remoto.
+- Diseñar una fase de backend/RLS para tablas que todavia no garantizan aislamiento por esquema, especialmente `remote_*`, `chat_*` y rutas legacy que hoy solo reciben `std_id` desde cliente.
 
 ### Bloqueos
 - El repositorio tiene muchos cambios previos no relacionados; hay que evitar incluirlos en el commit de esta tarea.
 - Las credenciales antiguas encontradas para conexion directa a `staging` no autenticaron con el pooler actual.
 - `production` ya tiene datos publicos y usuarios auth operativos; el pendiente principal es validacion funcional completa en interfaz.
 - `gh` no esta instalado en este entorno, asi que no pude crear el PR automaticamente desde CLI.
-- Algunos modulos todavia usan backend/API legacy y requieren una segunda fase para garantizar aislamiento multi-tenant completo en todas las operaciones.
+- Algunos modulos todavia dependen de enforcement del backend legacy o de tablas sin politica/RLS visible; el frontend ya manda y filtra por tenant, pero el cierre total requiere respaldo server-side.
 
 ### Siguiente paso recomendado
 - Usar una muestra real de usuarios en `production` para validar dashboard, consultas, reportes y permisos despues de la importacion completa.
-- Priorizar una segunda fase de hardening para `RemoteDesktopService`, `DashboardService`, `TransactionService`, `StreamService` y `ContractService` antes de declarar el multi-tenant completamente cerrado.
+- Priorizar una validacion funcional cruzada por sedes y, despues, una fase server-side para convertir el aislamiento multi-tenant en garantia de backend y no solo de cliente.

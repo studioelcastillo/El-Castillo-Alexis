@@ -1,12 +1,13 @@
 
 import { api } from './api';
-import { getStoredUser } from './session';
+import { getCurrentStudioId } from './tenant';
 
 // ==================== TYPES ====================
 
 export interface TransactionPayload {
   user_id: number | string;
   stdmod_id: number | string;
+  std_id?: number | string;
   transtype_id: number | string;
   prod_id?: number | string | null;
   trans_date: string;
@@ -36,7 +37,12 @@ export interface Product {
 const TransactionService = {
   // --- List (filtered by group INGRESOS/EGRESOS) ---
   getTransactions: (query: string) => {
-    return api.get(`/transactions?${query}`);
+    const params = new URLSearchParams(query);
+    const stdId = getCurrentStudioId();
+    if (stdId && !params.has('std_id')) {
+      params.set('std_id', String(stdId));
+    }
+    return api.get(`/transactions?${params.toString()}`);
   },
 
   getTransaction: (id: number | string) => {
@@ -44,11 +50,17 @@ const TransactionService = {
   },
 
   addTransaction: (data: TransactionPayload) => {
-    return api.post('/transactions', data);
+    return api.post('/transactions', {
+      ...data,
+      std_id: data.std_id || getCurrentStudioId() || undefined,
+    });
   },
 
   editTransaction: (id: number | string, data: TransactionPayload) => {
-    return api.put(`/transactions/${id}`, data);
+    return api.put(`/transactions/${id}`, {
+      ...data,
+      std_id: data.std_id || getCurrentStudioId() || undefined,
+    });
   },
 
   deleteTransaction: (id: number | string) => {
@@ -62,7 +74,12 @@ const TransactionService = {
 
   // --- Products (autocomplete, for EGRESOS/TIENDA) ---
   getProducts: (query: string) => {
-    return api.get(`/products?${query}`);
+    const params = new URLSearchParams(query);
+    const stdId = getCurrentStudioId();
+    if (stdId && !params.has('std_id')) {
+      params.set('std_id', String(stdId));
+    }
+    return api.get(`/products?${params.toString()}`);
   },
 
   // --- Periods (for date validation) ---
@@ -72,13 +89,20 @@ const TransactionService = {
 
   // --- User contracts (for contract dropdown, returns {value, label}) ---
   getStudiosModelsByUser: (userId: number | string) => {
-    return api.get(`/petitions/studios_models?user_id=${userId}`);
+    const params = new URLSearchParams({ user_id: String(userId) });
+    const stdId = getCurrentStudioId();
+    if (stdId) {
+      params.set('std_id', String(stdId));
+    }
+    return api.get(`/petitions/studios_models?${params.toString()}`);
   },
 
   // --- Export Excel URL ---
-  getExportUrl: (userId: number | string): string => {
-    const token = getStoredUser()?.access_token || '';
-    return `${api.defaults.baseURL}/transactions/export?access_token=${token}&user_id=${userId}`;
+  downloadExport: (userId: number | string) => {
+    return api.get('/transactions/export', {
+      params: { user_id: userId },
+      responseType: 'blob',
+    });
   },
 };
 

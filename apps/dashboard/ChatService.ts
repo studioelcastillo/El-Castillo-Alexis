@@ -15,6 +15,8 @@ import {
   RoleDefaults,
 } from './types';
 import { getStoredUser } from './session';
+import { getCurrentStudioId } from './tenant';
+import { getTenantJsonSetting, upsertTenantSetting } from './tenantSettings';
 
 const SETTINGS_PREFIX = 'chat_settings:';
 const ROLE_DEFAULTS_PREFIX = 'chat_role_defaults:';
@@ -118,6 +120,22 @@ const ensureStoredUser = () => {
     throw new Error('Usuario no autenticado');
   }
   return user;
+};
+
+const getScopedRoleDefaultsKey = (roleId: number) => `${ROLE_DEFAULTS_PREFIX}${roleId}`;
+const getScopedBlocksKey = (userId: number) => `${BLOCKS_PREFIX}${userId}`;
+const getScopedUserSettingsKey = (userId: number) => `${SETTINGS_PREFIX}${userId}`;
+
+const ensureSameStudioUser = async (userId: number) => {
+  const studioId = getCurrentStudioId();
+  if (!studioId) return true;
+  const { data } = await supabase
+    .from('users')
+    .select('user_id')
+    .eq('user_id', userId)
+    .eq('std_id', studioId)
+    .maybeSingle();
+  return Boolean(data?.user_id);
 };
 
 const buildVariables = (bodyText?: string) => {
@@ -225,6 +243,9 @@ const ChatService = {
 
   async createDirectConversation(targetUserId: number): Promise<string> {
     const user = ensureStoredUser();
+    if (!(await ensureSameStudioUser(targetUserId))) {
+      throw new Error('El usuario no pertenece a la misma sede activa');
+    }
 
     const { data: myMemberships } = await supabase
       .from('chat_conversation_members')
@@ -273,6 +294,16 @@ const ChatService = {
 
   async createGroupConversation(params: { name: string; memberIds: number[]; description?: string }): Promise<Conversation> {
     const user = ensureStoredUser();
+    const studioId = getCurrentStudioId();
+    let memberIds = params.memberIds || [];
+    if (studioId && memberIds.length) {
+      const { data: allowedMembers } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('std_id', studioId)
+        .in('user_id', memberIds);
+      memberIds = (allowedMembers || []).map((row: any) => row.user_id);
+    }
     const payload = {
       conversation_type: 'group',
       conversation_name: params.name,
@@ -288,7 +319,7 @@ const ChatService = {
       throw new Error(error?.message || 'No se pudo crear el grupo');
     }
 
-    const members = Array.from(new Set([user.user_id, ...(params.memberIds || [])]));
+    const members = Array.from(new Set([user.user_id, ...memberIds]));
     if (members.length) {
       await supabase.from('chat_conversation_members').insert(
         members.map((id) => ({
@@ -487,46 +518,14 @@ const ChatService = {
 
   async getSettings(): Promise<ChatSettings> {
     const user = ensureStoredUser();
-    const key = `${SETTINGS_PREFIX}${user.user_id}`;
-    const { data, error } = await supabase
-      .from('settings')
-      .select('set_value')
-      .eq('set_key', key)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Chat getSettings error', error);
-      return { ...DEFAULT_CHAT_SETTINGS };
-    }
-
-    if (data?.set_value) {
-      try {
-        const parsed = JSON.parse(data.set_value);
-        return { ...DEFAULT_CHAT_SETTINGS, ...parsed };
-      } catch (parseError) {
-        console.error('Chat settings parse error', parseError);
-      }
-    }
-
-    return { ...DEFAULT_CHAT_SETTINGS };
+    const parsed = await getTenantJsonSetting<Partial<ChatSettings>>(getScopedUserSettingsKey(user.user_id), {}, getCurrentStudioId());
+    return { ...DEFAULT_CHAT_SETTINGS, ...parsed };
   },
 
   async updateSettings(settings: Partial<ChatSettings>): Promise<ChatSettings> {
     const user = ensureStoredUser();
-    const key = `${SETTINGS_PREFIX}${user.user_id}`;
     const payload = { ...DEFAULT_CHAT_SETTINGS, ...settings };
-    const { error } = await supabase
-      .from('settings')
-      .upsert(
-        [
-          {
-            set_key: key,
-            set_value: JSON.stringify(payload),
-            set_description: 'Chat user settings',
-          },
-        ],
-        { onConflict: 'set_key' }
-      );
+    const { error } = await upsertTenantSetting(getScopedUserSettingsKey(user.user_id), payload, 'Chat user settings', getCurrentStudioId());
 
     if (error) {
       console.error('Chat updateSettings error', error);
@@ -548,130 +547,93 @@ const ChatService = {
       return [];
     }
 
-    return (data || []).map(mapProfile);
+    const profiles = (data || []).map(mapProfile);
+    const studioId = getCurrentStudioId();
+    if (!studioId || profiles.length === 0) {
+      return profiles;
+    }
+
+    const userIds = profiles.map((profile) => profile.user_id).filter(Boolean);
+    const { data: users } = await supabase
+      .from('users')
+      .select('user_id')
+      .eq('std_id', studioId)
+      .in('user_id', userIds);
+    const allowedIds = new Set((users || []).map((row: any) => row.user_id));
+    return profiles.filter((profile) => allowedIds.has(profile.user_id));
   },
 
   async getPolicies(): Promise<RoleChatPolicy[]> {
-    const { data, error } = await supabase
-      .from('chat_policies')
-      .select('from_role_id, to_role_id, can_initiate, can_receive')
-      .order('from_role_id', { ascending: true })
-      .order('to_role_id', { ascending: true });
-
-    if (error) {
-      console.error('Chat getPolicies error', error);
-      return [];
+    const roleIds = [1,2,3,4,5,6,7,8,9,10];
+    const policies: RoleChatPolicy[] = [];
+    for (const fromRoleId of roleIds) {
+      const defaults = await ChatService.getRoleDefaults(fromRoleId);
+      const matrix = ((defaults.settings as any)?.policyMatrix || {}) as Record<string, any>;
+      Object.entries(matrix).forEach(([toRoleId, value]: [string, any]) => {
+        policies.push({
+          from_role_id: fromRoleId,
+          to_role_id: Number(toRoleId),
+          can_initiate: value?.can_initiate ?? false,
+          can_receive: value?.can_receive ?? false,
+        });
+      });
     }
-
-    return (data || []) as RoleChatPolicy[];
+    return policies;
   },
 
   async updatePolicies(policies: Partial<RoleChatPolicy>[]): Promise<boolean> {
-    const { error: deleteError } = await supabase
-      .from('chat_policies')
-      .delete()
-      .gte('from_role_id', 0);
-
-    if (deleteError) {
-      throw new Error('No se pudieron actualizar las politicas');
+    const grouped = new Map<number, Record<string, any>>();
+    for (const policy of policies || []) {
+      const fromRoleId = Number(policy.from_role_id || 0);
+      if (!fromRoleId) continue;
+      const current = grouped.get(fromRoleId) || {};
+      current[String(policy.to_role_id)] = {
+        can_initiate: policy.can_initiate ?? false,
+        can_receive: policy.can_receive ?? false,
+      };
+      grouped.set(fromRoleId, current);
     }
 
-    if (!policies || policies.length === 0) {
-      return true;
-    }
-
-    const payload = policies.map((policy) => ({
-      from_role_id: policy.from_role_id,
-      to_role_id: policy.to_role_id,
-      can_initiate: policy.can_initiate ?? false,
-      can_receive: policy.can_receive ?? false,
-    }));
-
-    const { error } = await supabase.from('chat_policies').insert(payload);
-    if (error) {
-      throw new Error('No se pudieron actualizar las politicas');
+    for (const [fromRoleId, policyMatrix] of grouped.entries()) {
+      const current = await ChatService.getRoleDefaults(fromRoleId);
+      await ChatService.updateRoleDefaults(fromRoleId, {
+        settings: {
+          ...((current.settings || {}) as any),
+          policyMatrix,
+        } as any,
+      });
     }
     return true;
   },
 
   async blockUser(targetUserId: number): Promise<boolean> {
     const user = ensureStoredUser();
-    const key = `${BLOCKS_PREFIX}${user.user_id}`;
-    const { data } = await supabase.from('settings').select('set_value').eq('set_key', key).maybeSingle();
-    let current: number[] = [];
-    if (data?.set_value) {
-      try {
-        current = JSON.parse(data.set_value);
-      } catch (error) {
-        current = [];
-      }
-    }
+    const key = getScopedBlocksKey(user.user_id);
+    const current = await getTenantJsonSetting<number[]>(key, [], getCurrentStudioId());
     const updated = Array.from(new Set([...(current || []), targetUserId]));
-    await supabase.from('settings').upsert(
-      [
-        {
-          set_key: key,
-          set_value: JSON.stringify(updated),
-          set_description: 'Chat blocked users',
-        },
-      ],
-      { onConflict: 'set_key' }
-    );
+    await upsertTenantSetting(key, updated, 'Chat blocked users', getCurrentStudioId());
     return true;
   },
 
   async unblockUser(targetUserId: number): Promise<boolean> {
     const user = ensureStoredUser();
-    const key = `${BLOCKS_PREFIX}${user.user_id}`;
-    const { data } = await supabase.from('settings').select('set_value').eq('set_key', key).maybeSingle();
-    let current: number[] = [];
-    if (data?.set_value) {
-      try {
-        current = JSON.parse(data.set_value);
-      } catch (error) {
-        current = [];
-      }
-    }
+    const key = getScopedBlocksKey(user.user_id);
+    const current = await getTenantJsonSetting<number[]>(key, [], getCurrentStudioId());
     const updated = (current || []).filter((id: number) => id !== targetUserId);
-    await supabase.from('settings').upsert(
-      [
-        {
-          set_key: key,
-          set_value: JSON.stringify(updated),
-          set_description: 'Chat blocked users',
-        },
-      ],
-      { onConflict: 'set_key' }
-    );
+    await upsertTenantSetting(key, updated, 'Chat blocked users', getCurrentStudioId());
     return true;
   },
 
   async getRoleDefaults(roleId: number): Promise<RoleDefaults> {
-    const key = `${ROLE_DEFAULTS_PREFIX}${roleId}`;
-    const { data } = await supabase.from('settings').select('set_value').eq('set_key', key).maybeSingle();
-    if (data?.set_value) {
-      try {
-        return { settings: JSON.parse(data.set_value) } as RoleDefaults;
-      } catch (parseError) {
-        console.error('Chat getRoleDefaults parse error', parseError);
-      }
-    }
-    return { settings: {} } as RoleDefaults;
+    const key = getScopedRoleDefaultsKey(roleId);
+    const settings = await getTenantJsonSetting<Record<string, any>>(key, {}, getCurrentStudioId());
+    return { settings } as RoleDefaults;
   },
 
   async updateRoleDefaults(roleId: number, defaults: Partial<RoleDefaults>): Promise<RoleDefaults> {
-    const key = `${ROLE_DEFAULTS_PREFIX}${roleId}`;
+    const key = getScopedRoleDefaultsKey(roleId);
     const settings = defaults.settings || {};
-    await supabase.from('settings').upsert(
-      [
-        {
-          set_key: key,
-          set_value: JSON.stringify(settings),
-          set_description: 'Chat role defaults',
-        },
-      ],
-      { onConflict: 'set_key' }
-    );
+    await upsertTenantSetting(key, settings, 'Chat role defaults', getCurrentStudioId());
     return { settings } as RoleDefaults;
   },
 

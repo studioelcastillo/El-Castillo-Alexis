@@ -1,5 +1,6 @@
-import { supabase } from './supabaseClient';
 import { WalletBalance, WalletTransaction, ReferralStats } from './types';
+import { getCurrentStudioId } from './tenant';
+import { getTenantJsonSetting, upsertTenantSetting } from './tenantSettings';
 
 const walletKey = (userId: number) => `wallet:${userId}`;
 const referralKey = (userId: number) => `referral:${userId}`;
@@ -35,54 +36,19 @@ const defaultReferral = (userId: number): ReferralStats => {
 
 const WalletService = {
   async getWalletData(userId: number) {
-    const { data } = await supabase
-      .from('settings')
-      .select('set_value')
-      .eq('set_key', walletKey(userId))
-      .maybeSingle();
-
-    let transactions: WalletTransaction[] = [];
-    if (data?.set_value) {
-      try {
-        transactions = JSON.parse(data.set_value);
-      } catch {
-        transactions = [];
-      }
-    }
+    const transactions = await getTenantJsonSetting<WalletTransaction[]>(walletKey(userId), [], getCurrentStudioId());
 
     const balance = computeBalance(transactions);
 
-    const { data: referralRow } = await supabase
-      .from('settings')
-      .select('set_value')
-      .eq('set_key', referralKey(userId))
-      .maybeSingle();
-
     let referral = defaultReferral(userId);
-    if (referralRow?.set_value) {
-      try {
-        referral = { ...referral, ...JSON.parse(referralRow.set_value) } as ReferralStats;
-      } catch {
-        referral = defaultReferral(userId);
-      }
-    }
+    const referralData = await getTenantJsonSetting<Partial<ReferralStats>>(referralKey(userId), {}, getCurrentStudioId());
+    referral = { ...referral, ...referralData } as ReferralStats;
 
     return { balance, transactions, referral };
   },
 
   async saveTransactions(userId: number, transactions: WalletTransaction[]) {
-    await supabase
-      .from('settings')
-      .upsert(
-        [
-          {
-            set_key: walletKey(userId),
-            set_value: JSON.stringify(transactions),
-            set_description: 'Wallet transactions',
-          },
-        ],
-        { onConflict: 'set_key' }
-      );
+    await upsertTenantSetting(walletKey(userId), transactions, 'Wallet transactions', getCurrentStudioId());
   },
 
   async addTopUp(userId: number, amount: number) {
