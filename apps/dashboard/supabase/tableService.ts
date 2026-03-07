@@ -9,15 +9,33 @@ export interface TableListOptions {
   limit?: number;
 }
 
+export interface TableGetOptions {
+  select?: string;
+  filters?: Record<string, any>;
+}
+
+const applyFilters = <TQuery extends { eq: (column: string, value: any) => TQuery }>(
+  query: TQuery,
+  filters?: Record<string, any>,
+) => {
+  let nextQuery = query;
+
+  if (!filters) {
+    return nextQuery;
+  }
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    nextQuery = nextQuery.eq(key, value);
+  });
+
+  return nextQuery;
+};
+
 const list = async (table: string, options: TableListOptions = {}) => {
   let query = supabase.from(table).select(options.select || '*');
 
-  if (options.filters) {
-    Object.entries(options.filters).forEach(([key, value]) => {
-      if (value === undefined || value === null || value === '') return;
-      query = query.eq(key, value);
-    });
-  }
+  query = applyFilters(query, options.filters);
 
   if (options.search?.term) {
     const term = options.search.term.trim();
@@ -41,26 +59,52 @@ const list = async (table: string, options: TableListOptions = {}) => {
   return { data: data || [], error };
 };
 
+const getOne = async (table: string, options: TableGetOptions = {}) => {
+  let query = supabase.from(table).select(options.select || '*');
+
+  query = applyFilters(query, options.filters);
+
+  const { data, error } = await query.single();
+  return { data, error };
+};
+
 const insert = async (table: string, payload: Record<string, any>) => {
   const { data, error } = await supabase.from(table).insert([payload]).select().single();
   return { data, error };
 };
 
-const update = async (table: string, primaryKey: string, id: string | number, payload: Record<string, any>) => {
-  const { data, error } = await supabase
+const update = async (
+  table: string,
+  primaryKey: string,
+  id: string | number,
+  payload: Record<string, any>,
+  filters?: Record<string, any>,
+) => {
+  let query = supabase
     .from(table)
     .update(payload)
-    .eq(primaryKey, id)
-    .select()
-    .single();
+    .eq(primaryKey, id);
+
+  query = applyFilters(query, filters);
+
+  const { data, error } = await query.select().single();
   return { data, error };
 };
 
-const remove = async (table: string, primaryKey: string, id: string | number) => {
-  const { error } = await supabase.from(table).delete().eq(primaryKey, id);
+const remove = async (
+  table: string,
+  primaryKey: string,
+  id: string | number,
+  filters?: Record<string, any>,
+) => {
+  let query = supabase.from(table).delete().eq(primaryKey, id);
+
+  query = applyFilters(query, filters);
+
+  const { error } = await query;
   return { error };
 };
 
-const tableService = { list, insert, update, remove };
+const tableService = { list, getOne, insert, update, remove };
 
 export default tableService;

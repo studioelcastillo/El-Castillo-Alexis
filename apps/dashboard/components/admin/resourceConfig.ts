@@ -3,7 +3,7 @@ import { ReactNode } from "react";
 export type ResourceField = {
   key: string;
   label: string;
-  type?: "text" | "number" | "select" | "date" | "checkbox";
+  type?: "text" | "number" | "select" | "date" | "checkbox" | "password";
   required?: boolean;
   readOnly?: boolean;
   options?: { label: string; value: string | number }[];
@@ -25,6 +25,8 @@ export type ResourceConfig<T = any> = {
   idKey: string;
   orderBy?: string;
   searchColumns?: string[];
+  scopeField?: string;
+  accessMode?: "full" | "readOnly";
   columns: ResourceColumn<T>[];
   fields: ResourceField[];
   initialValues?: Record<string, any>;
@@ -58,6 +60,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "bank_accounts",
     idKey: "bacc_id",
     orderBy: "bacc_id",
+    scopeField: "std_id",
     searchColumns: ["bacc_bank", "bacc_number", "bacc_owner_name"],
     columns: [
       { key: "bacc_bank", label: "Banco" },
@@ -141,6 +144,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "payments",
     idKey: "pay_id",
     orderBy: "pay_id",
+    scopeField: "std_id",
     searchColumns: ["pay_status"],
     columns: [
       { key: "pay_amount", label: "Monto" },
@@ -169,6 +173,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "payment_files",
     idKey: "payf_id",
     orderBy: "payf_id",
+    accessMode: "readOnly",
     searchColumns: ["payf_name", "payf_type"],
     columns: [
       { key: "pay_id", label: "Pago ID" },
@@ -344,6 +349,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "studios_rooms",
     idKey: "stdroom_id",
     orderBy: "stdroom_id",
+    scopeField: "std_id",
     searchColumns: ["stdroom_name"],
     columns: [
       { key: "std_id", label: "Estudio ID" },
@@ -368,6 +374,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "studios_shifts",
     idKey: "stdshift_id",
     orderBy: "stdshift_id",
+    scopeField: "std_id",
     searchColumns: ["stdshift_name"],
     columns: [
       { key: "std_id", label: "Estudio ID" },
@@ -391,6 +398,8 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "studios_accounts",
     idKey: "stdacc_id",
     orderBy: "stdacc_id",
+    scopeField: "std_id",
+    accessMode: "readOnly",
     searchColumns: ["stdacc_app", "stdacc_username"],
     columns: [
       { key: "std_id", label: "Estudio ID" },
@@ -402,8 +411,8 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
       { key: "std_id", label: "Estudio ID", type: "number", required: true },
       { key: "stdacc_app", label: "Aplicacion", required: true },
       { key: "stdacc_username", label: "Usuario", required: true },
-      { key: "stdacc_password", label: "Password" },
-      { key: "stdacc_apikey", label: "API Key" },
+      { key: "stdacc_password", label: "Password", type: "password" },
+      { key: "stdacc_apikey", label: "API Key", type: "password" },
       { key: "stdacc_active", label: "Activo", type: "checkbox" },
       { key: "stdacc_fail_message", label: "Mensaje fallo" },
       { key: "stdacc_fail_count", label: "Fallos", type: "number" },
@@ -418,6 +427,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "studios_models",
     idKey: "stdmod_id",
     orderBy: "stdmod_id",
+    scopeField: "std_id",
     searchColumns: ["stdmod_contract_type"],
     columns: [
       { key: "std_id", label: "Estudio ID" },
@@ -451,6 +461,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "models_accounts",
     idKey: "modacc_id",
     orderBy: "modacc_id",
+    accessMode: "readOnly",
     searchColumns: ["modacc_app", "modacc_username"],
     columns: [
       { key: "stdmod_id", label: "Contrato ID" },
@@ -463,7 +474,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
       { key: "stdmod_id", label: "Contrato ID", type: "number", required: true },
       { key: "modacc_app", label: "Aplicacion", required: true },
       { key: "modacc_username", label: "Usuario", required: true },
-      { key: "modacc_password", label: "Password", required: true },
+      { key: "modacc_password", label: "Password", type: "password", required: true },
       { key: "modacc_state", label: "Estado", required: true },
       { key: "modacc_active", label: "Activo", type: "checkbox" },
       { key: "modacc_mail", label: "Correo" },
@@ -506,6 +517,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "models_streams",
     idKey: "modstr_id",
     orderBy: "modstr_id",
+    scopeField: "std_id",
     searchColumns: ["modstr_period", "modstr_source"],
     columns: [
       { key: "modacc_id", label: "Cuenta ID" },
@@ -564,6 +576,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "models_streams_files",
     idKey: "modstrfile_id",
     orderBy: "modstrfile_id",
+    accessMode: "readOnly",
     searchColumns: ["modstrfile_description", "modstrfile_filename"],
     columns: [
       { key: "modstrfile_description", label: "Descripcion" },
@@ -631,6 +644,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "commissions",
     idKey: "com_id",
     orderBy: "com_id",
+    scopeField: "std_id",
     searchColumns: ["com_type", "com_currency"],
     columns: [
       { key: "std_id", label: "Estudio ID" },
@@ -659,6 +673,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "setup_commissions",
     idKey: "setcomm_id",
     orderBy: "setcomm_id",
+    scopeField: "std_id",
     searchColumns: ["setcomm_title"],
     columns: [
       { key: "setcomm_title", label: "Titulo" },
@@ -677,6 +692,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "api_modules",
     idKey: "module_id",
     orderBy: "module_id",
+    accessMode: "readOnly",
     searchColumns: ["module_key", "module_name", "module_group"],
     columns: [
       { key: "module_key", label: "Key" },
@@ -704,6 +720,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "api_permissions",
     idKey: "perm_id",
     orderBy: "perm_id",
+    accessMode: "readOnly",
     searchColumns: ["prof_id", "module_id"],
     columns: [
       { key: "prof_id", label: "Perfil ID" },
@@ -730,6 +747,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "api_user_overrides",
     idKey: "override_id",
     orderBy: "override_id",
+    accessMode: "readOnly",
     searchColumns: ["user_id", "module_id"],
     columns: [
       { key: "user_id", label: "Usuario ID" },
@@ -757,6 +775,8 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "paysheets",
     idKey: "paysh_id",
     orderBy: "paysh_id",
+    scopeField: "std_id",
+    accessMode: "readOnly",
     searchColumns: ["paysh_status"],
     columns: [
       { key: "std_id", label: "Estudio ID" },
@@ -783,6 +803,7 @@ export const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
     table: "models_streams",
     idKey: "modstr_id",
     orderBy: "modstr_id",
+    accessMode: "readOnly",
     searchColumns: ["modstr_period"],
     columns: [
       { key: "modacc_id", label: "Cuenta ID" },

@@ -9,150 +9,20 @@ import RecoveryPasswordPage from './components/RecoveryPasswordPage';
 import AuthCallbackPage from './components/AuthCallbackPage';
 import LogoutConfirmDialog from './components/LogoutConfirmDialog';
 import AuthService from './AuthService';
-import { Lock, AlertTriangle, X, Crown } from 'lucide-react';
+import { AlertTriangle, X, Crown } from 'lucide-react';
 import { getStoredUser } from './session';
+import { clearAuthSession } from './utils/session';
+import { isAdminUser } from './utils/permissions';
 import BillingService from './BillingService';
-
-const Dashboard = lazy(() => import('./components/Dashboard'));
-const UsersPage = lazy(() => import('./components/UsersPage'));
-const ResourcePage = lazy(() => import('./components/admin/ResourcePage'));
-const ModelPayrollPage = lazy(() => import('./components/ModelPayrollPage'));
-const StudioLiquidationPage = lazy(() => import('./components/StudioLiquidationPage'));
-const Users2Page = lazy(() => import('./components/Users2Page'));
-const UserPermissions2Page = lazy(() => import('./components/UserPermissions2Page'));
-const ChangePasswordPage = lazy(() => import('./components/ChangePasswordPage'));
-const MyProfilePage = lazy(() => import('./components/MyProfilePage'));
-const StudiosPage = lazy(() => import('./components/StudiosPage'));
-const ChatPage = lazy(() => import('./components/ChatPage'));
-const ChatPolicyAdmin = lazy(() => import('./components/ChatPolicyAdmin'));
+import { buildAppUrl } from './utils/baseUrl';
+import { supabase } from './supabaseClient';
 const ChatWidget = lazy(() => import('./components/ChatWidget'));
-const RoomControlPage = lazy(() => import('./components/RoomControlPage'));
-const StorefrontPage = lazy(() => import('./components/StorefrontPage'));
-const InventoryPage = lazy(() => import('./components/InventoryPage'));
-const PhotographyPage = lazy(() => import('./components/PhotographyPage'));
-const CategoriesPage = lazy(() => import('./components/CategoriesPage'));
-const TransactionTypesPage = lazy(() => import('./components/TransactionTypesPage'));
-const ExchangeRatesPage = lazy(() => import('./components/ExchangeRatesPage'));
-const UtilityDashboard = lazy(() => import('./components/UtilityDashboard'));
-const MembershipPage = lazy(() => import('./components/MembershipPage'));
-const WalletPage = lazy(() => import('./components/WalletPage'));
-const MasterSettingsPage = lazy(() => import('./components/MasterSettingsPage'));
-const BirthdaysPage = lazy(() => import('./components/BirthdaysPage'));
-const AttendancePage = lazy(() => import('./components/AttendancePage'));
-const MonetizationPage = lazy(() => import('./components/MonetizationPage'));
-const ContentSalesPage = lazy(() => import('./components/ContentSalesPage'));
-const RemoteDesktopPage = lazy(() => import('./components/RemoteDesktopPage'));
-const ShiftAssignmentPage = lazy(() => import('./components/ShiftAssignmentPage'));
-const SubscriptionManagementPage = lazy(() => import('./components/SubscriptionManagementPage'));
-const RequestsPage = lazy(() => import('./components/RequestsPage'));
-const LocationsPage = lazy(() => import('./components/LocationsPage'));
-const AdminDataPage = lazy(() => import('./components/AdminDataPage'));
-const SubscriptionLockScreen = lazy(() => import('./components/SubscriptionLockScreen'));
+import { PAGE_TO_PATH, PATH_ALIASES, getLegacyLabel, getPageFromPath, renderAppPage } from './appRoutes';
 
 const PageFallback = () => (
   <div className="p-8 text-center text-slate-400 text-sm">Cargando...</div>
 );
 
-const PAGE_TO_PATH: Record<string, string> = {
-  inicio: '/dashboard',
-  myprofile: '/myprofile',
-  change_password: '/change-password',
-  recovery_password: '/recovery-password',
-  auth_callback: '/auth/callback',
-  monetizacion: '/monetizacion',
-  venta_contenido: '/venta_contenido',
-  asistencia: '/asistencia',
-  cumpleanos: '/cumpleanos',
-  membresia: '/membresia',
-  billetera: '/billetera',
-  usuarios: '/users',
-  solicitudes: '/petitions',
-  localizaciones: '/locations',
-  admin_datos: '/admin_datos',
-  chat: '/chat',
-  chat_admin: '/chat_admin',
-  control_cuartos: '/control_cuartos',
-  tienda: '/tienda',
-  inventario: '/inventario',
-  fotografia: '/fotografia',
-  utilidades: '/utilidades',
-  liquidacion_modelos: '/liquidacion_modelos',
-  studios_liquidation: '/studios_liquidation',
-  estudios: '/studios',
-  config_global: '/config_global',
-  control_licencias: '/control_licencias',
-  escritorio_remoto: '/escritorio_remoto',
-  asignacion_turnos: '/asignacion_turnos',
-  categories: '/categories',
-  transactions_types: '/transactions_types',
-  exchanges_rates: '/exchanges_rates',
-  accounts: '/accounts',
-  banks_accounts: '/banks_accounts',
-  products: '/products',
-  transactions: '/transactions',
-  payments: '/payments',
-  payments_files: '/payments_files',
-  periods: '/periods',
-  notifications: '/notifications',
-  logs: '/logs',
-  login_history: '/login_history',
-  studios_rooms: '/studios_rooms',
-  studios_shifts: '/studios_shifts',
-  studios_accounts: '/studios_accounts',
-  studios_models: '/studios_models',
-  models_accounts: '/models_accounts',
-  models_goals: '/models_goals',
-  models_streams: '/models_streams',
-  models_streams_customers: '/models_streams_customers',
-  models_streams_files: '/models_streams_files',
-  models_transactions: '/models_transactions',
-  monitors: '/monitors',
-  commissions: '/commissions',
-  setup_commissions: '/setup_commissions',
-  api_modules: '/api_modules',
-  api_permissions: '/api_permissions',
-  api_user_overrides: '/api_user_overrides',
-  users2: '/users2',
-  users_permissions2: '/users_permissions2',
-  paysheet: '/paysheet',
-  massive_liquidation: '/massive_liquidation',
-};
-
-const PATH_ALIASES: Record<string, string> = {
-  '/': '/dashboard',
-  '/home': '/dashboard',
-  '/models_liquidation': '/liquidacion_modelos',
-};
-
-const LEGACY_ROUTE_LABELS: Record<string, string> = {};
-
-const normalizePath = (pathname: string) => {
-  const trimmed = pathname.replace(/\/+$/, '') || '/';
-  const aliasEntry = Object.entries(PATH_ALIASES).find(([prefix]) => {
-    return trimmed === prefix || trimmed.startsWith(`${prefix}/`);
-  });
-
-  if (!aliasEntry) return trimmed;
-
-  const [prefix, target] = aliasEntry;
-  return trimmed.replace(prefix, target);
-};
-
-const getPageFromPath = (pathname: string) => {
-  const normalized = normalizePath(pathname);
-  const match = Object.entries(PAGE_TO_PATH).find(([, path]) => {
-    return normalized === path || normalized.startsWith(`${path}/`);
-  });
-  return match ? match[0] : 'inicio';
-};
-
-const getLegacyLabel = (pathname: string) => {
-  const normalized = normalizePath(pathname);
-  const match = Object.entries(LEGACY_ROUTE_LABELS).find(([prefix]) => {
-    return normalized === prefix || normalized.startsWith(`${prefix}/`);
-  });
-  return match ? match[1] : null;
-};
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -166,7 +36,7 @@ function App() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<'ACTIVE' | 'EXPIRED'>('ACTIVE');
+  const [subscriptionStatus, setSubscriptionStatus] = useState<'ACTIVE' | 'EXPIRED' | null>(null);
 
   const [daysUntilDue, setDaysUntilDue] = useState(0);
   const [showWarningModal, setShowWarningModal] = useState(false);
@@ -185,19 +55,36 @@ function App() {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const toggleCollapse = () => setIsCollapsed(!isCollapsed);
 
+  const isSubscriptionActive = subscriptionStatus !== 'EXPIRED';
+  const currentUser = getStoredUser();
+  const isAdmin = isAdminUser(currentUser);
+
   const redirectToLogin = () => {
+    const loginUrl = buildAppUrl('login');
     try {
       const target = window.top ?? window;
-      target.location.href = '/login';
+      target.location.href = loginUrl;
     } catch (error) {
-      window.location.href = '/login';
+      window.location.href = loginUrl;
     }
   };
 
   useEffect(() => {
     const loadSubscription = async () => {
       const sub = await BillingService.getSubscription();
-      setSubscriptionStatus(sub.status || 'ACTIVE');
+      if (!sub) {
+        setSubscriptionStatus(null);
+        setDaysUntilDue(0);
+        setShowWarningModal(false);
+        return;
+      }
+      if (!sub.status) {
+        setSubscriptionStatus(null);
+        setDaysUntilDue(0);
+        setShowWarningModal(false);
+        return;
+      }
+      setSubscriptionStatus(sub.status);
       setDaysUntilDue(sub.days_until_due || 0);
       setShowWarningModal((sub.days_until_due || 0) <= 5 && (sub.days_until_due || 0) > 0);
     };
@@ -223,6 +110,38 @@ function App() {
     }
   }, [isLoggingOut, location.pathname]);
 
+  useEffect(() => {
+    let active = true;
+
+    const syncSession = async () => {
+      const user = await AuthService.syncStoredSession();
+      if (!active) return;
+      const hasUser = !!user;
+      setIsAuthenticated(hasUser);
+      setIsOnboarded(hasUser);
+    };
+
+    void syncSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+      if (!session) {
+        clearAuthSession();
+        setIsAuthenticated(false);
+        setIsOnboarded(false);
+        return;
+      }
+      void syncSession();
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const handleNavigate = (id: string) => {
     const target = PAGE_TO_PATH[id] || PAGE_TO_PATH.inicio;
     navigate(target);
@@ -242,9 +161,7 @@ function App() {
     } catch (error) {
       console.error('Error during API logout:', error);
     } finally {
-      localStorage.removeItem('user');
-      localStorage.removeItem('dashboard_user');
-      localStorage.removeItem('token');
+      clearAuthSession();
       localStorage.removeItem('dashboardMode');
       redirectToLogin();
     }
@@ -258,108 +175,6 @@ function App() {
   const handleUserSelect = (userId: number) => {
     setTargetUserIdForProfile(userId);
     handleNavigate('usuarios');
-  };
-
-  const renderLegacyPlaceholder = (title: string) => (
-    <div className="p-8">
-      <div className="max-w-3xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex items-center gap-3 text-slate-900">
-          <div className="h-10 w-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-black">
-            !
-          </div>
-          <div>
-            <p className="text-lg font-black">{title}</p>
-            <p className="text-sm font-medium text-slate-500">
-              Esta seccion esta en proceso de migracion a React. Estamos unificando toda la
-              funcionalidad en un solo proyecto.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // --- RENDER CONTENT ---
-  const renderContent = () => {
-    if (subscriptionStatus === 'EXPIRED') {
-       if (currentPage === 'membresia') {
-           return <MembershipPage />;
-       }
-       return <SubscriptionLockScreen onNavigateToPayment={() => handleNavigate('membresia')} isExpired={true} />;
-    }
-
-    if (legacyLabel) {
-      return renderLegacyPlaceholder(legacyLabel);
-    }
-
-    switch(currentPage) {
-      case 'inicio': return <Dashboard />;
-      case 'monetizacion': return <MonetizationPage />;
-      case 'venta_contenido': return <ContentSalesPage />;
-      case 'escritorio_remoto': return <RemoteDesktopPage />; // NUEVO
-      case 'asignacion_turnos': return <ShiftAssignmentPage />; // NUEVO
-      case 'asistencia': return <AttendancePage />;
-      case 'cumpleanos': return <BirthdaysPage />;
-      case 'membresia': return <MembershipPage />;
-      case 'billetera': return <WalletPage />;
-      case 'usuarios': return (
-        <UsersPage
-          targetUserId={targetUserIdForProfile}
-          onClearTarget={() => setTargetUserIdForProfile(null)}
-        />
-      );
-      case 'solicitudes': return <RequestsPage onNavigate={handleNavigate} />;
-      case 'localizaciones': return <LocationsPage />;
-      case 'admin_datos': return <AdminDataPage />;
-      case 'chat': return <ChatPage />;
-      case 'chat_admin': return <ChatPolicyAdmin />;
-      case 'control_cuartos': return <RoomControlPage />;
-      case 'tienda': return <StorefrontPage />;
-      case 'inventario': return <InventoryPage />;
-      case 'fotografia': return <PhotographyPage />;
-      case 'utilidades': return <UtilityDashboard />; // NUEVO
-      case 'liquidacion_modelos': return <ModelPayrollPage />;
-      case 'studios_liquidation': return <StudioLiquidationPage />;
-      case 'estudios': return <StudiosPage />;
-      case 'config_global': return <MasterSettingsPage />;
-      case 'control_licencias': return <SubscriptionManagementPage />;
-      case 'myprofile': return <MyProfilePage />;
-      case 'change_password': return <ChangePasswordPage />;
-      case 'categories': return <CategoriesPage />;
-      case 'transactions_types': return <TransactionTypesPage />;
-      case 'exchanges_rates': return <ExchangeRatesPage />;
-      case 'accounts': return <ResourcePage resourceKey="accounts" />;
-      case 'banks_accounts': return <ResourcePage resourceKey="banks_accounts" />;
-      case 'products': return <ResourcePage resourceKey="products" />;
-      case 'transactions': return <ResourcePage resourceKey="transactions" />;
-      case 'payments': return <ResourcePage resourceKey="payments" />;
-      case 'payments_files': return <ResourcePage resourceKey="payments_files" />;
-      case 'periods': return <ResourcePage resourceKey="periods" />;
-      case 'notifications': return <ResourcePage resourceKey="notifications" />;
-      case 'logs': return <ResourcePage resourceKey="logs" />;
-      case 'login_history': return <ResourcePage resourceKey="login_history" />;
-      case 'studios_rooms': return <ResourcePage resourceKey="studios_rooms" />;
-      case 'studios_shifts': return <ResourcePage resourceKey="studios_shifts" />;
-      case 'studios_accounts': return <ResourcePage resourceKey="studios_accounts" />;
-      case 'studios_models': return <ResourcePage resourceKey="studios_models" />;
-      case 'models_accounts': return <ResourcePage resourceKey="models_accounts" />;
-      case 'models_goals': return <ResourcePage resourceKey="models_goals" />;
-      case 'models_streams': return <ResourcePage resourceKey="models_streams" />;
-      case 'models_streams_customers': return <ResourcePage resourceKey="models_streams_customers" />;
-      case 'models_streams_files': return <ResourcePage resourceKey="models_streams_files" />;
-      case 'models_transactions': return <ResourcePage resourceKey="models_transactions" />;
-      case 'monitors': return <ResourcePage resourceKey="monitors" />;
-      case 'commissions': return <ResourcePage resourceKey="commissions" />;
-      case 'setup_commissions': return <ResourcePage resourceKey="setup_commissions" />;
-      case 'api_modules': return <ResourcePage resourceKey="api_modules" />;
-      case 'api_permissions': return <ResourcePage resourceKey="api_permissions" />;
-      case 'api_user_overrides': return <ResourcePage resourceKey="api_user_overrides" />;
-      case 'users2': return <Users2Page />;
-      case 'users_permissions2': return <UserPermissions2Page />;
-      case 'paysheet': return <ResourcePage resourceKey="paysheet" />;
-      case 'massive_liquidation': return <ResourcePage resourceKey="massive_liquidation" />;
-      default: return <Dashboard />;
-    }
   };
 
   if (location.pathname.startsWith('/auth/callback')) {
@@ -380,7 +195,7 @@ function App() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
-      {subscriptionStatus === 'ACTIVE' && (
+      {isSubscriptionActive && (
         <Sidebar
           isOpen={sidebarOpen}
           isCollapsed={isCollapsed}
@@ -392,7 +207,7 @@ function App() {
       )}
 
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {subscriptionStatus === 'ACTIVE' ? (
+        {isSubscriptionActive ? (
           <Header
             toggleSidebar={toggleSidebar}
             isCollapsed={isCollapsed}
@@ -416,7 +231,7 @@ function App() {
         )}
 
         {/* Subscription Warning Modal */}
-        {subscriptionStatus === 'ACTIVE' && daysUntilDue <= 5 && daysUntilDue > 0 && showWarningModal && (
+        {isSubscriptionActive && daysUntilDue <= 5 && daysUntilDue > 0 && showWarningModal && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
             <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden">
               <div className="bg-amber-500 p-6 text-center relative">
@@ -461,10 +276,18 @@ function App() {
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[#F8FAFC]">
             <Suspense fallback={<PageFallback />}>
-              {renderContent()}
+              {renderAppPage({
+                currentPage,
+                legacyLabel,
+                isAdmin,
+                subscriptionStatus,
+                onNavigate: handleNavigate,
+                targetUserIdForProfile,
+                onClearTargetUser: () => setTargetUserIdForProfile(null),
+              })}
             </Suspense>
 
-            {subscriptionStatus === 'ACTIVE' && (
+            {isSubscriptionActive && (
               <footer className="p-8 text-center text-slate-400 text-sm flex flex-col items-center gap-2">
                   <p>&copy; 2025 El Castillo Group SAS. Todos los derechos reservados.</p>
                   <button
@@ -478,7 +301,7 @@ function App() {
         </div>
       </div>
 
-      {subscriptionStatus === 'ACTIVE' && (
+      {isSubscriptionActive && (
         <Suspense fallback={null}>
           <ChatWidget />
         </Suspense>

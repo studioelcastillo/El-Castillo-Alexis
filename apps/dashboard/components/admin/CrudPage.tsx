@@ -10,7 +10,7 @@ type FieldOption = {
 type CrudField = {
   key: string;
   label: string;
-  type?: "text" | "number" | "select" | "date" | "checkbox";
+  type?: "text" | "number" | "select" | "date" | "checkbox" | "password";
   options?: FieldOption[];
   placeholder?: string;
   required?: boolean;
@@ -42,6 +42,7 @@ type CrudPageProps<T extends Record<string, any>> = {
   searchPlaceholder?: string;
   pathPrefix?: string;
   initialValues?: Record<string, any>;
+  readOnly?: boolean;
 };
 
 const CrudPage = <T extends Record<string, any>>({
@@ -54,7 +55,16 @@ const CrudPage = <T extends Record<string, any>>({
   searchPlaceholder = "Buscar...",
   pathPrefix,
   initialValues,
+  readOnly = false,
 }: CrudPageProps<T>) => {
+  const isSensitiveField = (key: string) => /(password|apikey|api_key|token|secret)/i.test(key);
+
+  const formatCellValue = (key: string, value: unknown) => {
+    if (value === null || value === undefined || value === "") return "";
+    if (isSensitiveField(key)) return "••••••••";
+    return String(value);
+  };
+
   const location = useLocation();
   const navigate = useNavigate();
   const [items, setItems] = useState<T[]>([]);
@@ -93,6 +103,7 @@ const CrudPage = <T extends Record<string, any>>({
     if (!trimmed.startsWith(pathPrefix)) return;
     const remainder = trimmed.slice(pathPrefix.length);
     if (remainder === "/new") {
+      if (readOnly) return;
       openCreate();
       return;
     }
@@ -106,7 +117,7 @@ const CrudPage = <T extends Record<string, any>>({
         .get(idValue)
         .then((record) => {
           if (!record) return;
-          setMode("edit");
+          setMode(readOnly ? "create" : "edit");
           setFormData({ ...record });
           setIsOpen(true);
         })
@@ -114,15 +125,17 @@ const CrudPage = <T extends Record<string, any>>({
           // ignore
         });
     }
-  }, [location.pathname, pathPrefix, service]);
+  }, [location.pathname, pathPrefix, readOnly, service]);
 
   const openCreate = () => {
+    if (readOnly) return;
     setMode("create");
     setFormData({ ...(initialValues || {}) });
     setIsOpen(true);
   };
 
   const openEdit = (row: T) => {
+    if (readOnly) return;
     setMode("edit");
     setFormData({ ...row });
     setIsOpen(true);
@@ -144,6 +157,7 @@ const CrudPage = <T extends Record<string, any>>({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (readOnly) return;
     try {
       if (mode === "create") {
         await service.create(formData as Partial<T>);
@@ -161,6 +175,7 @@ const CrudPage = <T extends Record<string, any>>({
   };
 
   const handleDelete = async (row: T) => {
+    if (readOnly) return;
     const idValue = row[idKey] as string | number;
     if (!idValue) return;
     if (!window.confirm("¿Eliminar este registro?")) return;
@@ -189,12 +204,14 @@ const CrudPage = <T extends Record<string, any>>({
           >
             <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
           </button>
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-600 text-[#0B1120] font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-95 text-xs uppercase tracking-widest"
-          >
-            <Plus size={16} /> Nuevo
-          </button>
+          {!readOnly && (
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-600 text-[#0B1120] font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-95 text-xs uppercase tracking-widest"
+            >
+              <Plus size={16} /> Nuevo
+            </button>
+          )}
         </div>
       </div>
 
@@ -233,16 +250,18 @@ const CrudPage = <T extends Record<string, any>>({
                     {column.label}
                   </th>
                 ))}
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
-                  Acciones
-                </th>
+                {!readOnly && (
+                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
+                    Acciones
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 [1, 2, 3, 4, 5].map((i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan={columnsMemo.length + 1} className="px-6 py-4">
+                    <td colSpan={columnsMemo.length + (readOnly ? 0 : 1)} className="px-6 py-4">
                       <div className="h-10 bg-slate-50 rounded-xl"></div>
                     </td>
                   </tr>
@@ -250,7 +269,7 @@ const CrudPage = <T extends Record<string, any>>({
               ) : items.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={columnsMemo.length + 1}
+                    colSpan={columnsMemo.length + (readOnly ? 0 : 1)}
                     className="px-6 py-12 text-center text-slate-400"
                   >
                     <span className="text-sm font-bold">No hay registros.</span>
@@ -264,27 +283,29 @@ const CrudPage = <T extends Record<string, any>>({
                   >
                     {columnsMemo.map((column) => (
                       <td key={String(column.key)} className="px-6 py-4 text-sm">
-                        {column.render ? column.render(row) : String(row[column.key as keyof T] ?? "")}
+                        {column.render ? column.render(row) : formatCellValue(String(column.key), row[column.key as keyof T])}
                       </td>
                     ))}
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => openEdit(row)}
-                          className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
-                          title="Editar"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(row)}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                          title="Eliminar"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
+                    {!readOnly && (
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => openEdit(row)}
+                            className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                            title="Editar"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(row)}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            title="Eliminar"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -381,12 +402,14 @@ const CrudPage = <T extends Record<string, any>>({
               >
                 Cancelar
               </button>
-              <button
-                type="submit"
-                className="px-4 py-2 rounded-xl bg-amber-500 text-[#0B1120] text-xs font-black uppercase tracking-widest shadow-lg shadow-amber-500/30"
-              >
-                Guardar
-              </button>
+              {!readOnly && (
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-amber-500 text-[#0B1120] text-xs font-black uppercase tracking-widest shadow-lg shadow-amber-500/30"
+                >
+                  Guardar
+                </button>
+              )}
             </div>
           </form>
         </div>

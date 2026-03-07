@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, RefreshCw, Search, Pencil, Trash2, X } from 'lucide-react';
 import tableService from '../supabase/tableService';
+import { getCurrentStudioId } from '../tenant';
 
-type FieldType = 'text' | 'number' | 'boolean' | 'date' | 'datetime' | 'select' | 'textarea';
+type FieldType = 'text' | 'number' | 'boolean' | 'date' | 'datetime' | 'select' | 'textarea' | 'password';
 
 interface FieldConfig {
   key: string;
@@ -21,6 +22,8 @@ interface ResourceConfig {
   fields: FieldConfig[];
   searchColumns: string[];
   orderBy?: string;
+   scopeField?: string;
+   accessMode?: 'full' | 'readOnly';
 }
 
 const RESOURCES: ResourceConfig[] = [
@@ -120,6 +123,7 @@ const RESOURCES: ResourceConfig[] = [
     label: 'Cuentas Bancarias',
     table: 'bank_accounts',
     primaryKey: 'bacc_id',
+    scopeField: 'std_id',
     columns: ['bacc_id', 'bacc_bank', 'bacc_type', 'bacc_number', 'user_id', 'std_id'],
     fields: [
       { key: 'user_id', label: 'Usuario ID', type: 'number' },
@@ -138,6 +142,7 @@ const RESOURCES: ResourceConfig[] = [
     label: 'Comisiones',
     table: 'commissions',
     primaryKey: 'com_id',
+    scopeField: 'std_id',
     columns: ['com_id', 'com_type', 'com_percentage', 'com_fixed_amount', 'std_id', 'user_id'],
     fields: [
       { key: 'std_id', label: 'Estudio ID', type: 'number' },
@@ -156,6 +161,7 @@ const RESOURCES: ResourceConfig[] = [
     label: 'Pagos',
     table: 'payments',
     primaryKey: 'pay_id',
+    scopeField: 'std_id',
     columns: ['pay_id', 'pay_amount', 'pay_currency', 'pay_status', 'user_id', 'std_id'],
     fields: [
       { key: 'user_id', label: 'Usuario ID', type: 'number' },
@@ -175,6 +181,8 @@ const RESOURCES: ResourceConfig[] = [
     label: 'Planillas',
     table: 'paysheets',
     primaryKey: 'paysh_id',
+    scopeField: 'std_id',
+    accessMode: 'readOnly',
     columns: ['paysh_id', 'std_id', 'period_id', 'paysh_total_cop', 'paysh_status'],
     fields: [
       { key: 'std_id', label: 'Estudio ID', type: 'number' },
@@ -192,13 +200,15 @@ const RESOURCES: ResourceConfig[] = [
     label: 'Cuentas Estudio',
     table: 'studios_accounts',
     primaryKey: 'stdacc_id',
+    scopeField: 'std_id',
+    accessMode: 'readOnly',
     columns: ['stdacc_id', 'std_id', 'stdacc_app', 'stdacc_username', 'stdacc_active'],
     fields: [
       { key: 'std_id', label: 'Estudio ID', type: 'number' },
       { key: 'stdacc_app', label: 'Plataforma', type: 'text' },
       { key: 'stdacc_username', label: 'Usuario', type: 'text' },
-      { key: 'stdacc_password', label: 'Password', type: 'text' },
-      { key: 'stdacc_apikey', label: 'API Key', type: 'text' },
+      { key: 'stdacc_password', label: 'Password', type: 'password' },
+      { key: 'stdacc_apikey', label: 'API Key', type: 'password' },
       { key: 'stdacc_active', label: 'Activo', type: 'boolean' },
     ],
     searchColumns: ['stdacc_app', 'stdacc_username'],
@@ -208,6 +218,7 @@ const RESOURCES: ResourceConfig[] = [
     label: 'Cuartos',
     table: 'studios_rooms',
     primaryKey: 'stdroom_id',
+    scopeField: 'std_id',
     columns: ['stdroom_id', 'std_id', 'stdroom_name', 'stdroom_active', 'stdroom_occupied'],
     fields: [
       { key: 'std_id', label: 'Estudio ID', type: 'number' },
@@ -223,6 +234,7 @@ const RESOURCES: ResourceConfig[] = [
     label: 'Turnos',
     table: 'studios_shifts',
     primaryKey: 'stdshift_id',
+    scopeField: 'std_id',
     columns: ['stdshift_id', 'std_id', 'stdshift_name', 'stdshift_begin_time', 'stdshift_finish_time'],
     fields: [
       { key: 'std_id', label: 'Estudio ID', type: 'number' },
@@ -238,6 +250,7 @@ const RESOURCES: ResourceConfig[] = [
     label: 'Contratos',
     table: 'studios_models',
     primaryKey: 'stdmod_id',
+    scopeField: 'std_id',
     columns: ['stdmod_id', 'std_id', 'user_id_model', 'stdmod_active', 'stdmod_commission_type'],
     fields: [
       { key: 'std_id', label: 'Estudio ID', type: 'number' },
@@ -255,12 +268,13 @@ const RESOURCES: ResourceConfig[] = [
     label: 'Cuentas Modelos',
     table: 'models_accounts',
     primaryKey: 'modacc_id',
+    accessMode: 'readOnly',
     columns: ['modacc_id', 'stdmod_id', 'modacc_app', 'modacc_username', 'modacc_active'],
     fields: [
       { key: 'stdmod_id', label: 'Contrato ID', type: 'number' },
       { key: 'modacc_app', label: 'Plataforma', type: 'text' },
       { key: 'modacc_username', label: 'Usuario', type: 'text' },
-      { key: 'modacc_password', label: 'Password', type: 'text' },
+      { key: 'modacc_password', label: 'Password', type: 'password' },
       { key: 'modacc_state', label: 'Estado', type: 'text' },
       { key: 'modacc_active', label: 'Activo', type: 'boolean' },
     ],
@@ -287,6 +301,7 @@ const RESOURCES: ResourceConfig[] = [
     label: 'Archivos Streams',
     table: 'models_streams_files',
     primaryKey: 'modstrfile_id',
+    accessMode: 'readOnly',
     columns: ['modstrfile_id', 'modstrfile_description', 'modstrfile_filename', 'created_by'],
     fields: [
       { key: 'modstrfile_description', label: 'Descripcion', type: 'text' },
@@ -352,6 +367,7 @@ const RESOURCES: ResourceConfig[] = [
     label: 'Logs',
     table: 'logs',
     primaryKey: 'log_id',
+    accessMode: 'readOnly',
     columns: ['log_id', 'log_action', 'log_entity', 'log_entity_id', 'user_id'],
     fields: [
       { key: 'user_id', label: 'Usuario ID', type: 'number' },
@@ -366,6 +382,7 @@ const RESOURCES: ResourceConfig[] = [
     label: 'Historial Login',
     table: 'login_history',
     primaryKey: 'lhist_id',
+    accessMode: 'readOnly',
     columns: ['lhist_id', 'user_id', 'lhist_ip', 'lhist_device', 'lhist_success'],
     fields: [
       { key: 'user_id', label: 'Usuario ID', type: 'number' },
@@ -380,6 +397,7 @@ const RESOURCES: ResourceConfig[] = [
     label: 'Configuraciones',
     table: 'settings',
     primaryKey: 'set_id',
+    accessMode: 'readOnly',
     columns: ['set_id', 'set_key', 'set_value', 'set_description'],
     fields: [
       { key: 'set_key', label: 'Clave', type: 'text' },
@@ -399,6 +417,15 @@ const SECTIONS = [
 ];
 
 const AdminDataPage: React.FC = () => {
+  const isSensitiveField = (key: string) => /(password|apikey|api_key|token|secret)/i.test(key);
+
+  const maskValue = (key: string, value: unknown, row?: Record<string, any>) => {
+    if (value === null || value === undefined || value === '') return '--';
+    if (key === 'set_value' && row?.set_key && isSensitiveField(String(row.set_key))) return '••••••••';
+    if (isSensitiveField(key)) return '••••••••';
+    return String(value);
+  };
+
   const resourceMap = useMemo(
     () => new Map(RESOURCES.map((resource) => [resource.id, resource])),
     []
@@ -406,6 +433,21 @@ const AdminDataPage: React.FC = () => {
 
   const [selected, setSelected] = useState<string>(RESOURCES[0].id);
   const resource = resourceMap.get(selected) as ResourceConfig;
+  const studioId = getCurrentStudioId();
+  const scopedFilters = resource.scopeField && studioId ? { [resource.scopeField]: studioId } : undefined;
+  const visibleFields = resource.fields.filter((field) => field.key !== resource.scopeField);
+  const isReadOnly = resource.accessMode === 'readOnly';
+
+  const withScope = (payload: Record<string, any>) => {
+    if (!resource.scopeField || !studioId) {
+      return payload;
+    }
+
+    return {
+      ...payload,
+      [resource.scopeField]: studioId,
+    };
+  };
 
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -422,6 +464,7 @@ const AdminDataPage: React.FC = () => {
       const response = await tableService.list(resource.table, {
         orderBy: resource.orderBy || resource.primaryKey,
         ascending: false,
+        filters: scopedFilters,
         search: search
           ? {
               term: search,
@@ -455,22 +498,25 @@ const AdminDataPage: React.FC = () => {
   };
 
   const startCreate = () => {
+    if (isReadOnly) return;
     setIsCreating(true);
     setEditing(null);
-    setFormValues({});
+    setFormValues(withScope({}));
   };
 
   const startEdit = (row: any) => {
+    if (isReadOnly) return;
     setEditing(row);
     setIsCreating(false);
     const initialValues: Record<string, any> = {};
-    resource.fields.forEach((field) => {
+    visibleFields.forEach((field) => {
       initialValues[field.key] = row[field.key] ?? '';
     });
     setFormValues(initialValues);
   };
 
   const handleSave = async () => {
+    if (isReadOnly) return;
     try {
       const payload: Record<string, any> = {};
       resource.fields.forEach((field) => {
@@ -485,11 +531,12 @@ const AdminDataPage: React.FC = () => {
         }
         payload[field.key] = value === '' ? null : value;
       });
+      const scopedPayload = withScope(payload);
 
       if (editing) {
-        await tableService.update(resource.table, resource.primaryKey, editing[resource.primaryKey], payload);
+        await tableService.update(resource.table, resource.primaryKey, editing[resource.primaryKey], scopedPayload, scopedFilters);
       } else {
-        await tableService.insert(resource.table, payload);
+        await tableService.insert(resource.table, scopedPayload);
       }
 
       resetForm();
@@ -500,9 +547,10 @@ const AdminDataPage: React.FC = () => {
   };
 
   const handleDelete = async (row: any) => {
+    if (isReadOnly) return;
     if (!window.confirm(`Eliminar ${resource.label} #${row[resource.primaryKey]}?`)) return;
     try {
-      await tableService.remove(resource.table, resource.primaryKey, row[resource.primaryKey]);
+      await tableService.remove(resource.table, resource.primaryKey, row[resource.primaryKey], scopedFilters);
       loadData();
     } catch (err: any) {
       setError(err.message || 'Error al eliminar');
@@ -644,13 +692,15 @@ const AdminDataPage: React.FC = () => {
                   className="pl-8 pr-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold"
                 />
               </div>
-              <button
-                onClick={startCreate}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-slate-900 rounded-xl text-xs font-black uppercase tracking-widest"
-              >
-                <Plus size={14} />
-                Nuevo
-              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={startCreate}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-slate-900 rounded-xl text-xs font-black uppercase tracking-widest"
+                >
+                  <Plus size={14} />
+                  Nuevo
+                </button>
+              )}
             </div>
           </div>
 
@@ -665,7 +715,7 @@ const AdminDataPage: React.FC = () => {
                 </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {resource.fields.map((field) => (
+                {visibleFields.map((field) => (
                   <div key={field.key}>{renderField(field)}</div>
                 ))}
               </div>
@@ -676,12 +726,14 @@ const AdminDataPage: React.FC = () => {
                 >
                   Cancelar
                 </button>
-                <button
-                  onClick={handleSave}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold"
-                >
-                  Guardar
-                </button>
+                {!isReadOnly && (
+                  <button
+                    onClick={handleSave}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold"
+                  >
+                    Guardar
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -696,19 +748,21 @@ const AdminDataPage: React.FC = () => {
                         {col}
                       </th>
                     ))}
-                    <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Acciones</th>
+                    {!isReadOnly && (
+                      <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Acciones</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
                   {loading ? (
                     <tr>
-                      <td colSpan={resource.columns.length + 1} className="px-4 py-6 text-center text-slate-400">
+                      <td colSpan={resource.columns.length + (isReadOnly ? 0 : 1)} className="px-4 py-6 text-center text-slate-400">
                         Cargando...
                       </td>
                     </tr>
                   ) : rows.length === 0 ? (
                     <tr>
-                      <td colSpan={resource.columns.length + 1} className="px-4 py-6 text-center text-slate-400">
+                      <td colSpan={resource.columns.length + (isReadOnly ? 0 : 1)} className="px-4 py-6 text-center text-slate-400">
                         Sin registros
                       </td>
                     </tr>
@@ -717,29 +771,29 @@ const AdminDataPage: React.FC = () => {
                       <tr key={row[resource.primaryKey]} className="hover:bg-slate-50/50">
                         {resource.columns.map((col) => (
                           <td key={col} className="px-4 py-3 text-slate-600">
-                            {row[col] === null || row[col] === undefined || row[col] === ''
-                              ? '--'
-                              : String(row[col])}
+                            {maskValue(col, row[col], row)}
                           </td>
                         ))}
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => startEdit(row)}
-                              className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:text-slate-900"
-                              title="Editar"
-                            >
-                              <Pencil size={14} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(row)}
-                              className="p-2 rounded-lg border border-slate-200 text-red-400 hover:text-red-600"
-                              title="Eliminar"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
+                        {!isReadOnly && (
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => startEdit(row)}
+                                className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:text-slate-900"
+                                title="Editar"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(row)}
+                                className="p-2 rounded-lg border border-slate-200 text-red-400 hover:text-red-600"
+                                title="Eliminar"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}

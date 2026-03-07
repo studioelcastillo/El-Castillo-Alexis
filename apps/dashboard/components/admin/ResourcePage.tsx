@@ -1,8 +1,8 @@
 import React from "react";
 import CrudPage from "./CrudPage";
 import tableService from "../../supabase/tableService";
-import { supabase } from "../../supabaseClient";
 import { RESOURCE_CONFIG, ResourceConfig, ResourceField } from "./resourceConfig";
+import { getCurrentStudioId } from "../../tenant";
 
 type ResourcePageProps = {
   resourceKey: string;
@@ -43,6 +43,21 @@ const normalizePayload = (fields: ResourceField[], payload: Record<string, any>)
 
 const ResourcePage: React.FC<ResourcePageProps> = ({ resourceKey }) => {
   const config: ResourceConfig | undefined = RESOURCE_CONFIG[resourceKey];
+  const studioId = getCurrentStudioId();
+
+  const scopedFilters = config?.scopeField && studioId ? { [config.scopeField]: studioId } : undefined;
+  const visibleFields = config?.fields.filter((field) => field.key !== config.scopeField) ?? [];
+
+  const withScope = (payload: Record<string, any>) => {
+    if (!config?.scopeField || !studioId) {
+      return payload;
+    }
+
+    return {
+      ...payload,
+      [config.scopeField]: studioId,
+    };
+  };
 
   if (!config) {
     return (
@@ -60,15 +75,17 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceKey }) => {
       description={config.description}
       idKey={config.idKey as any}
       columns={config.columns as any}
-      fields={config.fields}
+      fields={visibleFields}
       searchPlaceholder="Buscar..."
       pathPrefix={config.path}
-      initialValues={config.initialValues}
+      initialValues={withScope(config.initialValues || {})}
+      readOnly={config.accessMode === "readOnly"}
       service={{
         list: async ({ search }) => {
           const response = await tableService.list(config.table, {
             orderBy: config.orderBy,
             ascending: false,
+            filters: scopedFilters,
             search: search && config.searchColumns?.length
               ? { term: search, columns: config.searchColumns }
               : undefined,
@@ -76,24 +93,25 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceKey }) => {
           return response.data;
         },
         get: async (id) => {
-          const { data, error } = await supabase
-            .from(config.table)
-            .select("*")
-            .eq(config.idKey, id)
-            .single();
+          const { data, error } = await tableService.getOne(config.table, {
+            filters: {
+              [config.idKey]: id,
+              ...(scopedFilters || {}),
+            },
+          });
           if (error || !data) return null;
           return data;
         },
         create: async (payload) => {
-          const normalized = normalizePayload(config.fields, payload);
+          const normalized = withScope(normalizePayload(config.fields, payload));
           await tableService.insert(config.table, normalized);
         },
         update: async (id, payload) => {
-          const normalized = normalizePayload(config.fields, payload);
-          await tableService.update(config.table, config.idKey, id, normalized);
+          const normalized = withScope(normalizePayload(config.fields, payload));
+          await tableService.update(config.table, config.idKey, id, normalized, scopedFilters);
         },
         remove: async (id) => {
-          await tableService.remove(config.table, config.idKey, id);
+          await tableService.remove(config.table, config.idKey, id, scopedFilters);
         },
       }}
     />
