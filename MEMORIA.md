@@ -27,6 +27,8 @@
 - Se valido login real en `staging`: se asigno temporalmente la clave `Temporal2026!` al usuario `user_id=1` (`1144083039@legacy.elcastillo.local`) y el inicio de sesion funciono tanto por email directo como por flujo de identificacion con lookup server-side.
 - Se recibio una `sb_secret` de `production` y se confirmo que sirve para REST y `auth/v1/admin`, pero no para `api.supabase.com` ni para ejecutar SQL de gestion.
 - Con esa `sb_secret` se importaron en `production` las tablas publicas principales mediante `scripts/import_aws_dump_rest.mjs`: `users` (4182), `studios` (97), `studios_models` (4243), `models_accounts` (16394), `models_streams` (382752), `transactions` (4163), `payments` (575), `accounts` (11), `bank_accounts` (39), `exchange_rates` (496) y `payment_files` (23).
+- Se crearon usuarios de autenticacion en `production` desde `public.users` con `scripts/sync_auth_from_users_admin.mjs`, usando como password los ultimos 5 digitos de la cedula. Quedaron `4182` filas de `public.users` enlazadas con `auth_user_id`.
+- Se valido login real en `production` para la cedula `1144083039` con clave `83039`, tanto por email directo como por flujo de identificacion.
 
 ### Archivos tocados recientemente
 - `MEMORIA.md`
@@ -39,6 +41,7 @@
 - `scripts/import_aws_dump.mjs`
 - `supabase/sync_legacy_auth.sql`
 - `scripts/import_aws_dump_rest.mjs`
+- `scripts/sync_auth_from_users_admin.mjs`
 - `supabase/sync_legacy_auth.sql`
 
 ### GitHub
@@ -50,6 +53,7 @@
 - Validar login real en `staging` con credenciales antiguas de un usuario existente y revisar que el dashboard navegue sin errores con los datos importados.
 - Revisar el dashboard en `staging` en navegador con el usuario de prueba validado y confirmar navegacion, graficas y modulos principales.
 - Definir como poblar `auth.users` en `production`: crear todos los usuarios con clave temporal comun, crear solo un usuario administrador temporal, o esperar credencial SQL para importar hashes legacy.
+- Revisar en navegador el dashboard de `production` con usuarios reales y confirmar que los modulos cargan correctamente con la base importada.
 - Conseguir credencial administrativa valida para aplicar SQL en `production` (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_SERVICE_KEY` de gestion o credenciales DB directas). En `.env.production` solo esta la URL y la anon key.
 - Confirmar si las tablas legacy ya fueron importadas en ambos proyectos o si primero hay que cargar el dump base.
 - Hacer commit y push solo de los archivos creados/modificados para esta tarea, sin mezclar cambios ajenos del arbol actual.
@@ -60,8 +64,8 @@
 - El repositorio tiene muchos cambios previos no relacionados; hay que evitar incluirlos en el commit de esta tarea.
 - Las credenciales antiguas encontradas para conexion directa a `staging` no autenticaron con el pooler actual.
 - La importacion completa en `production` sigue bloqueada por falta de password de DB o token de gestion valido.
-- `production` ya tiene datos publicos cargados, pero sigue sin usuarios en `auth.users`; por eso aun no hay login funcional hasta definir la estrategia de autenticacion.
+- `production` ya tiene datos publicos y usuarios auth operativos; el pendiente principal es validacion funcional completa en interfaz.
 
 ### Siguiente paso recomendado
 - Usar los nuevos scripts (`scripts/import_aws_dump.mjs` y `supabase/sync_legacy_auth.sql`) para replicar el mismo proceso en `production` apenas aparezca una credencial administrativa valida.
-- Si no aparece acceso SQL de `production`, usar la `sb_secret` para crear el acceso temporal que se decida y enlazarlo con `public.users`.
+- Usar una muestra real de usuarios en `production` para validar dashboard, consultas, reportes y permisos despues de la importacion completa.
