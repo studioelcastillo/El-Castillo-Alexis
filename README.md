@@ -37,7 +37,7 @@ Configuracion base recomendada:
 - Metodo de build: `Dockerfile`
 - Puerto interno: `80`
 - Rama: `staging` o `main`
-- Variables: `VITE_DASHBOARD_BASE=/dashboard-app/`, `DASHBOARD_APP_URL=/dashboard-app/`
+- Variables: `VITE_DASHBOARD_BASE=/`, `DASHBOARD_APP_URL=/` para VPS/subdominios raiz; usa `/dashboard-app/` solo si publicas en subruta
 - Variables segun entorno: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL`, `API_URL`
 
 Guias paso a paso: `docs/easypanel.md` y `docs/vps-deploy.md`.

@@ -19,6 +19,7 @@ const normalizeBase = (value) => {
 const base = normalizeBase(process.env.VITE_DASHBOARD_BASE || process.env.DASHBOARD_APP_URL || '/');
 const basePath = base === '/' ? '' : base.replace(/^\/+|\/+$/g, '');
 const dest = basePath ? path.join(distRoot, basePath) : distRoot;
+const compatibilityDest = basePath ? distRoot : path.join(distRoot, 'dashboard-app');
 const htaccessPath = path.join(dest, '.htaccess');
 const dashboardRewriteRule = [
   '  RewriteCond %{REQUEST_FILENAME} !-f',
@@ -34,6 +35,12 @@ if (!existsSync(src)) {
 await rm(dest, { recursive: true, force: true });
 await mkdir(dest, { recursive: true });
 await cp(src, dest, { recursive: true });
+
+if (compatibilityDest !== dest) {
+  await rm(compatibilityDest, { recursive: true, force: true });
+  await mkdir(compatibilityDest, { recursive: true });
+  await cp(src, compatibilityDest, { recursive: true });
+}
 
 if (existsSync(htaccessPath)) {
   const content = await readFile(htaccessPath, 'utf8');
@@ -65,9 +72,17 @@ const nginxConfig = `server {
     listen 3032;
     listen 3033;
 
+    root /usr/share/nginx/html;
+
+    location /assets/ {
+        try_files $uri =404;
+        access_log off;
+        expires 1h;
+        add_header Cache-Control "public";
+    }
+
     # Root location handles base redirection if app is not at root
     location / {
-        root /usr/share/nginx/html;
         index index.html index.htm;
         ${basePath ? `rewrite ^/$ /${basePath}/ redirect;` : ''}
         try_files $uri $uri/ /${basePath ? `${basePath}/index.html` : 'index.html'};
@@ -75,9 +90,15 @@ const nginxConfig = `server {
 
 
     ${basePath ? `
+    location /${basePath}/assets/ {
+        try_files $uri =404;
+        access_log off;
+        expires 1h;
+        add_header Cache-Control "public";
+    }
+
     # SPA routing for the subfolder
     location /${basePath}/ {
-        root /usr/share/nginx/html;
         index index.html index.htm;
         try_files $uri $uri/ /${basePath}/index.html;
     }

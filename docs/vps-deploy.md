@@ -14,6 +14,7 @@ Este flujo reemplaza Easypanel por un VPS con Docker Compose y Nginx del host.
 - `deploy/vps/nginx-terminado.conf`: proxy del dominio final.
 - `backend-legacy/Dockerfile`: imagen lista para correr Laravel sobre Apache.
 - `backend-legacy/.dockerignore`: evita subir secretos y basura local al build.
+- `Dockerfile`: ahora usa `/` como base por defecto para despliegues en subdominios raiz (`pruebas` y `terminado`).
 
 ## Importante sobre secretos
 

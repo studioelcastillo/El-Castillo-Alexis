@@ -4,8 +4,8 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 ARG NODE_OPTIONS=--max-old-space-size=4096
-ARG VITE_DASHBOARD_BASE=/dashboard-app/
-ARG DASHBOARD_APP_URL=/dashboard-app/
+ARG VITE_DASHBOARD_BASE=/
+ARG DASHBOARD_APP_URL=/
 ARG VITE_API_URL=
 ARG API_URL=
 
