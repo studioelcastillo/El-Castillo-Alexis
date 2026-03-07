@@ -24,6 +24,7 @@
 - Se recupero acceso SQL real a `staging` usando la conexion `postgresql://postgres.pnnrsqocukixusmzrlhy@aws-1-us-east-1.pooler.supabase.com:6543/postgres` con la clave encontrada en scripts legacy.
 - Se importo el dump AWS a `staging` con `scripts/import_aws_dump.mjs` y quedaron cargadas tablas clave como `users` (4182), `studios` (97), `studios_models` (4243), `models_accounts` (16394), `models_streams` (382752), `transactions` (4163), `payments` (575), `accounts` (11), `bank_accounts` (39), `exchange_rates` (496) y `payment_files` (23).
 - Se sincronizo `staging` con Supabase Auth usando `supabase/sync_legacy_auth.sql`: quedaron `4182` usuarios en `auth.users`, `4182` identidades y `4182` filas de `public.users` enlazadas por `auth_user_id`.
+- Se valido login real en `staging`: se asigno temporalmente la clave `Temporal2026!` al usuario `user_id=1` (`1144083039@legacy.elcastillo.local`) y el inicio de sesion funciono tanto por email directo como por flujo de identificacion con lookup server-side.
 
 ### Archivos tocados recientemente
 - `MEMORIA.md`
@@ -35,6 +36,7 @@
 - `supabase/schema.sql`
 - `scripts/import_aws_dump.mjs`
 - `supabase/sync_legacy_auth.sql`
+- `supabase/sync_legacy_auth.sql`
 
 ### GitHub
 - Rama activa: `supabase-migration-final`
@@ -43,6 +45,7 @@
 
 ### Pendientes
 - Validar login real en `staging` con credenciales antiguas de un usuario existente y revisar que el dashboard navegue sin errores con los datos importados.
+- Revisar el dashboard en `staging` en navegador con el usuario de prueba validado y confirmar navegacion, graficas y modulos principales.
 - Conseguir credencial administrativa valida para aplicar SQL en `production` (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_SERVICE_KEY` de gestion o credenciales DB directas). En `.env.production` solo esta la URL y la anon key.
 - Confirmar si las tablas legacy ya fueron importadas en ambos proyectos o si primero hay que cargar el dump base.
 - Hacer commit y push solo de los archivos creados/modificados para esta tarea, sin mezclar cambios ajenos del arbol actual.
