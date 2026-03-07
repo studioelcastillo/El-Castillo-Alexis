@@ -30,6 +30,9 @@
 - Se crearon usuarios de autenticacion en `production` desde `public.users` con `scripts/sync_auth_from_users_admin.mjs`, usando como password los ultimos 5 digitos de la cedula. Quedaron `4182` filas de `public.users` enlazadas con `auth_user_id`.
 - Se valido login real en `production` para la cedula `1144083039` con clave `83039`, tanto por email directo como por flujo de identificacion.
 - Claves recibidas y usadas para `production`: publishable `sb_publishable_5Awk9f_...` y secret `sb_secret_K2Fxg1_...`.
+- URL interna de pruebas disponible: `https://pruebas.livstre.com`.
+- URL de produccion: `https://login.livstre.com`.
+- Se dejo una rama segura para revision en GitHub: `supabase-migration-final-safe`.
 
 ### Archivos tocados recientemente
 - `MEMORIA.md`
@@ -46,13 +49,14 @@
 - `supabase/sync_legacy_auth.sql`
 
 ### GitHub
-- Rama activa: `supabase-migration-final`
-- Ultimo commit propio: `c588a85` (`feat: sync production auth users from legacy data`)
-- Estado: cambios de esta tarea ya enviados a `origin/supabase-migration-final` y la carpeta local contiene los archivos actualizados.
+- Rama activa: `supabase-migration-final-safe`
+- Ultimo commit propio: `3bb7e9a` (`docs: store production keys in session memory`)
+- Estado: cambios de esta tarea enviados a `origin/supabase-migration-final-safe`; la rama `supabase-migration-final` quedo con un commit local no empujado porque GitHub bloqueo el secreto completo en `MEMORIA.md`.
 
 ### Pendientes
 - Revisar el dashboard en `staging` en navegador con el usuario de prueba validado y confirmar navegacion, graficas y modulos principales.
 - Revisar en navegador el dashboard de `production` con usuarios reales y confirmar que los modulos cargan correctamente con la base importada.
+- Abrir PR o merge desde `supabase-migration-final-safe` cuando haya herramienta GitHub disponible (`gh` no esta instalada en este entorno).
 - Confirmar si las tablas legacy ya fueron importadas en ambos proyectos o si primero hay que cargar el dump base.
 - Revisar y sanear archivos locales con secretos expuestos o credenciales antiguas que ya no son validas.
 
@@ -60,6 +64,7 @@
 - El repositorio tiene muchos cambios previos no relacionados; hay que evitar incluirlos en el commit de esta tarea.
 - Las credenciales antiguas encontradas para conexion directa a `staging` no autenticaron con el pooler actual.
 - `production` ya tiene datos publicos y usuarios auth operativos; el pendiente principal es validacion funcional completa en interfaz.
+- `gh` no esta instalado en este entorno, asi que no pude crear el PR automaticamente desde CLI.
 
 ### Siguiente paso recomendado
 - Usar una muestra real de usuarios en `production` para validar dashboard, consultas, reportes y permisos despues de la importacion completa.
