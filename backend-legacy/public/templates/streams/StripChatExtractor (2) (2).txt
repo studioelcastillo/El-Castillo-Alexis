@@ -1,0 +1,18 @@
+﻿modelos = document.querySelector( '.data-table-body' ).children;
+toCSV = '';
+
+for ( modelo of modelos ) {
+  let username = modelo.querySelector( '.studio-earnings-username' ).innerHTML;
+  let total = modelo.querySelector( '.studio-earnings-total' ).innerHTML;
+
+  toCSV += username + ';' + total + "\n";
+}
+
+toAppend = document.createElement( 'a' );
+toAppend.id = 'mandantes-btn';
+toAppend.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent( toCSV );
+toAppend.download = 'Stripchat ' + (new Date).toISOString().split('T')[0] + '.csv';
+toAppend.className = 'btn btn-apply btn-inline-block';
+toAppend.innerHTML = 'Descargar CSV Para Mandantes';
+
+document.querySelector( '.btn.btn-apply.btn-inline-block' ).parentElement.appendChild( toAppend );

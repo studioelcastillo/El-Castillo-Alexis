@@ -838,9 +838,11 @@ const RoomControlService = {
   },
 
   async getAlerts(): Promise<RoomAlert[]> {
+    const stdId = getStudioId();
     const { data, error } = await supabase
       .from('system_alerts')
       .select('system_alert_id, severity, message, created_at')
+      .eq('std_id', stdId)
       .eq('alert_status', 'OPEN')
       .order('created_at', { ascending: false })
       .limit(10);
@@ -859,7 +861,12 @@ const RoomControlService = {
   },
 
   async getSystemAlerts(status: 'OPEN' | 'RESOLVED' | 'ALL' = 'OPEN'): Promise<SystemAlert[]> {
-    let query = supabase.from('system_alerts').select('*').order('created_at', { ascending: false });
+    const stdId = getStudioId();
+    let query = supabase
+      .from('system_alerts')
+      .select('*')
+      .eq('std_id', stdId)
+      .order('created_at', { ascending: false });
     if (status && status !== 'ALL') {
       query = query.eq('alert_status', status);
     }
@@ -888,6 +895,7 @@ const RoomControlService = {
   },
 
   async resolveSystemAlert(alertId: string, resolution?: string): Promise<boolean> {
+    const stdId = getStudioId();
     const { error } = await supabase
       .from('system_alerts')
       .update({
@@ -895,6 +903,7 @@ const RoomControlService = {
         resolved_at: new Date().toISOString(),
         resolved_by: getStoredUser()?.user_id || null,
       })
+      .eq('std_id', stdId)
       .eq('system_alert_id', Number(alertId));
 
     if (error) {
@@ -992,9 +1001,11 @@ const RoomControlService = {
   },
 
   async getRoomTypes(): Promise<RoomType[]> {
+    const stdId = getStudioId();
     const { data, error } = await supabase
       .from('room_types')
       .select('*')
+      .eq('std_id', stdId)
       .order('room_type_name', { ascending: true });
 
     if (error) {
@@ -1037,6 +1048,7 @@ const RoomControlService = {
   },
 
   async updateRoomType(id: string, data: Partial<RoomType>): Promise<RoomType | undefined> {
+    const stdId = getStudioId();
     const { data: row, error } = await supabase
       .from('room_types')
       .update({
@@ -1045,6 +1057,7 @@ const RoomControlService = {
         room_type_active: data.is_active,
         updated_at: new Date().toISOString(),
       })
+      .eq('std_id', stdId)
       .eq('room_type_id', Number(id))
       .select('*')
       .single();
@@ -1062,7 +1075,12 @@ const RoomControlService = {
   },
 
   async deleteRoomType(id: string): Promise<boolean> {
-    const { error } = await supabase.from('room_types').delete().eq('room_type_id', Number(id));
+    const stdId = getStudioId();
+    const { error } = await supabase
+      .from('room_types')
+      .delete()
+      .eq('std_id', stdId)
+      .eq('room_type_id', Number(id));
     if (error) {
       throw new Error('No se pudo eliminar el tipo de cuarto');
     }

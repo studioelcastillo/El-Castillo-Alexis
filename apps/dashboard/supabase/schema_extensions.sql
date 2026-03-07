@@ -7,6 +7,20 @@
 
 -- NOTE: Run this in Supabase SQL Editor after schema.sql
 
+CREATE OR REPLACE FUNCTION public.is_super_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE auth_user_id = auth.uid()
+      AND prof_id IN (1, 11)
+  );
+$$;
+
 -- ==========================================================
 -- ROOM CONTROL
 -- ==========================================================
@@ -159,6 +173,7 @@ CREATE TABLE IF NOT EXISTS room_ticket_items (
 
 CREATE TABLE IF NOT EXISTS system_alerts (
   system_alert_id SERIAL PRIMARY KEY,
+  std_id INT REFERENCES studios(std_id) ON DELETE SET NULL,
   alert_type VARCHAR(100) NOT NULL,
   subject_user_id INT REFERENCES users(user_id) ON DELETE SET NULL,
   subject_name VARCHAR(255),
@@ -229,6 +244,7 @@ CREATE TABLE IF NOT EXISTS work_shifts (
 
 CREATE TABLE IF NOT EXISTS attendance_daily (
   att_day_id SERIAL PRIMARY KEY,
+  std_id INT REFERENCES studios(std_id) ON DELETE SET NULL,
   user_id INT REFERENCES users(user_id) ON DELETE SET NULL,
   full_name VARCHAR(255),
   role_name VARCHAR(100),
@@ -997,7 +1013,7 @@ ALTER TABLE IF EXISTS shift_model_assignments
 
 CREATE TABLE IF NOT EXISTS shift_settings (
   shift_settings_id SERIAL PRIMARY KEY,
-  settings_key VARCHAR(50) UNIQUE DEFAULT 'default',
+  settings_key VARCHAR(50) DEFAULT 'default',
   std_id INT REFERENCES studios(std_id) ON DELETE SET NULL,
   daily_minutes INT DEFAULT 480,
   tolerance_minutes INT DEFAULT 0,
@@ -1008,6 +1024,12 @@ CREATE TABLE IF NOT EXISTS shift_settings (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE IF EXISTS shift_settings
+  DROP CONSTRAINT IF EXISTS shift_settings_settings_key_key;
+
+CREATE UNIQUE INDEX IF NOT EXISTS shift_settings_settings_key_std_id_key
+  ON shift_settings(settings_key, std_id);
 
 ALTER TABLE IF EXISTS attendance_daily
   ADD COLUMN IF NOT EXISTS penalty_paid BOOLEAN DEFAULT false,
@@ -1096,14 +1118,15 @@ DECLARE
 BEGIN
   FOREACH t IN ARRAY tables LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', t);
+    EXECUTE format('DROP POLICY IF EXISTS authenticated_full_access ON %I;', t);
     IF NOT EXISTS (
       SELECT 1 FROM pg_policies
       WHERE schemaname = 'public'
         AND tablename = t
-        AND policyname = 'authenticated_full_access'
+        AND policyname = 'admin_full_access'
     ) THEN
       EXECUTE format(
-        'CREATE POLICY authenticated_full_access ON %I FOR ALL TO authenticated USING (true) WITH CHECK (true);',
+        'CREATE POLICY admin_full_access ON %I FOR ALL TO authenticated USING (public.is_super_admin()) WITH CHECK (public.is_super_admin());',
         t
       );
     END IF;

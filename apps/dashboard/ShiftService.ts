@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import UserService from './UserService';
+import { getCurrentStudioId } from './tenant';
 
 export interface ShiftAssignmentParams {
   startDate: string;
@@ -45,6 +46,8 @@ const getDurationMinutes = (startTime: string, endTime: string) => {
   if (end >= start) return end - start;
   return 24 * 60 - start + end;
 };
+
+const getStudioId = () => getCurrentStudioId();
 
 const ShiftService = {
   // Fetch active users and categorize them into Monitors and Models
@@ -177,11 +180,18 @@ const ShiftService = {
   },
 
   getMonitorSchedules: async (params: ShiftAssignmentParams) => {
-    const { data, error } = await supabase
+    const stdId = getStudioId();
+    let query = supabase
       .from('shift_monitor_schedules')
       .select('monitor_user_id,schedule_date,shift_id,is_day_off')
       .gte('schedule_date', params.startDate)
       .lte('schedule_date', params.endDate);
+
+    if (stdId) {
+      query = query.eq('std_id', stdId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching monitor schedules:', error);
@@ -200,11 +210,13 @@ const ShiftService = {
   },
 
   saveMonitorSchedule: async (payload: { monitorId: string; date: string; shiftId: string | null }) => {
+    const stdId = getStudioId();
     const { error } = await supabase
       .from('shift_monitor_schedules')
       .upsert(
         [
           {
+            std_id: stdId,
             monitor_user_id: Number(payload.monitorId),
             schedule_date: payload.date,
             shift_id: payload.shiftId ? Number(payload.shiftId) : null,
@@ -222,7 +234,9 @@ const ShiftService = {
 
   saveMonitorScheduleBatch: async (payload: { monitorId: string; dates: string[]; shiftId: string | null }) => {
     if (payload.dates.length === 0) return;
+    const stdId = getStudioId();
     const records = payload.dates.map((date) => ({
+      std_id: stdId,
       monitor_user_id: Number(payload.monitorId),
       schedule_date: date,
       shift_id: payload.shiftId ? Number(payload.shiftId) : null,
@@ -240,11 +254,18 @@ const ShiftService = {
   },
 
   getModelAssignments: async () => {
-    const { data, error } = await supabase
+    const stdId = getStudioId();
+    let query = supabase
       .from('shift_model_assignments')
       .select(
         'model_user_id,monitor_user_id,secondary_monitor_user_id,start_date,end_date,is_active,weekly_target,current_sales'
       );
+
+    if (stdId) {
+      query = query.eq('std_id', stdId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching model assignments:', error);
@@ -294,11 +315,13 @@ const ShiftService = {
     weeklyTarget?: number;
     currentSales?: number;
   }) => {
+    const stdId = getStudioId();
     const { error } = await supabase
       .from('shift_model_assignments')
       .upsert(
         [
           {
+            std_id: stdId,
             model_user_id: Number(payload.modelId),
             monitor_user_id: payload.monitorId ? Number(payload.monitorId) : null,
             secondary_monitor_user_id: payload.secondaryMonitorId ? Number(payload.secondaryMonitorId) : null,
@@ -319,13 +342,20 @@ const ShiftService = {
   },
 
   getAttendanceDaily: async (date: string) => {
-    const { data, error } = await supabase
+    const stdId = getStudioId();
+    let query = supabase
       .from('attendance_daily')
       .select(
         'att_day_id,user_id,full_name,att_date,work_shift_id,shift_name,check_in,check_out,worked_minutes,late_minutes,early_leave_minutes,debt_minutes,penalty_paid,penalty_applied,penalty_amount'
       )
       .eq('att_date', date)
       .order('full_name', { ascending: true });
+
+    if (stdId) {
+      query = query.eq('std_id', stdId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching attendance:', error);
@@ -352,6 +382,7 @@ const ShiftService = {
   },
 
   updateAttendancePenalty: async (payload: { recordId: string; action: 'pay' | 'waive' }) => {
+    const stdId = getStudioId();
     const update: any = {};
     if (payload.action === 'pay') {
       update.penalty_paid = true;
@@ -364,6 +395,7 @@ const ShiftService = {
     const { error } = await supabase
       .from('attendance_daily')
       .update({ ...update, updated_at: new Date().toISOString() })
+      .eq('std_id', stdId)
       .eq('att_day_id', Number(payload.recordId));
 
     if (error) {
@@ -372,11 +404,17 @@ const ShiftService = {
   },
 
   getShiftSettings: async (): Promise<ShiftSettings> => {
-    const { data, error } = await supabase
+    const stdId = getStudioId();
+    let query = supabase
       .from('shift_settings')
       .select('*')
-      .eq('settings_key', 'default')
-      .single();
+      .eq('settings_key', 'default');
+
+    if (stdId) {
+      query = query.eq('std_id', stdId);
+    }
+
+    const { data, error } = await query.maybeSingle();
 
     if (error || !data) {
       return {
@@ -400,12 +438,14 @@ const ShiftService = {
   },
 
   saveShiftSettings: async (settings: ShiftSettings) => {
+    const stdId = getStudioId();
     const { error } = await supabase
       .from('shift_settings')
       .upsert(
         [
           {
             settings_key: 'default',
+            std_id: stdId,
             daily_minutes: settings.dailyMinutes,
             tolerance_minutes: settings.tolerance,
             penalty_amount: settings.penaltyAmount,
@@ -415,7 +455,7 @@ const ShiftService = {
             updated_at: new Date().toISOString(),
           },
         ],
-        { onConflict: 'settings_key' }
+        { onConflict: 'settings_key,std_id' }
       );
 
     if (error) {

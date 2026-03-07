@@ -24,7 +24,21 @@ Para agilizar el desarrollo, se establecen las siguientes reglas de operación:
    - Los cambios en la rama `main` activan el despliegue a producción.
 4. **Persistencia de Datos**: Nunca se deben mezclar las credenciales de un entorno con otro. El archivo `.env.production` y `.env.staging` deben ser respetados estrictamente.
 
+## 2.1 Convención operativa
+
+- `.env` y `apps/dashboard/.env`: desarrollo local, deben apuntar a `staging`.
+- `.env.staging`: despliegue y validación en pruebas.
+- `.env.production`: despliegue real, solo para salida a produccion.
+- Scripts de migración SQL: ejecutar primero en `staging` y luego replicar a `produccion` tras validación.
+
 ---
 
 > [!IMPORTANT]
 > Esta documentación debe ser consultada por cualquier desarrollador o IA antes de realizar modificaciones estructurales en el proyecto.
+
+## 3. Hosting y dominios (Hostinger)
+
+- Proveedor: Hostinger (hosting y DNS).
+- Produccion: `terminado.livstre.com`.
+- Staging: `pruebas.livstre.com`.
+- Publicacion esperada: servir el contenido de `dist/spa` como raiz del sitio. Debe incluir `dashboard-app/` (o el subpath definido en `VITE_DASHBOARD_BASE`/`DASHBOARD_APP_URL`) y el archivo `.htaccess` dentro de esa carpeta para el enrutamiento SPA.

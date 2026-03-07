@@ -4,8 +4,9 @@ Node 18+ (recomendado 20).
 
 ## Configuracion
 1. Copia `apps/dashboard/.env.example` a `apps/dashboard/.env`.
-2. Define `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
-3. Opcional: `VITE_API_URL`, `VITE_SESSION_KEY`, `VITE_DASHBOARD_BASE`, `GEMINI_API_KEY`.
+2. Para desarrollo local usa `staging` (`pnnrsqocukixusmzrlhy` y `https://pruebas.livstre.com/api`).
+3. Usa `produccion` solo para validaciones finales (`ysorlqfwqccsgxxkpzdx` y `https://terminado.livstre.com/api`).
+4. Opcional: `VITE_API_URL`, `VITE_SESSION_KEY`, `VITE_SESSION_STORAGE`, `VITE_DASHBOARD_BASE`.
 
 ## Desarrollo
 ```bash

@@ -1,0 +1,33 @@
+# ---- Build Stage ----
+FROM node:20-alpine AS build
+
+WORKDIR /app
+
+ARG NODE_OPTIONS=--max-old-space-size=4096
+ARG VITE_DASHBOARD_BASE=/dashboard-app/
+ARG DASHBOARD_APP_URL=/dashboard-app/
+ARG VITE_API_URL=
+ARG API_URL=
+
+ENV NODE_OPTIONS=$NODE_OPTIONS
+ENV VITE_DASHBOARD_BASE=$VITE_DASHBOARD_BASE
+ENV DASHBOARD_APP_URL=$DASHBOARD_APP_URL
+ENV VITE_API_URL=$VITE_API_URL
+ENV API_URL=$API_URL
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+RUN npm run build
+
+# ---- Production Stage ----
+FROM nginx:alpine
+
+COPY --from=build /app/dist/spa /usr/share/nginx/html
+COPY --from=build /app/dist/spa/nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80 3000 3032 3033
+
+CMD ["nginx", "-g", "daemon off;"]

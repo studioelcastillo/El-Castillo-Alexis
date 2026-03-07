@@ -16,6 +16,20 @@ powershell -ExecutionPolicy Bypass -File scripts/install-adms-service.ps1 `
   -NssmPath "C:\nssm\nssm.exe"
 ```
 
+## Seguridad (obligatoria)
+El receptor ADMS rechaza todo el trafico si no defines `ADMS_TOKEN` y `ADMS_ALLOWED_IPS`.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install-adms-service.ps1 `
+  -SupabaseUrl "https://ysorlqfwqccsgxxkpzdx.supabase.co" `
+  -SupabaseServiceKey "TU_SERVICE_ROLE_KEY" `
+  -Port 4370 `
+  -AdmsToken "TOKEN_LARGO" `
+  -AllowedIps "192.60.5.120" `
+  -MaxBodyBytes 2000000 `
+  -NssmPath "C:\nssm\nssm.exe"
+```
+
 ## Desinstalar servicio
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/uninstall-adms-service.ps1 `
@@ -52,3 +66,7 @@ Valores recomendados:
 ## Notas
 - Si cambias el puerto, debes abrirlo en el firewall.
 - El receptor ADMS guarda marcaciones por lotes para reducir costos.
+- `ADMS_TOKEN` valida el header `x-adms-token` o el query param `token` si tu dispositivo lo permite.
+- `ADMS_ALLOWED_IPS` acepta una lista separada por comas (IPs exactas).
+- Si defines `ADMS_ALLOWED_IPS`, la regla de firewall se limita a esas IPs.
+- Si no defines `ADMS_TOKEN` o `ADMS_ALLOWED_IPS`, el receptor responde 401/403 y no procesa marcaciones.

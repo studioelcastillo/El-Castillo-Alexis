@@ -38,6 +38,43 @@ const toNumberOr = (value, fallback) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+const normalizeIp = (value) => {
+  if (!value) return '';
+  return value.replace('::ffff:', '').trim();
+};
+
+const allowedIps = (process.env.ADMS_ALLOWED_IPS || '')
+  .split(',')
+  .map((ip) => ip.trim())
+  .filter(Boolean);
+const admsToken = process.env.ADMS_TOKEN || '';
+const maxBodyBytes = toNumberOr(process.env.ADMS_MAX_BODY_BYTES, 2_000_000);
+
+if (allowedIps.length === 0) {
+  console.error('Missing ADMS_ALLOWED_IPS. Receiver will reject all traffic.');
+}
+
+if (!admsToken) {
+  console.error('Missing ADMS_TOKEN. Receiver will reject all traffic.');
+}
+
+const isIpAllowed = (ip) => allowedIps.length > 0 && allowedIps.includes(ip);
+
+const normalizeHeader = (value) => {
+  if (!value) return '';
+  return Array.isArray(value) ? value[0] : value;
+};
+
+const getRequestToken = (req, url) => {
+  const headerToken = normalizeHeader(req.headers['x-adms-token']);
+  if (headerToken) return headerToken;
+  const authHeader = normalizeHeader(req.headers.authorization);
+  if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
+    return authHeader.slice(7).trim();
+  }
+  return url.searchParams.get('token') || '';
+};
+
 const normalizePunchTime = (value) => {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -161,7 +198,7 @@ const updateDevice = async (sn, ipAddress) => {
   const lastSync = deviceLastSync.get(sn) || 0;
   if (Date.now() - lastSync < flushIntervalSeconds * 1000) return;
   deviceLastSync.set(sn, Date.now());
-  const normalizedIp = ipAddress?.replace('::ffff:', '') || null;
+  const normalizedIp = normalizeIp(ipAddress) || null;
   const payload = {
     device_sn: sn,
     device_alias: sn,
@@ -207,18 +244,54 @@ const ensureSettings = async () => {
 };
 
 const handleRequest = async (req, res) => {
-  await ensureSettings();
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
   const sn = url.searchParams.get('SN') || url.searchParams.get('sn') || '';
   const table = (url.searchParams.get('table') || '').toUpperCase();
+  const clientIp = normalizeIp(req.socket.remoteAddress);
+
+  if (allowedIps.length === 0) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    res.end('Forbidden');
+    return;
+  }
+
+  if (!isIpAllowed(clientIp)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    res.end('Forbidden');
+    return;
+  }
+
+  if (!admsToken) {
+    res.writeHead(401, { 'Content-Type': 'text/plain' });
+    res.end('Unauthorized');
+    return;
+  }
+
+  if (admsToken && getRequestToken(req, url) !== admsToken) {
+    res.writeHead(401, { 'Content-Type': 'text/plain' });
+    res.end('Unauthorized');
+    return;
+  }
+
+  await ensureSettings();
 
   if (req.method === 'POST') {
     let body = '';
+    let bytesReceived = 0;
+    let payloadTooLarge = false;
     req.on('data', (chunk) => {
+      bytesReceived += chunk.length;
+      if (bytesReceived > maxBodyBytes) {
+        payloadTooLarge = true;
+        res.writeHead(413, { 'Content-Type': 'text/plain' });
+        res.end('Payload Too Large');
+        req.destroy();
+        return;
+      }
       body += chunk;
-      if (body.length > 2_000_000) req.destroy();
     });
     req.on('end', async () => {
+      if (payloadTooLarge) return;
       if (table && table !== 'ATTLOG' && table !== 'ATTTLOG') {
         res.writeHead(200, { 'Content-Type': 'text/plain' });
         res.end('OK');
@@ -227,7 +300,7 @@ const handleRequest = async (req, res) => {
 
       const events = parseAttendanceLines(body, sn);
       events.forEach(queueEvent);
-      await updateDevice(sn, req.socket.remoteAddress);
+      await updateDevice(sn, clientIp);
 
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end('OK');

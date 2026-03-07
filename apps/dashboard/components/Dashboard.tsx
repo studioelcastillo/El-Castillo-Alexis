@@ -8,6 +8,7 @@ import Charts from './Charts';
 import { ModelsTable, TasksList } from './Tables';
 import DashboardService, { DashboardParams } from '../DashboardService';
 import { getStoredUser } from '../session';
+import { clearAuthSession } from '../utils/session';
 
 // Definición de periodos comunes para la operación
 const PREDEFINED_PERIODS = [
@@ -103,8 +104,7 @@ const Dashboard: React.FC = () => {
     // Handle 401 Errors Globally
     useEffect(() => {
         if (error && (error as any).response?.status === 401) {
-            localStorage.removeItem('user');
-            localStorage.removeItem('dashboard_user');
+            clearAuthSession();
             window.location.reload();
         }
     }, [error]);

@@ -23,17 +23,7 @@ const readSettingRow = async (baseKey: string, studioId?: number | null): Promis
     return scoped.data as SettingRow;
   }
 
-  if (!studioId) {
-    return null;
-  }
-
-  const legacy = await supabase
-    .from('settings')
-    .select('set_key, set_value')
-    .eq('set_key', baseKey)
-    .maybeSingle();
-
-  return (legacy.data as SettingRow | null) || null;
+  return null;
 };
 
 export const getTenantSettingValue = async (baseKey: string, studioId = getCurrentStudioId()) => {

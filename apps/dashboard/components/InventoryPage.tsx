@@ -16,6 +16,7 @@ import {
 } from 'recharts';
 import { supabase } from '../supabaseClient';
 import { getStoredUser } from '../session';
+import { requireStudioId } from '../tenant';
 import StoreService from '../StoreService';
 import { InventoryLot, StockMovement, InstallmentPlan, FinancialRule, FinanceTermType, LoanRequest, StoreOrder, StoreProduct, StoreCategory, ProductVariant, VariantAttributes, AnalyticsSummary, SalesSeriesData, ProductPerformance, InventoryAging, PurchaseOrder, ProductVariant as PVType, CategoryPerformance, CostCenter } from '../types';
 
@@ -505,7 +506,7 @@ const InventoryConfig: React.FC<{
         if (!name || !code) return;
         try {
             // Get studio id from session for CC
-            const stdId = Number(getStoredUser()?.std_id || 1);
+            const stdId = requireStudioId(getStoredUser()?.std_id);
             await supabase.from('cost_centers').insert([{
                 std_id: stdId,
                 cost_center_name: name,

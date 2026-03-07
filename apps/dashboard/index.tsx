@@ -11,7 +11,7 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
-const base = import.meta.env.VITE_DASHBOARD_BASE || '/';
+const base = import.meta.env.BASE_URL || '/';
 const basename = base === '/' ? '/' : base.replace(/\/$/, '');
 root.render(
   <React.StrictMode>

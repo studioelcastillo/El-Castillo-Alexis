@@ -66,42 +66,49 @@ const basePath = base === '/' ? '' : base.replace(/^\/+|\/+$/g, '');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
+const shouldLogRequestHeaders = process.env.LOG_REQUEST_HEADERS === 'true';
+const exposeDebugConfig = process.env.ENABLE_DEBUG_CONFIG === 'true';
 
 // Trust proxy for Easypanel/Nginx
 app.set('trust proxy', true);
 
-// Log headers for debugging
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  console.log('Forwarded-Proto:', req.get('x-forwarded-proto'));
-  console.log('Forwarded-Host:', req.get('x-forwarded-host'));
-  next();
-});
+if (!isProduction || shouldLogRequestHeaders) {
+  app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    if (shouldLogRequestHeaders) {
+      console.log('Forwarded-Proto:', req.get('x-forwarded-proto'));
+      console.log('Forwarded-Host:', req.get('x-forwarded-host'));
+    }
+    next();
+  });
+}
 
 
 // Serve static files from the dist directory
 app.use(express.static(distRoot));
 
-// Diagnostic route
-app.get('/debug-config', (req, res) => {
-  res.json({
-    currentTime: new Date().toISOString(),
-    base,
-    basePath,
-    env: {
-      VITE_DASHBOARD_BASE: process.env.VITE_DASHBOARD_BASE,
-      DASHBOARD_APP_URL: process.env.DASHBOARD_APP_URL,
-      PORT: process.env.PORT,
-      NODE_ENV: process.env.NODE_ENV
-    },
-    headers: req.headers,
-    protocol: req.get('x-forwarded-proto') || req.protocol,
-    host: req.get('x-forwarded-host') || req.get('host'),
-    distRoot,
-    distExists: fs.existsSync(distRoot),
-    rootFiles: fs.readdirSync(root)
+if (exposeDebugConfig) {
+  app.get('/debug-config', (req, res) => {
+    res.json({
+      currentTime: new Date().toISOString(),
+      base,
+      basePath,
+      env: {
+        VITE_DASHBOARD_BASE: process.env.VITE_DASHBOARD_BASE,
+        DASHBOARD_APP_URL: process.env.DASHBOARD_APP_URL,
+        PORT: process.env.PORT,
+        NODE_ENV: process.env.NODE_ENV
+      },
+      headers: req.headers,
+      protocol: req.get('x-forwarded-proto') || req.protocol,
+      host: req.get('x-forwarded-host') || req.get('host'),
+      distRoot,
+      distExists: fs.existsSync(distRoot),
+      rootFiles: fs.readdirSync(root)
+    });
   });
-});
+}
 
 // Root redirect to the dashboard base path
 if (basePath) {

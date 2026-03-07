@@ -2,6 +2,9 @@ name: Deploy to Production
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   deploy:
@@ -18,10 +21,16 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Secret scan
+        run: npm run secrets:check
+
       - name: Lint
         run: npm run lint
 
       - name: Build
+        env:
+          VITE_DASHBOARD_BASE: /dashboard-app/
+          DASHBOARD_APP_URL: /dashboard-app/
         run: npm run build
 
       - name: Security audit

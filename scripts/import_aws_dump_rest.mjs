@@ -1,7 +1,7 @@
 import fs from 'fs';
 import readline from 'readline';
 
-const DUMP_PATH = process.env.AWS_DUMP_PATH || 'E:/Documentos/Downloads/castillo_prod_aws.sql.txt';
+const DUMP_PATH = process.env.AWS_DUMP_PATH || 'castillo_prod_aws.sql.txt';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
 const START_AT = process.env.IMPORT_START_AT || '';

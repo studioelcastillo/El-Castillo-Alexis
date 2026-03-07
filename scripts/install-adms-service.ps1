@@ -2,6 +2,9 @@ param(
   [string]$SupabaseUrl,
   [string]$SupabaseServiceKey,
   [int]$Port = 4370,
+  [string]$AdmsToken,
+  [string]$AllowedIps,
+  [int]$MaxBodyBytes,
   [string]$ServiceName = 'ElCastilloADMS',
   [string]$NssmPath = 'C:\nssm\nssm.exe',
   [string]$RepoPath = $(Resolve-Path "$PSScriptRoot\.." | Select-Object -ExpandProperty Path)
@@ -55,14 +58,34 @@ $stderrPath = Join-Path $logDir 'adms-receiver.error.log'
 & $NssmPath set $ServiceName AppDirectory $RepoPath
 & $NssmPath set $ServiceName AppStdout $stdoutPath
 & $NssmPath set $ServiceName AppStderr $stderrPath
-& $NssmPath set $ServiceName AppEnvironmentExtra "SUPABASE_URL=$SupabaseUrl" "SUPABASE_SERVICE_KEY=$SupabaseServiceKey" "ADMS_PORT=$Port"
+$envVars = @(
+  "SUPABASE_URL=$SupabaseUrl",
+  "SUPABASE_SERVICE_KEY=$SupabaseServiceKey",
+  "ADMS_PORT=$Port"
+)
+if ($AdmsToken) { $envVars += "ADMS_TOKEN=$AdmsToken" }
+if ($AllowedIps) { $envVars += "ADMS_ALLOWED_IPS=$AllowedIps" }
+if ($MaxBodyBytes -gt 0) { $envVars += "ADMS_MAX_BODY_BYTES=$MaxBodyBytes" }
+& $NssmPath set $ServiceName AppEnvironmentExtra $envVars
 & $NssmPath set $ServiceName Start SERVICE_AUTO_START
 & $NssmPath set $ServiceName AppExit Default Restart
 & $NssmPath set $ServiceName AppRestartDelay 5000
 & $NssmPath set $ServiceName Description "Receptor ADMS para El Castillo"
 
 netsh advfirewall firewall delete rule name="El Castillo ADMS" | Out-Null
-netsh advfirewall firewall add rule name="El Castillo ADMS" dir=in action=allow protocol=TCP localport=$Port | Out-Null
+$firewallArgs = @(
+  'advfirewall',
+  'firewall',
+  'add',
+  'rule',
+  'name=El Castillo ADMS',
+  'dir=in',
+  'action=allow',
+  'protocol=TCP',
+  "localport=$Port"
+)
+if ($AllowedIps) { $firewallArgs += "remoteip=$AllowedIps" }
+netsh @firewallArgs | Out-Null
 
 Start-Service -Name $ServiceName
 

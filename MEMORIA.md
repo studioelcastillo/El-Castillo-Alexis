@@ -8,10 +8,136 @@
 
 ## Estado actual
 
+### Preferencias del usuario
+- Responder siempre en espanol.
+
 ### Objetivo actual
 - Integrar la base de datos real del dump AWS (`castillo_prod_aws.sql.txt`) en Supabase para `staging` y `production`, manteniendo compatibilidad con el dashboard actual.
 
 ### Ultimo avance
+- Se dejo preparada una ruta de despliegue en VPS propio sin Easypanel: `deploy/vps/docker-compose.yml`, `deploy/vps/nginx-pruebas.conf`, `deploy/vps/nginx-terminado.conf` y `docs/vps-deploy.md`, con dominios `pruebas.livstre.com` y `terminado.livstre.com` sirviendo frontend en `/` y backend legacy bajo `/api`.
+- Se rehizo `backend-legacy/Dockerfile` para que el backend Laravel pueda construir una imagen utilizable en Docker/Apache con Composer, extensiones PHP, `public/` como document root y permisos basicos de runtime.
+- Se alinearon referencias documentales y ejemplos de CORS/produccion para usar `terminado.livstre.com` en lugar de `login.livstre.com` donde aplica.
+- Se agregaron tambien plantillas privadas versionables `.secure/backend-legacy.pruebas.env.example` y `.secure/backend-legacy.terminado.env.example` para materializar luego los `.env.local` reales fuera de Git.
+- Para agilizar la salida a VPS Ubuntu 24.04 tambien se dejaron `deploy/vps/bootstrap-ubuntu.sh` y `deploy/vps/publish.sh`, que instalan Docker/Nginx/Certbot y publican los sitios con Docker Compose + Nginx del host.
+- Se dejo tambien el archivo local privado `.secure/deploy.env.local` como punto operativo para guardar webhooks reales de Easypanel fuera del codigo versionado.
+- Se intento validar tambien el contenedor final para Easypanel con Docker local: `docker --version` responde `29.2.1`, pero el daemon no esta levantado en esta sesion (`docker build` fallo por `dockerDesktopLinuxEngine` ausente), asi que la verificacion completa de imagen queda pendiente hasta iniciar Docker Desktop o construir en Easypanel.
+- Se preparo el repo para despliegue directo en Easypanel sin depender de archivos manuales externos: se agregaron `Dockerfile`, `.dockerignore` y `docs/easypanel.md` para que el frontend pueda publicarse como contenedor Nginx sirviendo `dist/spa` bajo `/dashboard-app/`.
+- Verificacion local de esta fase: `npm run build` y `npm run lint` ejecutaron correctamente; el build sigue generando `dist/spa/nginx.conf` y la salida lista para Nginx/Easypanel.
+- Ya hay runtime PHP funcional en esta maquina mediante Winget: `PHP 8.3` quedo instalado en `C:\Users\ElCastillo\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.3_Microsoft.Winget.Source_8wekyb3d8bbwe\php.exe`.
+- Se creo `php.ini` minimo para CLI en esa instalacion y se habilitaron extensiones necesarias para Laravel/Composer (`openssl`, `mbstring`, `curl`, `intl`, `pdo_pgsql`, `pgsql`, `zip`, `gd`, etc.).
+- Se descargo `backend-legacy/composer.phar` y se ejecuto `composer install` con exito en `backend-legacy/`.
+- Se creo `backend-legacy/.env` a partir de `.env.example` y `php artisan key:generate --force` quedo exitoso.
+- `php artisan route:list` ya funciona en `backend-legacy/` y expuso `358` rutas; se verifico especificamente que `banks_accounts`, `studios_accounts`, `payments_files` y `setup_commissions` pasan por `ResolveTenantContext`.
+- `php artisan test` corrio correctamente en `backend-legacy/`; por ahora el proyecto solo trae los tests ejemplo (`2 passed`).
+- Se intento avanzar con validacion funcional en navegador usando Playwright y tambien contra los dominios desplegados conocidos.
+- Se agrego una fase preventiva sin rotacion de credenciales: `security/secrets-inventory.md`, `security/secrets-policy.md`, el script `scripts/check-secrets.mjs` y el workflow `.github/workflows/secret-scan.yml` para detectar exposiciones nuevas en archivos versionables.
+- Se eliminaron passwords hardcodeados de `final_init.mjs`, `fix_missing_tables.mjs`, `local_init_staging.mjs`, `smart_init.mjs` y `find_region.mjs`; ahora consumen `SUPABASE_DB_PASSWORD` o `SUPABASE_DB_CONNECTION` desde entorno sin cambiar ni rotar las credenciales reales.
+- `npm run secrets:check` ya pasa en local despues de ese saneamiento preventivo.
+- Los workflows de despliegue (`staging` y `production`) ahora ejecutan tambien `npm run secrets:check` antes de lint/build, y la politica de secretos ya cubre tambien dumps y exportaciones sensibles.
+- Se endurecieron mas utilidades legacy sin rotar credenciales: `check_region.mjs` ya usa variables de entorno en vez de una publishable key pegada; `test_passwords.mjs` ya no imprime passwords completos; `scripts/import_aws_dump*.mjs` dejaron de depender de una ruta local de Downloads y `scripts/browser_validate_login.mjs` admite `PLAYWRIGHT_EXECUTABLE_PATH` por entorno.
+- Se creo una estructura central de seguridad: `security/` para documentacion versionada y `.secure/` para plantillas/archivos locales privados ignorados por git. Ese es el lugar recomendado para centralizar APIs, keys y configuracion sensible fuera del codigo versionado.
+- Se agregaron `scripts/migrate-existing-envs.mjs` y `scripts/materialize-secure-env.mjs` para migrar sin rotacion los `.env` locales hacia `.secure/` y reconstruirlos cuando sea necesario. La fuente local recomendada ahora es `.secure/`.
+- Ya se ejecuto `npm run secure:migrate`: quedaron copiados en `.secure/` el root local, `staging`, `production`, `apps/dashboard/.env` y `backend-legacy/.env`; como `server/.env` no existia, se dejo una base local desde `.secure/server.env.example`.
+- Se dejo documentada la referencia canonica de ubicacion de APIs, keys y secretos en `security/private-locations.md` para que el proyecto conserve una sola fuente de verdad sobre donde va cada dato privado.
+- La documentacion ya deja explicito que toda clave, API, token o credencial nueva que se agregue en el futuro debe guardarse en `.secure/` o en el proveedor correspondiente, y que `security/` solo conserva la referencia documental sin valores reales.
+- Se ejecuto una auditoria extensa del proyecto cubriendo frontend, backend legacy, Supabase, secretos, despliegue y organizacion. Verificaciones actuales: `npm run secrets:check`, `npm run lint`, `npm run build`, `npm audit --audit-level=high`, `php artisan test` y `php artisan route:list` pasaron correctamente en este entorno.
+- Hallazgos criticos actuales de auditoria: endpoints legacy anonimos con lectura/escritura de configuracion sensible (`api/app/proxy`, `api/app/platform`, `api/bots`, `api/bot-views`), credenciales hardcodeadas en `backend-legacy/database/seeders/ModelAccountSeeder.php`, almacenamiento/exposicion de passwords de plataformas en claro y uso persistente de passwords predecibles en `scripts/sync_auth_from_users_admin.mjs`.
+- Hallazgos altos actuales de auditoria: el frontend sigue dependiendo de `std_id` enviado desde cliente hacia el backend (`apps/dashboard/api.ts`), existe CRUD generico directo a Supabase desde browser (`apps/dashboard/supabase/tableService.ts`), el bucket `el-castillo` sigue publico en `supabase/storage_setup.sql`, CORS legacy esta abierto a `*` y `AddHeaderAccessToken` sigue aceptando `access_token` por query string.
+- Remediaciones aplicadas despues de la auditoria: `backend-legacy/routes/api.php` movio `app/proxy`, `app/platform`, `bots` y `bot-views` a `internal.service`; `dynamic-bonuses` y dashboard de LiveJasmin ahora exigen auth + tenant; `Bot` oculta `password`; `sync_auth_from_users_admin.mjs` ya usa `temporary-strong` por defecto; la UI React enmascara passwords/API keys en tablas y formularios administrativos; `backend-legacy/config/cors.php` ya usa allowlist por entorno y `AddHeaderAccessToken` solo promueve query token en `GET/HEAD` sin header existente; `ModelAccountSeeder` dejo de versionar passwords reales usando `LEGACY_PLATFORM_PASSWORD_PLACEHOLDER`.
+- Hallazgo real de despliegue: `https://pruebas.livstre.com/dashboard-app/` en navegador cae en login de Easypanel y `https://login.livstre.com/dashboard-app/` responde `404`, asi que la validacion browser de staging/production desplegados no se puede completar con esas URLs actuales.
+- Se dejo script auxiliar de validacion browser en `scripts/browser_validate_login.mjs` y un workspace temporal fuera del repo en `E:\Documentos\Desktop\Aplicacion Castillo Alexis\playwright-temp` para seguir probando cuando haya URL frontend valida.
+- Se continuo el endurecimiento tenant del backend legacy sin depender de PHP runtime, enfocandose en controladores que aun permitian acceso por ID directo o listados sin scoping suficiente.
+- `backend-legacy/app/Http/Controllers/Controller.php` ahora incluye helpers adicionales `resolveTenantStudioInput`, `findTenantScopedOrFail` y `findTenantRelationScopedOrFail` para reutilizar enforcement tenant tambien en `store`, `update` y `destroy`.
+- Se reforzaron `BankAccountController` y `StudioAccountController` para obligar `std_id` accesible al crear/editar, y para scopear tambien `show`, `export`, `update`, `destroy`, `active` e `inactive` por sede.
+- Se reforzo `PaymentFileController` para que los no privilegiados solo puedan listar, descargar, editar o borrar archivos de pago creados por ellos o vinculados a pagos de sus sedes.
+- Se reforzo `SetupCommissionController` para scopear `selectOptions`, `index`, `show`, CRUD de configuraciones y CRUD de items por `std_id`/relacion `commission`, evitando acceso cross-tenant por IDs directos.
+- Se actualizo `docs/backend-legacy.md` con esta nueva cobertura.
+- Se localizaron los zips nuevos en `E:\Documentos\Desktop\Aplicacion Castillo Alexis\problemas`: el util fue `el-castillo-webapp-develop (1).zip`; `el-castillo-dashboard-main (1).zip` era solo frontend y `el-castillo-webapp-develop.zip` estaba vacio/corrupto.
+- Del zip valido se extrajo por fin el backend legacy real en Laravel (`server/`) y se integro al proyecto actual como `software el castillo/backend-legacy/` para trabajarlo junto al frontend.
+- Se agrego una base de enforcement tenant server-side en ese backend: `backend-legacy/app/Support/TenantContext.php`, `backend-legacy/app/Http/Middleware/ResolveTenantContext.php`, alias `resolveTenant` en `backend-legacy/app/Http/Kernel.php` y aplicacion del middleware al grupo autenticado en `backend-legacy/routes/api.php`.
+- Se reforzo el controlador base del backend legacy (`backend-legacy/app/Http/Controllers/Controller.php`) con helpers reutilizables `applyTenantScope`, `applyTenantRelationScope`, `tenantStudioId` y `tenantStudioIds`.
+- Se inyecto scoping tenant adicional en endpoints legacy criticos usados por el dashboard actual: `PaymentController`, `TransactionController`, `ModelAccountController`, `ModelGoalController`, `ModelStreamController`, `StudioController`, `StudioModelController`, `StudioRoomController`, `StudioShiftController` y `UserController`.
+- Se endurecio tambien `backend-legacy/app/Library/HelperController.php` para que `generateConditions()` anada `std_id` automaticamente cuando el request autenticado ya viene resuelto por tenant.
+- Se documento la integracion del backend legacy y su punto de entrada en `docs/backend-legacy.md`.
+- Limite actual del entorno: no se pudo ejecutar `composer`, `php artisan` ni `php -l` porque PHP no esta instalado en esta maquina/CLI; el backend legacy quedo integrado y endurecido a nivel de codigo, pero su validacion de ejecucion queda pendiente hasta tener runtime PHP.
+- Se inspecciono la ruta indicada por el usuario: `E:\Documentos\Desktop\Aplicacion Castillo Alexis\problemas`. En este momento solo contiene `castillo_prod_aws.sql.txt`, que es un dump SQL de PostgreSQL y no el codigo fuente del backend legacy.
+- No aparecieron `package.json`, `composer.json`, `artisan`, `server.js`, `index.js`, rutas Express/Laravel ni ningun proyecto de API dentro de esa carpeta; por tanto no fue posible ejecutar la auditoria/correccion del backend desde esa ubicacion.
+- Se busco el backend legado dentro del workspace ampliado (`E:\Documentos\Desktop\Aplicacion Castillo Alexis`) y no aparecio un backend de negocio/API aparte del frontend actual; solo existe `server.mjs` como servidor estatico y `server/gemini-proxy.mjs` como proxy aislado para Gemini.
+- Se revisaron tambien las copias en `_zip_review/` y corresponden solo a snapshots del frontend (`vite` + `api.ts`), no al backend externo `el-castillo-api.bygeckode.com`.
+- Conclusion operativa: el backend legacy que realmente atiende `/api` y del que depende el frontend endurecido no esta presente en los archivos disponibles, por lo que su auditoria/correccion server-side no puede ejecutarse desde este repo.
+- El unico backend adicional encontrado (`server/gemini-proxy.mjs`) no participa en multi-tenant de negocio; su endurecimiento ya quedo cubierto por restricciones de token, CORS, rate limit y loopback/local donde aplica.
+- En la validacion tenant real aparecio un problema critico de runtime: usuarios autenticados normales devolvian `500` al consultar `payments` por recursion infinita de RLS en politicas legacy de `users`, `studios` y `payments`.
+- Se corrigio `supabase/tenant_hardening.sql` para reemplazar esas politicas recursivas por versiones seguras basadas en helpers `SECURITY DEFINER`: se eliminaron `super_access`, `staff_studio_access`, `studio_owner_access` y `hierarchical_payments`, y se recrearon politicas seguras para `users` y `studios`.
+- Se detecto otro hueco importante: `public.users.std_id` estaba `NULL` en los `4182` usuarios tanto en `staging` como en `production`, debilitando `current_app_std_id()` y gran parte del enforcement tenant.
+- Se agrego backfill seguro en `supabase/tenant_hardening.sql` para poblar `users.std_id` desde `studios.user_id_owner` y desde `studios_models` cuando el usuario pertenece de forma univoca a una sola sede activa.
+- Resultado del backfill en ambos entornos: `1688` usuarios quedaron con `std_id` restaurado automaticamente; los casos ambiguos o sin relacion suficiente quedaron `NULL` para evitar asignaciones incorrectas.
+- Se hizo validacion tenant real en `production` con login de dos usuarios normales de sedes distintas: usuario `user_id=144` (`std_id=7`) y usuario `user_id=1104` (`std_id=74`). Ambos pudieron autenticarse y consultar pagos de su propia sede, mientras que las consultas a pagos de la otra sede devolvieron `0` filas.
+- Verificacion estructural final: en `staging` y `production` ya no existen las politicas recursivas legacy en `users`, `studios` ni `payments`; quedaron activas solo las politicas seguras (`tenant_users_access`, `tenant_studios_access`, `tenant_payments_access`, ademas de `admin_full_access`/`self_access` donde aplica).
+- Ajuste final adicional: `ShiftService` ahora filtra tambien `shift_monitor_schedules` por `std_id` y persiste `std_id` en `saveMonitorSchedule`; `InventoryPage` ya no cae por defecto al estudio `1` al crear centros de costos.
+- Verificacion final posterior a ese ajuste: `npm run lint` y `npm run build` siguieron pasando, y en `staging` tampoco existe ya la politica `settings_read_app_keys`.
+- Se aplicaron los arreglos solicitados de auditoria excepto la rotacion de claves y el cambio forzado de passwords legacy, que quedaron diferidos por decision del usuario.
+- Se completo una nueva fase de endurecimiento sin rotacion: `backend-legacy/routes/api.php` movio tambien `api/app/ip-report` a `internal.service`; el CRUD generico de React ahora soporta `scopeField` y `accessMode`, fuerza `std_id` actual en recursos scopeados por sede y elimina escritura directa desde browser en recursos sensibles (`studios_accounts`, `models_accounts`, `settings`, `logs`, `login_history`, `payments_files`, `api_*`, `paysheet`, `massive_liquidation`, etc.).
+- `apps/dashboard/App.tsx` se simplifico extrayendo rutas, aliases y renderizado de paginas a `apps/dashboard/appRoutes.tsx`, dejando el componente principal enfocado en sesion, layout y guardas globales.
+- Validacion posterior a esta fase: `npm run lint`, `npm run build` y `php artisan route:list` ejecutaron correctamente; `route:list` confirma que `api/app/ip-report` sigue presente pero ya se definio dentro del bloque `internal.service`.
+- Se retomo la validacion funcional por sedes. Hallazgos actuales: `https://pruebas.livstre.com/dashboard-app/` ya responde con el HTML del dashboard, pero queda en blanco porque los modulos JS se sirven con MIME incorrecto (`text/html` en lugar de script module). Adicionalmente, la validacion local contra `staging` quedo bloqueada por auth: `supabase.auth.signInWithPassword()` esta devolviendo `500 unexpected_failure` en `https://pnnrsqocukixusmzrlhy.supabase.co/auth/v1/token?grant_type=password` para los usuarios de prueba tenant `std_id=7` y `std_id=74`, asi que no se pudo completar el recorrido browser autenticado de `studios_rooms`, `studios_models` y `studios_accounts`.
+- Se reviso y corrigio la causa probable del despliegue en blanco: los builds de CI estaban saliendo con base `/` en lugar de `/dashboard-app/`. Se actualizaron `.github/workflows/staging-deploy.yml` y `.github/workflows/production-deploy.yml` para exportar `VITE_DASHBOARD_BASE=/dashboard-app/` y `DASHBOARD_APP_URL=/dashboard-app/` durante `npm run build`; validacion local posterior: `dist/spa/dashboard-app/index.html` ahora referencia `/dashboard-app/assets/...` y `scripts/copy-dashboard.mjs` materializa correctamente `dist/spa/dashboard-app/`.
+- Se reviso a fondo el fallo de login en `staging`: un usuario nuevo creado por Admin API autentica bien, mientras que los usuarios importados desde hashes legacy fallaban con `500 unexpected_failure`. Eso apunta a incompatibilidad/rotura de los `encrypted_password` sembrados desde `supabase/sync_legacy_auth.sql` (hashes legacy bcrypt importados) y no a un problema general de Supabase Auth.
+- Se extendio `scripts/sync_auth_from_users_admin.mjs` para soportar reseteo de passwords de usuarios auth ya existentes (`SYNC_RESET_EXISTING_PASSWORDS`), filtros por usuario/identificacion y reanudacion por offset (`SYNC_START_OFFSET`). Luego se ejecuto en `staging` con `temporary-strong` para reparar el acceso de los usuarios ya enlazados a Auth.
+- Validacion posterior a la reparacion: los usuarios de prueba `user_id=144/std_id=7` y `user_id=1104/std_id=74` ya autenticaron correctamente en `staging` con passwords temporales fuertes, y la validacion browser local confirmo aislamiento por sede en `studios_rooms` y `studios_models`, ademas de modo solo lectura en `studios_accounts`.
+- Tambien se alinearon los ejemplos/versionados de entorno para evitar futuras regresiones de subruta: `.env.example`, `.env.staging` y `apps/dashboard/.env.example` ahora apuntan a `/dashboard-app/` como base recomendada para despliegues remotos.
+- Se retomo el fallback de despliegue por Dockerfile y aparecieron dos causas concretas del build remoto roto: `scripts/copy-dashboard.mjs` anunciaba `dist/spa/nginx.conf` pero no lo escribia realmente, y el build podia caer por heap insuficiente si `NODE_OPTIONS` no se propagaba al proceso real de Vite.
+- Se corrigio ese flujo: `scripts/build-dashboard.mjs` ahora lanza Vite con `NODE_OPTIONS=--max-old-space-size=4096`, `package.json` usa ese wrapper para `npm run build`, `scripts/copy-dashboard.mjs` ya escribe `dist/spa/nginx.conf` y `Dockerfile.unused` define defaults/build args para `/dashboard-app/` junto con heap ampliado.
+- Verificacion local nueva: `npm run build` con `VITE_DASHBOARD_BASE=/dashboard-app/` y `DASHBOARD_APP_URL=/dashboard-app/` ya genera `dist/spa/dashboard-app/index.html` con referencias `/dashboard-app/assets/...` y `dist/spa/nginx.conf` valido para Nginx.
+- Bloqueo operativo actual del redeploy remoto: en esta sesion no hay webhook ni token real de Easypanel cargado en `.secure/` ni en variables de entorno, asi que no se puede ejecutar desde aqui el cambio remoto restante sin volver a recibir acceso operativo.
+- Revisión de secretos/documentación: la documentación (`security/private-locations.md`, `security/secrets-inventory.md`) sí contempla las credenciales necesarias para cerrar el flujo completo, pero localmente falta el archivo operativo `.secure/deploy.env.local` y no existe `EASYPANEL_STAGING_WEBHOOK` cargado en `.env` ni en `.secure/`; por eso todavía no se puede disparar el redeploy remoto desde este entorno aunque el código y la configuración ya estén listos.
+- Nueva verificacion puntual sobre las rutas canonicas de secretos: se revisaron `.secure/root.env.local`, `.secure/root.staging.env.local`, `.secure/root.production.env.local`, `.secure/dashboard.env.local`, `.secure/server.env.local`, `.secure/backend-legacy.env.local`, `.env*` y la busqueda global por `EASYPANEL_STAGING_WEBHOOK`, `EASYPANEL_PRODUCTION_WEBHOOK`, `easypanel` y `webhook`. Resultado: no existe ningun valor real del webhook en esta maquina; solo aparecen referencias documentales y plantillas (`.secure/deploy.env.example`).
+- Se elimino el fallback frontend a configuraciones globales legacy en `apps/dashboard/tenantSettings.ts`; ahora las lecturas de `settings` dependen solo de claves scopeadas por sede.
+- `supabase/settings_policies.sql` quedo deprecado para eliminar la politica legacy `settings_read_app_keys` en lugar de volver a crear acceso global, y `supabase/tenant_hardening.sql` ahora tambien la elimina al aplicarse.
+- Se unifico mejor la sesion entre Supabase y `dashboard_user`: `session.ts` ahora tiene `setStoredUser`, `AuthSupabaseService` agrega `syncStoredSession`, `AuthService` la expone, `LoginPage` usa esa persistencia centralizada, `AuthCallbackPage` hidrata el perfil real y `App.tsx` sincroniza el estado con `supabase.auth.onAuthStateChange`.
+- Se corrigio la ruta por defecto del API frontend en `apps/dashboard/api.ts` para usar `/api` en vez de un backend externo hardcodeado.
+- Se endurecio el esquema tenant para tablas inconsistentes de UI: `attendance_daily` y `system_alerts` ahora tienen `std_id`; `tenant_hardening.sql` agrega backfills seguros y politicas tenant nuevas para `attendance_daily`, `system_alerts` y `room_types`.
+- Se ajustaron servicios cliente para respetar ese endurecimiento: `RoomControlService` ahora filtra `system_alerts` y `room_types` por sede, y `ShiftService` filtra/persiste `attendance_daily`, `shift_model_assignments`, `shift_monitor_schedules` y `shift_settings` con `std_id`.
+- `shift_settings` se corrigio a nivel de esquema para soportar configuracion por sede con indice unico compuesto (`settings_key`, `std_id`) en vez de unicidad global por `settings_key`.
+- Se redujo la superficie insegura de operacion: `server.mjs` ya no expone `/debug-config` salvo que se habilite explicitamente y no registra headers en produccion salvo override; `vite.config.ts` restringe `__local/login-lookup` solo a loopback local.
+- Se aplicaron de nuevo `apps/dashboard/supabase/schema_extensions.sql` y `supabase/tenant_hardening.sql` en `staging` y `production` con exito, y se confirmo que `settings_read_app_keys` ya no existe en `production`.
+- Verificaciones tecnicas posteriores a los cambios: `npm run lint` y `npm run build` ejecutaron correctamente; `dist/spa` se regenero.
+- Se realizo una auditoria tecnica amplia del proyecto completo, cubriendo tenant/RLS, auth/sesion, secretos, scripts SQL, integracion frontend-Supabase y dependencias del backend legacy.
+- Verificaciones tecnicas actuales: `npm run lint` y `npm run build` ejecutaron correctamente despues de los cambios de hardening; `dist/spa` se regenero sin errores.
+- Hallazgo critico de seguridad: siguen expuestas keys reales de `SUPABASE_SERVICE_ROLE_KEY` en archivos locales versionables como `.env` y `.env.staging`; deben rotarse y sanearse.
+- Hallazgo critico de auth: `scripts/sync_auth_from_users_admin.mjs` genera passwords predecibles con los ultimos 5 digitos de la cedula (`MODE=cedula-last5`), y ese mecanismo ya se uso para poblar usuarios en `production`; se requiere rotacion/forzado de cambio.
+- Hallazgo alto de tenant: `apps/dashboard/tenantSettings.ts` mantiene fallback a keys globales legacy cuando no existe `studio:{std_id}:...`, y `supabase/settings_policies.sql` sigue permitiendo leer varias keys globales a cualquier autenticado; eso puede mezclar configuraciones entre sedes.
+- Hallazgo alto de auth UX/estado: `AuthCallbackPage` solo valida `supabase.auth.getSession()` y redirige, pero no hidrata `dashboard_user`; la app principal sigue considerando autenticado al usuario segun `getStoredUser()`, generando posible sesion partida entre Supabase y la UI.
+- Hallazgo alto de backend legacy: la propagacion tenant hacia el API externo depende del cliente (`apps/dashboard/api.ts` agrega `Authorization`, `X-Studio-Id` y `std_id`), pero en este repo no existe el enforcement server-side de ese backend, asi que el cierre total todavia depende de auditar ese servicio aparte.
+- Hallazgo alto de esquema/RLS: tablas como `attendance_daily`, `room_types` y `system_alerts` aparecen usadas por la UI como si fueran tenant-aware, pero su modelado/politicas siguen inconsistentes o incompletos respecto al endurecimiento multi-tenant.
+- Hallazgo medio de operacion: `server.mjs` sigue exponiendo logging detallado de headers y la ruta `/debug-config`, lo que conviene retirar en produccion.
+- El usuario entrego un token personal de Supabase (`sbp_...`) y se guardo localmente en memoria para no volver a pedirlo.
+- Se valido ese token contra `https://api.supabase.com/v1/projects/ysorlqfwqccsgxxkpzdx/database/query` y funciono correctamente en `production`.
+- Con ese acceso se aplicaron en `production` los archivos `apps/dashboard/supabase/schema_extensions.sql` y `supabase/tenant_hardening.sql` usando `supabase/apply_sql_files.mjs`.
+- Se detecto un hueco de seguridad importante: varias tablas con politicas tenant seguian conservando `authenticated_full_access`, lo que podia dejar bypass del aislamiento multi-tenant.
+- Se corrigio `supabase/tenant_hardening.sql` para que `ensure_tenant_policy` elimine tambien `authenticated_full_access` antes de recrear la politica tenant, y luego se reaplico en `staging` y `production`.
+- Verificacion final en `production`: quedaron `74` politicas `tenant_*` activas; tablas clave como `chat_conversations`, `chat_profiles`, `remote_devices`, `remote_sessions`, `payroll_transactions`, `setup_commissions_item` y `monetization_liquidation_items` tienen politicas tenant activas.
+- Verificacion final en `production` y `staging`: ya no quedan politicas `authenticated_full_access` residuales en las tablas endurecidas (`bank_accounts`, `models_*`, `payment_files`, `payroll_*`, `paysheets`, `products`, `settings`, `studios_models`, `studios_rooms`, `transactions`, etc.).
+- `production` quedo alineado con `staging` en la fase server-side del blindaje multi-tenant versionado.
+- El usuario confirmo de nuevo una `sb_secret` completa de `production`; se probo inmediatamente contra `https://api.supabase.com/v1/projects/ysorlqfwqccsgxxkpzdx/database/query` y devolvio `401` (`JWT could not be decoded`), confirmando que esa `sb_secret` no sirve como token de management API para ejecutar SQL versionado.
+- Tambien se probo la via REST RPC generica contra `production` y devolvio `404`, porque no existe una funcion SQL expuesta que permita ejecutar queries arbitrarias desde PostgREST.
+- Se uso la `sb_secret` de `production` para inspeccion por REST y se confirmo que varias tablas existen (`chat_conversations`, `payroll_transactions`, `loan_requests`, `setup_commissions_item`, `monetization_liquidation_items`, ademas de tablas base como `products`, `settings` y `payments`), pero al menos `remote_devices` todavia no existe en el schema cache de `production`.
+- Conclusion actual: `production` no se puede terminar desde este entorno usando solo la `sb_secret`; para aplicar `apps/dashboard/supabase/schema_extensions.sql` y `supabase/tenant_hardening.sql` hace falta un token de management de Supabase o acceso SQL directo a la base de `production`.
+- Preferencia guardada: responder siempre en espanol.
+- Se confirmo que habia credenciales SQL utilizables para `staging` en scripts locales legacy y se uso esa conexion para ejecutar la fase server-side pendiente.
+- Primer intento de `node run_pg.mjs` sobre `staging` fallo al reejecutar `supabase/schema.sql` porque esa base ya tenia politicas legacy como `super_access`; se concluyo que `run_pg.mjs` no era practico para bases ya inicializadas si obliga a correr todo desde cero.
+- Se reforzo `run_pg.mjs` para aceptar archivos por CLI y poder ejecutar migraciones parciales de forma segura sobre entornos existentes.
+- Se corrigio `supabase/tenant_hardening.sql` para que los backfills no fallen cuando tablas opcionales aun no existen y para que `ensure_tenant_policy` ignore dependencias ausentes (`undefined_table` / `undefined_column`) en vez de abortar toda la migracion.
+- Se aplico `apps/dashboard/supabase/schema_extensions.sql` en `staging` y luego `supabase/tenant_hardening.sql` usando SQL directo por PostgreSQL.
+- Se valido tambien la nueva ruta operativa con `node run_pg.mjs apps/dashboard/supabase/schema_extensions.sql supabase/tenant_hardening.sql` contra `staging`, ejecutando ambos archivos con exito.
+- Verificacion en `staging`: quedaron `74` politicas `tenant_*` activas y se confirmaron politicas tenant en tablas clave como `chat_conversations`, `chat_profiles`, `remote_devices`, `remote_sessions`, `payroll_transactions`, `setup_commissions_item` y `monetization_liquidation_items`.
+- Verificacion de esquema en `staging`: existen ya columnas `std_id` en tablas endurecidas como `chat_conversations`, `loan_requests`, `monetization_platforms`, `remote_devices` y `remote_sessions`.
+- Se retomo la fase server-side de blindaje multi-tenant y se revisaron `run_pg.mjs`, `supabase/tenant_hardening.sql` y `supabase/configure_rls.sql` para corregir el orden real de ejecucion.
+- Se detecto que `run_pg.mjs` estaba en riesgo de ejecutar `tenant_hardening.sql` sin haber cargado antes `apps/dashboard/supabase/schema_extensions.sql`, y que ademas `schema_extensions.sql` depende de `public.is_super_admin()` creado en `supabase/configure_rls.sql`.
+- Se actualizo `run_pg.mjs` para ejecutar en este orden: `schema.sql` -> legacy alignment -> `configure_rls.sql` -> `apps/dashboard/supabase/schema_extensions.sql` -> `tenant_hardening.sql`.
+- Se reescribio `supabase/tenant_hardening.sql` para que cree politicas tenant de forma segura solo si la tabla existe, habilite RLS al crear cada politica y evite backfills inseguros basados en `auth.uid()`/`current_app_std_id()` durante migraciones administrativas.
+- La nueva fase server-side ahora tambien cubre tablas que faltaban en el blindaje: `models_goals`, `models_transactions`, `payroll_concepts`, `payroll_transactions`, `chat_profiles`, `setup_commissions_item` y tablas hijas de `monetization_liquidations`.
+- Verificacion local completada: `node --check run_pg.mjs`.
 - Se reviso la documentacion principal: `README.md`, `docs/environments.md`, `docs/adms-windows.md`, `apps/dashboard/README.md` y `SERVICES.md`.
 - Se comparo `E:\Documentos\Downloads\castillo_prod_aws.sql.txt` contra los esquemas en `supabase/`.
 - Se detecto que el dump AWS tenia una tabla legacy faltante en el proyecto: `payments_files`.
@@ -24,12 +150,13 @@
 - Se recupero acceso SQL real a `staging` usando la conexion `postgresql://postgres.pnnrsqocukixusmzrlhy@aws-1-us-east-1.pooler.supabase.com:6543/postgres` con la clave encontrada en scripts legacy.
 - Se importo el dump AWS a `staging` con `scripts/import_aws_dump.mjs` y quedaron cargadas tablas clave como `users` (4182), `studios` (97), `studios_models` (4243), `models_accounts` (16394), `models_streams` (382752), `transactions` (4163), `payments` (575), `accounts` (11), `bank_accounts` (39), `exchange_rates` (496) y `payment_files` (23).
 - Se sincronizo `staging` con Supabase Auth usando `supabase/sync_legacy_auth.sql`: quedaron `4182` usuarios en `auth.users`, `4182` identidades y `4182` filas de `public.users` enlazadas por `auth_user_id`.
-- Se valido login real en `staging`: se asigno temporalmente la clave `Temporal2026!` al usuario `user_id=1` (`1144083039@legacy.elcastillo.local`) y el inicio de sesion funciono tanto por email directo como por flujo de identificacion con lookup server-side.
+- Se valido login real en `staging` con un password temporal de prueba para un usuario legacy y el inicio de sesion funciono tanto por email directo como por flujo de identificacion con lookup server-side.
 - Se recibio una `sb_secret` de `production` y se confirmo que sirve para REST y `auth/v1/admin`, pero no para `api.supabase.com` ni para ejecutar SQL de gestion.
 - Con esa `sb_secret` se importaron en `production` las tablas publicas principales mediante `scripts/import_aws_dump_rest.mjs`: `users` (4182), `studios` (97), `studios_models` (4243), `models_accounts` (16394), `models_streams` (382752), `transactions` (4163), `payments` (575), `accounts` (11), `bank_accounts` (39), `exchange_rates` (496) y `payment_files` (23).
 - Se crearon usuarios de autenticacion en `production` desde `public.users` con `scripts/sync_auth_from_users_admin.mjs`, usando como password los ultimos 5 digitos de la cedula. Quedaron `4182` filas de `public.users` enlazadas con `auth_user_id`.
-- Se valido login real en `production` para la cedula `1144083039` con clave `83039`, tanto por email directo como por flujo de identificacion.
+- Se valido login real en `production` con un usuario de prueba y password legacy temporal, tanto por email directo como por flujo de identificacion.
 - Claves recibidas y usadas para `production`: publishable `sb_publishable_5Awk9f_...` y secret `sb_secret_K2Fxg1_...`.
+- Token personal Supabase para management API de `production` disponible localmente de forma segura fuera de archivos versionables; no se registra el valor en memoria.
 - URL interna de pruebas disponible: `https://pruebas.livstre.com`.
 - URL de produccion: `https://login.livstre.com`.
 - Se dejo una rama segura para revision en GitHub: `supabase-migration-final-safe`.
@@ -43,11 +170,86 @@
 - `RemoteDesktopService` ahora filtra client-side los registros con `std_id` cuando ese dato existe en la tabla remota, aunque todavia depende de que el backend/esquema remoto exponga ese campo.
 
 ### Archivos tocados recientemente
+- `Dockerfile`
+- `.dockerignore`
+- `docs/easypanel.md`
 - `MEMORIA.md`
+- `security/README.md`
+- `security/private-locations.md`
+- `security/secrets-inventory.md`
+- `security/secrets-policy.md`
+- `.secure/README.md`
+- `.secure/root.env.example`
+- `.secure/dashboard.env.example`
+- `.secure/server.env.example`
+- `.secure/backend-legacy.env.example`
+- `.secure/deploy.env.example`
+- `scripts/secure-env-paths.mjs`
+- `scripts/migrate-existing-envs.mjs`
+- `scripts/materialize-secure-env.mjs`
+- `scripts/check-secrets.mjs`
+- `.github/workflows/secret-scan.yml`
+- `final_init.mjs`
+- `fix_missing_tables.mjs`
+- `local_init_staging.mjs`
+- `smart_init.mjs`
+- `find_region.mjs`
+- `.github/workflows/staging-deploy.yml`
+- `.github/workflows/production-deploy.yml`
+- `check_region.mjs`
+- `test_passwords.mjs`
+- `scripts/import_aws_dump.mjs`
+- `scripts/import_aws_dump_rest.mjs`
+- `scripts/browser_validate_login.mjs`
+- `scripts/build-dashboard.mjs`
 - `AGENTS.md`
+- `docs/backend-legacy.md`
+- `backend-legacy/.env`
+- `backend-legacy/composer.phar`
+- `backend-legacy/app/Support/TenantContext.php`
+- `backend-legacy/app/Http/Middleware/ResolveTenantContext.php`
+- `backend-legacy/app/Http/Kernel.php`
+- `backend-legacy/routes/api.php`
+- `backend-legacy/app/Http/Controllers/Controller.php`
+- `backend-legacy/app/Library/HelperController.php`
+- `backend-legacy/app/Http/Controllers/PaymentController.php`
+- `backend-legacy/app/Http/Controllers/TransactionController.php`
+- `backend-legacy/app/Http/Controllers/ModelAccountController.php`
+- `backend-legacy/app/Http/Controllers/ModelGoalController.php`
+- `backend-legacy/app/Http/Controllers/ModelStreamController.php`
+- `backend-legacy/app/Http/Controllers/StudioController.php`
+- `backend-legacy/app/Http/Controllers/StudioModelController.php`
+- `backend-legacy/app/Http/Controllers/StudioRoomController.php`
+- `backend-legacy/app/Http/Controllers/StudioShiftController.php`
+- `backend-legacy/app/Http/Controllers/UserController.php`
+- `backend-legacy/app/Http/Controllers/BankAccountController.php`
+- `backend-legacy/app/Http/Controllers/StudioAccountController.php`
+- `backend-legacy/app/Http/Controllers/PaymentFileController.php`
+- `backend-legacy/app/Http/Controllers/SetupCommissionController.php`
+- `scripts/browser_validate_login.mjs`
+- `run_pg.mjs`
+- `supabase/tenant_hardening.sql`
+- `supabase/settings_policies.sql`
+- `apps/dashboard/supabase/schema_extensions.sql`
+- `supabase/apply_sql_files.mjs`
+- `apps/dashboard/session.ts`
+- `apps/dashboard/AuthService.ts`
+- `apps/dashboard/services/supabase/AuthSupabaseService.ts`
+- `apps/dashboard/components/LoginPage.tsx`
+- `apps/dashboard/components/AuthCallbackPage.tsx`
+- `apps/dashboard/App.tsx`
+- `apps/dashboard/appRoutes.tsx`
+- `.github/workflows/staging-deploy.yml`
+- `.github/workflows/production-deploy.yml`
+- `scripts/sync_auth_from_users_admin.mjs`
+- `Dockerfile.unused`
+- `scripts/copy-dashboard.mjs`
+- `apps/dashboard/ShiftService.ts`
+- `apps/dashboard/components/InventoryPage.tsx`
+- `apps/dashboard/vite.config.ts`
+- `server.mjs`
 - `supabase/legacy_schema_missing.sql`
 - `supabase/legacy_aws_alignment.sql`
-- `run_pg.mjs`
 - `README.md`
 - `supabase/schema.sql`
 - `scripts/import_aws_dump.mjs`
@@ -83,21 +285,55 @@
 - Estado: cambios de esta tarea enviados a `origin/supabase-migration-final-safe`; la rama `supabase-migration-final` quedo con un commit local no empujado porque GitHub bloqueo el secreto completo en `MEMORIA.md`.
 
 ### Pendientes
+- Cargar en Easypanel o GitHub los webhooks reales (`EASYPANEL_STAGING_WEBHOOK`, `EASYPANEL_PRODUCTION_WEBHOOK`) si se quiere reactivar el deploy remoto por webhook desde scripts/CI.
+- Crear o ajustar en Easypanel el servicio web apuntando al nuevo `Dockerfile`, con puerto interno `80` y variables `VITE_DASHBOARD_BASE=/dashboard-app/` y `DASHBOARD_APP_URL=/dashboard-app/`.
+- Rotar y sanear todas las credenciales sensibles expuestas localmente (`service_role`, tokens y passwords auxiliares) y limpiar archivos/scripts con secretos legacy. Pendiente por decision del usuario para el cierre final.
+- Forzar cambio de password o estrategia de credenciales para usuarios creados con `cedula-last5` en `production`. Pendiente por decision del usuario para el cierre final.
+- Instalar PHP 8.1+ y Composer en esta maquina para poder ejecutar y validar `backend-legacy/` (`composer install`, `php artisan route:list`, `php artisan test`).
+- Completar la auditoria funcional del backend legacy ya integrado ejecutandolo localmente o en staging y verificando que el middleware `resolveTenant` no rompa endpoints historicos.
+- Completar el mapeo de `users.std_id` para los usuarios que siguen `NULL` (`4182` totales, `1688` restaurados automaticamente) solo si aparece una fuente de verdad segura para los casos ambiguos.
+- Validar en `staging` desde navegador con usuarios de distintas sedes que las nuevas politicas no rompan `chat`, `remote desktop`, `nomina`, `monetizacion`, `comisiones`, `streams` ni `settings` por sede.
+- Validar en `production` desde navegador con usuarios reales de distintas sedes que las nuevas politicas no rompan `chat`, `remote desktop`, `nomina`, `monetizacion`, `comisiones`, `streams` ni `settings` por sede.
+- Confirmar la URL frontend real vigente de `staging` y `production`, porque las URLs conocidas hoy no permiten completar la validacion browser del dashboard desplegado.
+- Probar en navegador con usuarios reales de distintas sedes los modulos cubiertos por las nuevas politicas (`chat`, `remote_*`, `nomina`, `monetizacion`, `comisiones`, `streams`).
 - Revisar el dashboard en `staging` en navegador con el usuario de prueba validado y confirmar navegacion, graficas y modulos principales.
 - Revisar en navegador el dashboard de `production` con usuarios reales y confirmar que los modulos cargan correctamente con la base importada.
 - Abrir PR o merge desde `supabase-migration-final-safe` cuando haya herramienta GitHub disponible (`gh` no esta instalada en este entorno).
 - Confirmar si las tablas legacy ya fueron importadas en ambos proyectos o si primero hay que cargar el dump base.
 - Revisar y sanear archivos locales con secretos expuestos o credenciales antiguas que ya no son validas.
+- Ejecutar el plan de almacenamiento seguro documentado en `security/secrets-inventory.md` y `security/secrets-policy.md` sin rotar credenciales hasta nueva instruccion.
+- Ejecutar `npm run secrets:check` antes de futuros commits o despliegues para detectar exposiciones nuevas en docs, scripts y workflows.
 - Validar en navegador con usuarios de distintas sedes que los datos visibles no se mezclen entre tenants en dashboard, transacciones, streams, contratos, chat, wallet y escritorio remoto.
 - Diseñar una fase de backend/RLS para tablas que todavia no garantizan aislamiento por esquema, especialmente `remote_*`, `chat_*` y rutas legacy que hoy solo reciben `std_id` desde cliente.
 
 ### Bloqueos
+- Docker CLI existe, pero el daemon local no esta corriendo (`dockerDesktopLinuxEngine` no disponible), por lo que no se pudo validar con `docker build` la imagen final para Easypanel desde esta sesion.
 - El repositorio tiene muchos cambios previos no relacionados; hay que evitar incluirlos en el commit de esta tarea.
+- `run_pg.mjs` completo sigue fallando si se intenta reejecutar `supabase/schema.sql` sobre una base ya inicializada, porque `schema.sql` no es totalmente idempotente en politicas legacy; por ahora la ruta segura es usar `run_pg.mjs` con archivos puntuales.
 - Las credenciales antiguas encontradas para conexion directa a `staging` no autenticaron con el pooler actual.
 - `production` ya tiene datos publicos y usuarios auth operativos; el pendiente principal es validacion funcional completa en interfaz.
 - `gh` no esta instalado en este entorno, asi que no pude crear el PR automaticamente desde CLI.
-- Algunos modulos todavia dependen de enforcement del backend legacy o de tablas sin politica/RLS visible; el frontend ya manda y filtra por tenant, pero el cierre total requiere respaldo server-side.
+- Algunos modulos todavia dependen de enforcement del backend legacy o de rutas no-Supabase; el frontend ya manda y filtra por tenant y la base versionada ya tiene una cobertura server-side mucho mas amplia, pero la validacion funcional final debe confirmar que no haya endpoints legacy ignorando `std_id`.
+- `php` ya esta instalado pero no quedo en el PATH de esta sesion CLI; por ahora hay que invocarlo por ruta completa (`C:\Users\ElCastillo\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.3_Microsoft.Winget.Source_8wekyb3d8bbwe\php.exe`).
+- Las URLs frontend conocidas no permiten validar el dashboard desplegado: `pruebas.livstre.com/dashboard-app/` muestra Easypanel y `login.livstre.com/dashboard-app/` devuelve `404`.
+- `staging` ahora entrega `https://pruebas.livstre.com/dashboard-app/`, pero el frontend sigue en blanco por error de despliegue/MIME de assets; el bloqueo de login legacy en Supabase `staging` ya quedo reparado y la validacion funcional local por sedes si pudo ejecutarse.
+- El arreglo de base `/dashboard-app/` ya quedo versionado en CI, pero el despliegue remoto seguira roto hasta que corra un nuevo build/deploy de `staging` con esa configuracion.
+- En esta sesion no aparecio de nuevo ningun webhook/token operativo de Easypanel en archivos locales ni variables de entorno, asi que el redeploy remoto sigue bloqueado por acceso y no por codigo local.
 
 ### Siguiente paso recomendado
+- Crear/actualizar el servicio de Easypanel usando `Dockerfile`, desplegar `staging` primero y validar que `https://pruebas.livstre.com/dashboard-app/assets/...js` ya responda con MIME correcto.
+- Tratar la exposicion de secretos y las passwords `cedula-last5` como prioridad de seguridad inmediata antes de seguir ampliando funcionalidades.
+- Aplicar el inventario y la politica de secretos nuevos para que ninguna credencial vuelva a quedar en `MEMORIA.md`, docs o archivos versionables.
+- Mantener el workflow `secret-scan` activo en cambios hacia `staging` y `main` para bloquear exposiciones accidentales antes del despliegue.
+- Hacer validacion funcional en navegador sobre `staging` y `production` con usuarios de sedes diferentes para confirmar que el RLS nuevo no mezcla datos ni bloquea modulos legitimos.
+- Corregir primero en `staging` el despliegue del frontend (`/dashboard-app/` sirve assets JS con MIME `text/html`) para retomar la validacion browser autenticada por sedes; el fallo de login Supabase en usuarios legacy ya quedo reparado en `staging`.
+- Disparar un nuevo deploy de `staging` para que tome el build con base `/dashboard-app/` y luego validar en la URL remota que los assets JS ya cargan como module scripts normales.
+- Decidir si el reseteo de passwords `temporary-strong` aplicado en `staging` debe replicarse o no en otros entornos; en `production` no se ha ejecutado.
+- Instalar PHP/Composer, levantar `backend-legacy/` y validar en staging los endpoints legacy reforzados con `resolveTenant` antes de conectarlo formalmente al frontend desplegado.
+- Cuando haya runtime PHP, priorizar pruebas manuales de `banks_accounts`, `studios_accounts`, `payments_files` y `setup_commissions`, porque fueron endurecidos en esta sesion solo con validacion estatica de codigo.
+- Como `backend-legacy/` ya compila y lista rutas, el siguiente cuello real ahora es conseguir la URL frontend correcta de `staging`/`production` para completar la validacion browser end-to-end.
+- Si aparece una fuente confiable adicional de asignacion por sede para usuarios staff/monitor/modelo sin `std_id`, ejecutar un segundo backfill controlado para reducir aun mas los `NULL` remanentes sin mezclar sedes.
+- Priorizar revisiones reales de `chat`, `remote desktop`, `nomina`, `monetizacion`, `streams`, `contratos`, `transacciones` y `settings` por sede para detectar cualquier endpoint legacy que todavia no respete el tenant desde backend.
 - Usar una muestra real de usuarios en `production` para validar dashboard, consultas, reportes y permisos despues de la importacion completa.
 - Priorizar una validacion funcional cruzada por sedes y, despues, una fase server-side para convertir el aislamiento multi-tenant en garantia de backend y no solo de cliente.
+- Revisar si conviene desactivar tambien las rutas/documentacion de desarrollo de Laravel (`_ignition`, `documentation`, `docs`) en entornos no locales, porque `route:list` las sigue mostrando y no formaron parte de esta fase.

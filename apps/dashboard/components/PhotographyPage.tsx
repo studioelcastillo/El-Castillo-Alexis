@@ -85,7 +85,7 @@ const PhotoCalendar: React.FC<{
     }, [events, selectedDate, selectedTeamMemberIds]);
 
     const handleBlockSlot = async (hour: number) => {
-        const confirmBlock = window.confirm(`Â¿Deseas bloquear el horario de las ${hour}:00 para el dÃ­a ${selectedDate}?`);
+        const confirmBlock = window.confirm(`¿Deseas bloquear el horario de las ${hour}:00 para el día ${selectedDate}?`);
         if (!confirmBlock) return;
 
         const start = `${selectedDate}T${hour.toString().padStart(2, '0')}:00:00`;
@@ -103,14 +103,14 @@ const PhotoCalendar: React.FC<{
     };
 
     const handleBlockDay = async () => {
-        const confirmBlock = window.confirm(`Â¿Deseas bloquear TODO EL DÃA ${selectedDate}?`);
+        const confirmBlock = window.confirm(`¿Deseas bloquear TODO EL DÍA ${selectedDate}?`);
         if (!confirmBlock) return;
 
         const start = `${selectedDate}T00:00:00`;
         const end = `${selectedDate}T23:59:59`;
 
         await PhotoService.blockSlot({
-            title: 'DÃA BLOQUEADO',
+            title: 'DÍA BLOQUEADO',
             start,
             end,
             type: 'BLOCK',
@@ -121,7 +121,7 @@ const PhotoCalendar: React.FC<{
     };
 
     const handleRemoveBlock = async (id: string) => {
-        if (window.confirm('Â¿Deseas eliminar este bloqueo?')) {
+        if (window.confirm('¿Deseas eliminar este bloqueo?')) {
             await PhotoService.removeBlock(id);
             onRefresh();
         }
@@ -129,7 +129,7 @@ const PhotoCalendar: React.FC<{
 
     const getEventStyle = (status?: string, type?: string, title?: string) => {
         if (type === 'BLOCK') {
-            if (title === 'DÃA BLOQUEADO') return 'bg-rose-100 border-rose-400 text-rose-800 border-dashed border-2 z-20 shadow-lg';
+            if (title === 'DÍA BLOQUEADO') return 'bg-rose-100 border-rose-400 text-rose-800 border-dashed border-2 z-20 shadow-lg';
             return 'bg-slate-100 border-slate-300 text-slate-500 border-dashed border-2';
         }
         switch (status) {
@@ -169,7 +169,7 @@ const PhotoCalendar: React.FC<{
                         onClick={handleBlockDay}
                         className="w-full py-3 bg-rose-50 border border-rose-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center gap-2"
                     >
-                        <XCircle size={14} /> Bloquear DÃ­a Completo
+                        <XCircle size={14} /> Bloquear Día Completo
                     </button>
                 </div>
 
@@ -320,9 +320,9 @@ const PhotoCalendar: React.FC<{
 
                         <div className="space-y-6">
                             <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">DÃ­as Laborales</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Días Laborales</label>
                                 <div className="flex flex-wrap gap-2">
-                                    {['Lunes', 'Martes', 'MiÃ©rcoles', 'Jueves', 'Viernes', 'SÃ¡bado', 'Domingo'].map(day => (
+                                    {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => (
                                         <button
                                             key={day}
                                             onClick={() => {
@@ -395,7 +395,7 @@ const RatingsModal: React.FC<{ isOpen: boolean, onClose: () => void, request: Ph
                     <Star size={40} fill="currentColor" />
                 </div>
                 <h3 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Calificar Servicio</h3>
-                <p className="text-center text-xs text-slate-500 mb-8 font-medium leading-relaxed">Tu opiniÃ³n nos ayuda a mantener los estÃ¡ndares de calidad del Castillo.</p>
+                <p className="text-center text-xs text-slate-500 mb-8 font-medium leading-relaxed">Tu opinión nos ayuda a mantener los estándares de calidad del Castillo.</p>
 
                 <div className="flex justify-center gap-3 mb-8">
                     {[1,2,3,4,5].map(s => (
@@ -405,9 +405,9 @@ const RatingsModal: React.FC<{ isOpen: boolean, onClose: () => void, request: Ph
                     ))}
                 </div>
 
-                <textarea className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm font-medium mb-6 resize-none outline-none focus:ring-4 focus:ring-amber-500/5 transition-all" rows={4} placeholder="CuÃ©ntanos mÃ¡s sobre tu experiencia..." value={comment} onChange={e => setComment(e.target.value)} />
+                <textarea className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm font-medium mb-6 resize-none outline-none focus:ring-4 focus:ring-amber-500/5 transition-all" rows={4} placeholder="Cuéntanos más sobre tu experiencia..." value={comment} onChange={e => setComment(e.target.value)} />
 
-                <button onClick={() => onSubmit({ score, comment })} className="w-full py-4 bg-slate-900 text-amber-400 font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-black active:scale-95 transition-all">Enviar CalificaciÃ³n</button>
+                <button onClick={() => onSubmit({ score, comment })} className="w-full py-4 bg-slate-900 text-amber-400 font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-black active:scale-95 transition-all">Enviar Calificación</button>
             </div>
         </div>
     );
@@ -489,7 +489,7 @@ const PhotographyPage: React.FC = () => {
     const handleUpdateRestriction = async (newConfig: Partial<PhotoRestrictionConfig>) => {
         const updated = await PhotoService.updateRestrictionConfig(newConfig);
         setRestrictionConfig(updated);
-        alert('ConfiguraciÃ³n de restricciones actualizada.');
+        alert('Configuración de restricciones actualizada.');
     };
 
     const handleToggleUnlock = async (userId: number) => {
@@ -589,7 +589,7 @@ const PhotographyPage: React.FC = () => {
                         ))}
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">CategorÃ­a:</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">Categoría:</span>
                         {['TODOS', 'FOTO / VIDEO', 'MAQUILLAJE'].map(f => (
                             <button
                                 key={f}
@@ -634,7 +634,7 @@ const PhotographyPage: React.FC = () => {
                                     </span>
                                 </div>
                                 <div className="p-4 bg-slate-50 rounded-2xl flex-1 text-center border border-slate-100 group-hover:bg-white transition-colors">
-                                    <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">CreaciÃ³n</span>
+                                    <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Creación</span>
                                     <span className="text-xs font-black text-slate-700 flex flex-col items-center justify-center gap-1">
                                         <div className="flex items-center gap-2">
                                             <Clock size={14} className="text-indigo-500" />
@@ -700,13 +700,13 @@ const PhotographyPage: React.FC = () => {
                                     <Avatar name={selectedRequest.requester_name} size="md" />
                                     <div>
                                         <span className="font-black text-slate-800 text-base block">{selectedRequest.requester_name}</span>
-                                        <span className="text-[10px] text-slate-400 font-bold uppercase">Sede BogotÃ¡</span>
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase">Sede Bogotá</span>
                                     </div>
                                 </div>
                             </div>
 
                             <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Estado de ProducciÃ³n</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Estado de Producción</p>
                                 <div className="flex">
                                     <StatusBadge status={selectedRequest.status} />
                                 </div>
@@ -726,14 +726,14 @@ const PhotographyPage: React.FC = () => {
                                 {isPhotographer && selectedRequest.status === 'SENT' && (
                                     <>
                                         <button onClick={() => handleStatusChange(selectedRequest.id, 'ACCEPTED')} className="w-full py-4 bg-slate-900 text-amber-400 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all">Aceptar Solicitud</button>
-                                        <button onClick={() => handleStatusChange(selectedRequest.id, 'RESCHEDULE_PROPOSED')} className="w-full py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all">Sugerir ReprogramaciÃ³n</button>
+                                        <button onClick={() => handleStatusChange(selectedRequest.id, 'RESCHEDULE_PROPOSED')} className="w-full py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all">Sugerir Reprogramación</button>
                                     </>
                                 )}
                                 {isPhotographer && selectedRequest.status === 'ACCEPTED' && (
                                     <button onClick={() => handleStatusChange(selectedRequest.id, 'CONFIRMED')} className="w-full py-4 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all">Confirmar Bloque de Hora</button>
                                 )}
                                 {isPhotographer && selectedRequest.status === 'CONFIRMED' && (
-                                    <button onClick={() => handleStatusChange(selectedRequest.id, 'IN_PROGRESS')} className="w-full py-4 bg-amber-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all">Iniciar SesiÃ³n / Shoot</button>
+                                    <button onClick={() => handleStatusChange(selectedRequest.id, 'IN_PROGRESS')} className="w-full py-4 bg-amber-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all">Iniciar Sesión / Shoot</button>
                                 )}
                                 {isPhotographer && selectedRequest.status === 'IN_PROGRESS' && (
                                     <button onClick={() => handleStatusChange(selectedRequest.id, 'PHOTOS_TAKEN')} className="w-full py-4 bg-purple-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
@@ -742,7 +742,7 @@ const PhotographyPage: React.FC = () => {
                                 )}
                                 {isPhotographer && selectedRequest.status === 'PHOTOS_TAKEN' && (
                                     <button onClick={() => handleStatusChange(selectedRequest.id, 'DELIVERED')} className="w-full py-4 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
-                                        <CheckCircle2 size={14} /> Finalizar EdiciÃ³n & Entregar
+                                        <CheckCircle2 size={14} /> Finalizar Edición & Entregar
                                     </button>
                                 )}
                                 {canRate && (
@@ -773,7 +773,7 @@ const PhotographyPage: React.FC = () => {
                                         <UploadCloud size={32} className="opacity-20" />
                                     </div>
                                     <p className="text-[10px] font-black uppercase tracking-[0.3em]">Esperando material...</p>
-                                    <p className="text-xs font-medium text-slate-400 mt-2 max-w-[200px] text-center leading-relaxed">Los archivos aparecerÃ¡n aquÃ­ una vez que el fotÃ³grafo los suba.</p>
+                                    <p className="text-xs font-medium text-slate-400 mt-2 max-w-[200px] text-center leading-relaxed">Los archivos aparecerán aquí una vez que el fotógrafo los suba.</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
@@ -820,8 +820,8 @@ const PhotographyPage: React.FC = () => {
     };
 
     const handleConnectDrive = () => {
-        // En un entorno real, esto redirigirÃ­a a la URL de OAuth de Google
-        alert("Redirigiendo a la autorizaciÃ³n de Google Drive...");
+        // En un entorno real, esto redirigiría a la URL de OAuth de Google
+        alert("Redirigiendo a la autorización de Google Drive...");
         setTimeout(() => {
             setDriveConnected(true);
             setDriveEmail('estudio@elcastillo.com');
@@ -842,8 +842,8 @@ const PhotographyPage: React.FC = () => {
                             <UploadCloud size={32} />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">IntegraciÃ³n Google Drive</h3>
-                            <p className="text-sm font-medium text-slate-500 mt-1">Conecta tu cuenta para automatizar la creaciÃ³n de carpetas y subida de contenido.</p>
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Integración Google Drive</h3>
+                            <p className="text-sm font-medium text-slate-500 mt-1">Conecta tu cuenta para automatizar la creación de carpetas y subida de contenido.</p>
                         </div>
                     </div>
                     <div>
@@ -853,14 +853,14 @@ const PhotographyPage: React.FC = () => {
                             </span>
                         ) : (
                             <span className="px-4 py-2 bg-amber-100 text-amber-700 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                                <AlertTriangle size={16} /> Sin ConexiÃ³n
+                                <AlertTriangle size={16} /> Sin Conexión
                             </span>
                         )}
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Estado de ConexiÃ³n */}
+                    {/* Estado de Conexión */}
                     <div className="space-y-6 bg-slate-50 p-6 rounded-[24px] border border-slate-100">
                         <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Estado de la Cuenta</h4>
 
@@ -872,7 +872,7 @@ const PhotographyPage: React.FC = () => {
                                 </div>
                                 <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
                                     <p className="text-xs font-bold text-emerald-800 leading-relaxed">
-                                        El software tiene permisos activos para gestionar archivos. Todo el contenido subido por los fotÃ³grafos se enviarÃ¡ automÃ¡ticamente a esta cuenta.
+                                        El software tiene permisos activos para gestionar archivos. Todo el contenido subido por los fotógrafos se enviará automáticamente a esta cuenta.
                                     </p>
                                 </div>
                                 <button
@@ -885,7 +885,7 @@ const PhotographyPage: React.FC = () => {
                         ) : (
                             <div className="space-y-6">
                                 <p className="text-sm font-medium text-slate-600 leading-relaxed">
-                                    Para que la sincronizaciÃ³n sea automÃ¡tica y segura, debes otorgar permisos al software iniciando sesiÃ³n con tu cuenta de Google.
+                                    Para que la sincronización sea automática y segura, debes otorgar permisos al software iniciando sesión con tu cuenta de Google.
                                 </p>
                                 <button
                                     onClick={handleConnectDrive}
@@ -905,72 +905,72 @@ const PhotographyPage: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Estructura LÃ³gica */}
+                    {/* Estructura Lógica */}
                     <div className="space-y-6">
-                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Estructura LÃ³gica (AutomÃ¡tica)</h4>
+                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Estructura Lógica (Automática)</h4>
                         <p className="text-sm font-medium text-slate-500 mb-4">
-                            Al subir contenido, el software organizarÃ¡ los archivos en tu Drive exactamente de esta manera:
+                            Al subir contenido, el software organizará los archivos en tu Drive exactamente de esta manera:
                         </p>
 
                         <div className="bg-slate-900 rounded-[24px] p-6 text-slate-300 font-mono text-xs leading-loose shadow-inner overflow-x-auto">
                             <div className="flex items-center gap-2 text-amber-400 font-bold">
-                                <span className="text-slate-500">ðŸ“</span> Liv-Stre <span className="text-[9px] text-slate-500 font-sans font-normal">(Software)</span>
+                                <span className="text-slate-500">📁</span> Liv-Stre <span className="text-[9px] text-slate-500 font-sans font-normal">(Software)</span>
                             </div>
                             <div className="ml-4 flex items-center gap-2 border-l border-slate-700 pl-4 py-1">
-                                <span className="text-slate-500">ðŸ“</span> El Castillo <span className="text-[9px] text-slate-500 font-sans font-normal">(Licencia Maestra)</span>
+                                <span className="text-slate-500">📁</span> El Castillo <span className="text-[9px] text-slate-500 font-sans font-normal">(Licencia Maestra)</span>
                             </div>
 
                             {/* Sede Principal */}
                             <div className="ml-8 flex items-center gap-2 border-l border-slate-700 pl-4 py-1">
-                                <span className="text-slate-500">ðŸ“</span> 1. El Castillo <span className="text-[9px] text-slate-500 font-sans font-normal">(Sede Principal)</span>
+                                <span className="text-slate-500">📁</span> 1. El Castillo <span className="text-[9px] text-slate-500 font-sans font-normal">(Sede Principal)</span>
                             </div>
                             <div className="ml-12 flex items-center gap-2 border-l border-slate-700 pl-4 py-1 text-white font-bold">
-                                <span className="text-slate-500">ðŸ“</span> Modelo <span className="text-[9px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded ml-2 font-sans">Tercero Creado</span>
+                                <span className="text-slate-500">📁</span> Modelo <span className="text-[9px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded ml-2 font-sans">Tercero Creado</span>
                             </div>
 
                             {/* Shoot 1 */}
                             <div className="ml-16 flex items-center gap-2 border-l border-slate-700 pl-4 py-1">
-                                <span className="text-slate-500">ðŸ“</span> Shoot_YYYY-MM-DD
+                                <span className="text-slate-500">📁</span> Shoot_YYYY-MM-DD
                             </div>
                             <div className="ml-20 flex items-center gap-2 border-l border-slate-700 pl-4 py-1">
-                                <span className="text-slate-500">ðŸ“</span> Fotos
+                                <span className="text-slate-500">📁</span> Fotos
                             </div>
                             <div className="ml-24 flex items-center gap-2 border-l border-slate-700 pl-4 py-1 text-emerald-400">
-                                <span className="text-slate-500">ðŸ“„</span> foto_perfil_01.jpg
+                                <span className="text-slate-500">📄</span> foto_perfil_01.jpg
                             </div>
                             <div className="ml-20 flex items-center gap-2 border-l border-slate-700 pl-4 py-1">
-                                <span className="text-slate-500">ðŸ“</span> Videos
+                                <span className="text-slate-500">📁</span> Videos
                             </div>
                             <div className="ml-24 flex items-center gap-2 border-l border-slate-700 pl-4 py-1 text-emerald-400">
-                                <span className="text-slate-500">ðŸ“„</span> video_catalogo_01.mp4
+                                <span className="text-slate-500">📄</span> video_catalogo_01.mp4
                             </div>
 
                             {/* Shoot 2 (Ejemplo de otra fecha) */}
                             <div className="ml-16 flex items-center gap-2 border-l border-slate-700 pl-4 py-1 mt-2">
-                                <span className="text-slate-500">ðŸ“</span> Shoot_YYYY-MM-DD <span className="text-[9px] text-slate-500 font-sans font-normal">(Nueva fecha)</span>
+                                <span className="text-slate-500">📁</span> Shoot_YYYY-MM-DD <span className="text-[9px] text-slate-500 font-sans font-normal">(Nueva fecha)</span>
                             </div>
                             <div className="ml-20 flex items-center gap-2 border-l border-slate-700 pl-4 py-1">
-                                <span className="text-slate-500">ðŸ“</span> Fotos
+                                <span className="text-slate-500">📁</span> Fotos
                             </div>
                             <div className="ml-24 flex items-center gap-2 border-l border-slate-700 pl-4 py-1 text-emerald-400">
-                                <span className="text-slate-500">ðŸ“„</span> foto_sesion_01.jpg
+                                <span className="text-slate-500">📄</span> foto_sesion_01.jpg
                             </div>
 
                             {/* Sub-Sede (Ejemplo) */}
                             <div className="ml-12 flex items-center gap-2 border-l border-slate-700 pl-4 py-1 mt-4">
-                                <span className="text-slate-500">ðŸ“</span> 1.1 El Castillo Norte <span className="text-[9px] text-slate-500 font-sans font-normal">(Sub-sede)</span>
+                                <span className="text-slate-500">📁</span> 1.1 El Castillo Norte <span className="text-[9px] text-slate-500 font-sans font-normal">(Sub-sede)</span>
                             </div>
                             <div className="ml-16 flex items-center gap-2 border-l border-slate-700 pl-4 py-1 text-white font-bold">
-                                <span className="text-slate-500">ðŸ“</span> Camila Rojas <span className="text-[9px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded ml-2 font-sans">Tercero Creado</span>
+                                <span className="text-slate-500">📁</span> Camila Rojas <span className="text-[9px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded ml-2 font-sans">Tercero Creado</span>
                             </div>
                             <div className="ml-20 flex items-center gap-2 border-l border-slate-700 pl-4 py-1">
-                                <span className="text-slate-500">ðŸ“</span> Shoot_2026-02-26
+                                <span className="text-slate-500">📁</span> Shoot_2026-02-26
                             </div>
                             <div className="ml-24 flex items-center gap-2 border-l border-slate-700 pl-4 py-1">
-                                <span className="text-slate-500">ðŸ“</span> Fotos
+                                <span className="text-slate-500">📁</span> Fotos
                             </div>
                             <div className="ml-24 flex items-center gap-2 border-l border-slate-700 pl-4 py-1">
-                                <span className="text-slate-500">ðŸ“</span> Videos
+                                <span className="text-slate-500">📁</span> Videos
                             </div>
                         </div>
                     </div>
@@ -1037,7 +1037,7 @@ const PhotographyPage: React.FC = () => {
         if (!availability || !restrictionConfig) return (
             <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                 <RefreshCw className="animate-spin mb-4" size={32} />
-                <p className="text-xs font-bold uppercase tracking-widest">Cargando configuraciÃ³n...</p>
+                <p className="text-xs font-bold uppercase tracking-widest">Cargando configuración...</p>
             </div>
         );
 
@@ -1050,16 +1050,16 @@ const PhotographyPage: React.FC = () => {
                             <Clock size={32} />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Horarios de AtenciÃ³n</h3>
-                            <p className="text-sm font-medium text-slate-500 mt-1">Configura cuÃ¡ndo estÃ¡s disponible para recibir solicitudes de fotos/videos.</p>
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Horarios de Atención</h3>
+                            <p className="text-sm font-medium text-slate-500 mt-1">Configura cuándo estás disponible para recibir solicitudes de fotos/videos.</p>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                         <div className="space-y-6">
-                            <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">DÃ­as Laborales</h4>
+                            <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Días Laborales</h4>
                             <div className="flex flex-wrap gap-2">
-                                {['Lunes', 'Martes', 'MiÃ©rcoles', 'Jueves', 'Viernes', 'SÃ¡bado', 'Domingo'].map(day => (
+                                {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => (
                                     <button
                                         key={day}
                                         onClick={() => {
@@ -1106,9 +1106,9 @@ const PhotographyPage: React.FC = () => {
                             <AlertTriangle size={24} />
                         </div>
                         <div>
-                            <p className="text-sm font-black text-amber-900 uppercase tracking-tight">SincronizaciÃ³n Activa</p>
+                            <p className="text-sm font-black text-amber-900 uppercase tracking-tight">Sincronización Activa</p>
                             <p className="text-xs text-amber-800/70 font-medium mt-1 leading-relaxed">
-                                Estas horas restringen las opciones que las modelos verÃ¡n al momento de solicitar una sesiÃ³n. Si marcas un dÃ­a como no laboral, el sistema bloquearÃ¡ automÃ¡ticamente las solicitudes para esa fecha.
+                                Estas horas restringen las opciones que las modelos verán al momento de solicitar una sesión. Si marcas un día como no laboral, el sistema bloqueará automáticamente las solicitudes para esa fecha.
                             </p>
                         </div>
                     </div>
@@ -1121,14 +1121,14 @@ const PhotographyPage: React.FC = () => {
                             <ShieldAlert size={32} />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">RestricciÃ³n de Frecuencia</h3>
-                            <p className="text-sm font-medium text-slate-500 mt-1">Configura cada cuÃ¡ntos dÃ­as una modelo puede volver a solicitar una sesiÃ³n.</p>
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Restricción de Frecuencia</h3>
+                            <p className="text-sm font-medium text-slate-500 mt-1">Configura cada cuántos días una modelo puede volver a solicitar una sesión.</p>
                         </div>
                     </div>
 
                     <div className="space-y-8">
                         <div className="max-w-xs">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">DÃ­as de RestricciÃ³n</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Días de Restricción</label>
                             <div className="flex items-center gap-3">
                                 <input
                                     type="number"
@@ -1136,7 +1136,7 @@ const PhotographyPage: React.FC = () => {
                                     value={restrictionConfig.restrictionDays}
                                     onChange={e => handleUpdateRestriction({ restrictionDays: parseInt(e.target.value) || 0 })}
                                 />
-                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">DÃ­as</span>
+                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Días</span>
                             </div>
                         </div>
 
@@ -1206,7 +1206,7 @@ const PhotographyPage: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-1 bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm h-96 flex flex-col">
-                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] mb-8">Embudo de ProducciÃ³n</h4>
+                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] mb-8">Embudo de Producción</h4>
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -1230,7 +1230,7 @@ const PhotographyPage: React.FC = () => {
 
                 <div className="lg:col-span-2 bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm h-96 flex flex-col overflow-hidden">
                     <div className="flex justify-between items-center mb-8">
-                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Ranking de FotÃ³grafos</h4>
+                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Ranking de Fotógrafos</h4>
                         <button className="text-[10px] font-black text-indigo-500 hover:underline">VER REPORTE COMPLETO</button>
                     </div>
                     <div className="overflow-x-auto">
@@ -1283,8 +1283,8 @@ const PhotographyPage: React.FC = () => {
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-slate-900 text-amber-400 rounded-2xl shadow-xl shadow-slate-900/20"><Camera size={32} /></div>
                         <div>
-                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">MÃ³dulo de FotografÃ­a</h1>
-                            <p className="text-sm text-slate-500 font-medium">CoordinaciÃ³n estÃ©tica y operativa de la marca El Castillo.</p>
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Módulo de Fotografía</h1>
+                            <p className="text-sm text-slate-500 font-medium">Coordinación estética y operativa de la marca El Castillo.</p>
                         </div>
                     </div>
                 </div>
@@ -1293,7 +1293,7 @@ const PhotographyPage: React.FC = () => {
                         onClick={() => setIsRequestFormOpen(true)}
                         className="flex items-center justify-center gap-2 px-8 py-4 bg-slate-900 text-amber-400 font-black text-[11px] uppercase tracking-[0.2em] rounded-2xl hover:bg-black transition-all shadow-2xl shadow-slate-900/10 active:scale-95 border-b-4 border-slate-800"
                     >
-                        <Plus size={18} /> AGENDAR SESIÃ“N
+                        <Plus size={18} /> AGENDAR SESIÓN
                     </button>
                 )}
             </div>
@@ -1302,7 +1302,7 @@ const PhotographyPage: React.FC = () => {
             <div className="flex flex-col md:flex-row justify-between items-center bg-white p-2 rounded-[28px] border border-slate-100 shadow-sm gap-4">
                 <div className="flex bg-slate-100 p-1 rounded-[22px] w-full md:w-auto overflow-x-auto custom-scrollbar">
                     {[
-                        { id: 'BANDEJA', label: 'GestiÃ³n Solicitudes', icon: ImageIcon },
+                        { id: 'BANDEJA', label: 'Gestión Solicitudes', icon: ImageIcon },
                         { id: 'CALENDARIO', label: 'Vista de Agenda', icon: CalIcon },
                         { id: 'NOTIFICACIONES', label: 'Notificaciones', icon: Bell, badge: notifications.filter(n => n.status === 'PENDING').length }
                     ].map(tab => (
@@ -1327,7 +1327,7 @@ const PhotographyPage: React.FC = () => {
                                 className={`flex-1 md:flex-none flex items-center justify-center gap-3 px-6 py-3 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'DASHBOARD' ? 'bg-white text-slate-900 shadow-md ring-1 ring-slate-200/50' : 'text-slate-500 hover:text-slate-900'}`}
                             >
                                 <BarChart3 size={16} className={`${activeTab === 'DASHBOARD' ? 'text-amber-500' : 'text-slate-400'}`} />
-                                AnÃ¡lisis
+                                Análisis
                             </button>
                             <button
                                 onClick={() => setActiveTab('CONFIGURACION')}

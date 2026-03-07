@@ -1,13 +1,13 @@
 
-import { supabase } from "./supabaseClient";
 import AuthSupabaseService from "./services/supabase/AuthSupabaseService";
 import { User } from "./types";
+import { clearAuthSession } from "./utils/session";
 
 export interface Policy {
   pol_id: number;
   pol_description: string;
-  pol_type: string;
-  pol_active: boolean;
+  pol_type?: string | null;
+  pol_active?: boolean | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -23,9 +23,6 @@ interface LoginResponse {
   success?: boolean;
   status?: string;
   data: {
-    access_token: string;
-    token_type: "Bearer";
-    expires_at: string;
     user: User;
   };
   message: string;
@@ -36,26 +33,21 @@ interface PolicyResponse {
   data: Policy;
 }
 
-const getExpiresAt = async () => {
-  const { data } = await supabase.auth.getSession();
-  if (data.session?.expires_at) {
-    return new Date(data.session.expires_at * 1000).toISOString();
-  }
-  return new Date(Date.now() + 3600000).toISOString();
-};
-
 const AuthService = {
   getActiveDataPolicy: async () => {
     const response = await AuthSupabaseService.getActiveDataPolicy();
     const policy = response?.data?.data;
+    if (!policy) {
+      throw new Error('Data policy not available');
+    }
     return {
       data: {
         status: "success",
         data: {
-          pol_id: policy?.pol_id ?? 1,
-          pol_description: policy?.pol_description ?? "",
-          pol_type: "DATA",
-          pol_active: true,
+          pol_id: policy.pol_id,
+          pol_description: policy.pol_description,
+          pol_type: policy.pol_type ?? null,
+          pol_active: policy.pol_active ?? null,
         },
       },
     } as { data: PolicyResponse };
@@ -64,7 +56,6 @@ const AuthService = {
   login: async (params: LoginParams) => {
     const response = await AuthSupabaseService.login(params);
     const payload = response?.data?.data;
-    const expires_at = await getExpiresAt();
 
     return {
       data: {
@@ -72,9 +63,6 @@ const AuthService = {
         status: "Success",
         message: "User logged",
         data: {
-          access_token: payload?.access_token ?? "",
-          token_type: "Bearer",
-          expires_at,
           user: payload?.user as User,
         },
       },
@@ -82,10 +70,11 @@ const AuthService = {
   },
 
   logout: async () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("dashboard_user");
+    clearAuthSession();
     await AuthSupabaseService.logout();
   },
+
+  syncStoredSession: () => AuthSupabaseService.syncStoredSession(),
 
   checkSession: () => AuthSupabaseService.checkSession(),
 

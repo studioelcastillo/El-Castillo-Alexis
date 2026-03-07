@@ -1,7 +1,7 @@
 -- ==========================================================
 -- EL CASTILLO GROUP SAS — Sistema de Módulos y Permisos API
 -- Ejecutar en: Dashboard Supabase > SQL Editor
--- Proyecto: wukvaemawvjavwqocxyb (El_Castillo_BaseDatos)
+-- Proyecto de referencia: ysorlqfwqccsgxxkpzdx (produccion)
 -- ==========================================================
 
 CREATE OR REPLACE FUNCTION public.is_super_admin()

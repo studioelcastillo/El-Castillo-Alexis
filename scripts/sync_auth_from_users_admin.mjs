@@ -1,7 +1,23 @@
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
 const BATCH_SIZE = Number(process.env.SYNC_BATCH_SIZE || 100);
-const MODE = process.env.SYNC_MODE || 'cedula-last5';
+const MODE = process.env.SYNC_MODE || 'temporary-strong';
+const RESET_EXISTING_PASSWORDS = String(process.env.SYNC_RESET_EXISTING_PASSWORDS || 'false').toLowerCase() === 'true';
+const START_OFFSET = Math.max(0, Number(process.env.SYNC_START_OFFSET || 0));
+const ONLY_USER_IDS = new Set(
+  String(process.env.SYNC_ONLY_USER_IDS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value) && value > 0)
+);
+const ONLY_IDENTIFICATIONS = new Set(
+  String(process.env.SYNC_ONLY_IDENTIFICATIONS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+);
 
 if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
   console.error('Missing SUPABASE_URL or SUPABASE_SECRET_KEY.');
@@ -29,7 +45,21 @@ const buildPassword = (user) => {
   if (MODE === 'cedula-last5') {
     return ident.slice(-5);
   }
+  if (MODE === 'temporary-strong') {
+    return `Tmp!${String(user.user_id).padStart(5, '0')}_${ident.slice(-4)}`;
+  }
   return ident;
+};
+
+const shouldProcessUser = (user) => {
+  if (!ONLY_USER_IDS.size && !ONLY_IDENTIFICATIONS.size) {
+    return true;
+  }
+
+  const userId = Number(user.user_id);
+  const identification = String(user.user_identification || '').trim();
+
+  return ONLY_USER_IDS.has(userId) || ONLY_IDENTIFICATIONS.has(identification);
 };
 
 async function fetchUsers(offset) {
@@ -109,6 +139,32 @@ async function createAuthUser(user) {
   return response.json();
 }
 
+async function updateAuthUser(authUserId, user) {
+  const payload = {
+    password: buildPassword(user),
+    email_confirm: true,
+    user_metadata: {
+      legacy_user_id: user.user_id,
+      legacy_identification: user.user_identification,
+    },
+  };
+
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${authUserId}`, {
+    method: 'PUT',
+    headers: {
+      ...headers,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`update auth user ${user.user_id} failed: ${response.status} ${await response.text()}`);
+  }
+
+  return response.json();
+}
+
 async function updatePublicUser(userId, authUserId, email) {
   const url = new URL(`${SUPABASE_URL}/rest/v1/users`);
   url.searchParams.set('user_id', `eq.${userId}`);
@@ -134,27 +190,37 @@ async function updatePublicUser(userId, authUserId, email) {
 async function run() {
   await loadExistingAuthUsers();
 
-  let offset = 0;
+  let offset = START_OFFSET;
   let processed = 0;
   let created = 0;
   let skipped = 0;
   let linkedExisting = 0;
+  let resetPasswords = 0;
 
   while (true) {
     const users = await fetchUsers(offset);
     if (!users.length) break;
 
     for (const user of users) {
+      if (!shouldProcessUser(user)) {
+        continue;
+      }
+
       processed += 1;
-      if (user.auth_user_id) {
+
+      if (user.auth_user_id && !RESET_EXISTING_PASSWORDS) {
         skipped += 1;
         continue;
       }
 
       const email = normalizeEmail(user);
-      const existingId = authUsersByEmail.get(email);
+      const existingId = user.auth_user_id || authUsersByEmail.get(email);
 
       if (existingId) {
+        if (RESET_EXISTING_PASSWORDS) {
+          await updateAuthUser(existingId, { ...user, user_email: email });
+          resetPasswords += 1;
+        }
         await updatePublicUser(user.user_id, existingId, email);
         linkedExisting += 1;
       } else {
@@ -164,7 +230,7 @@ async function run() {
         created += 1;
       }
 
-      if (created % 50 === 0) {
+      if (processed % 50 === 0) {
         console.log(`created ${created} auth users, processed ${processed}`);
       }
     }
@@ -172,7 +238,7 @@ async function run() {
     offset += users.length;
   }
 
-  console.log(JSON.stringify({ processed, created, skipped, linkedExisting, mode: MODE }, null, 2));
+  console.log(JSON.stringify({ processed, created, skipped, linkedExisting, resetPasswords, mode: MODE, resetExisting: RESET_EXISTING_PASSWORDS }, null, 2));
 }
 
 run().catch((error) => {

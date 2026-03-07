@@ -3,6 +3,18 @@ FROM node:20-alpine as build
 
 WORKDIR /app
 
+ARG NODE_OPTIONS=--max-old-space-size=4096
+ARG VITE_DASHBOARD_BASE=/dashboard-app/
+ARG DASHBOARD_APP_URL=/dashboard-app/
+ARG VITE_API_URL=
+ARG API_URL=
+
+ENV NODE_OPTIONS=$NODE_OPTIONS
+ENV VITE_DASHBOARD_BASE=$VITE_DASHBOARD_BASE
+ENV DASHBOARD_APP_URL=$DASHBOARD_APP_URL
+ENV VITE_API_URL=$VITE_API_URL
+ENV API_URL=$API_URL
+
 # Install dependencies first for better caching
 COPY package*.json ./
 RUN npm ci

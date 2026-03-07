@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { FileText, Download } from "lucide-react";
 import ReportService from "../ReportService";
 import { api } from "../api";
-import { getStoredUser } from "../session";
+import { supabase } from "../supabaseClient";
+import { downloadFromResponse } from "../utils/download";
 
 type ArchiveOption = {
   label: string;
@@ -83,20 +84,33 @@ const AccountingArchive: React.FC<Props> = ({
     loadConsecutive();
   }, [selectedOption]);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!selectedOption) return;
-    const token = getStoredUser()?.access_token || "";
-    const baseUrl = (api.defaults.baseURL || "").replace(/\/$/, "");
-    const url = new URL(`${baseUrl}/${selectedOption.endpoint}`);
+    const { data } = await supabase.auth.getSession();
+    if (!data.session?.access_token) {
+      alert("No hay sesión activa. Inicia sesión nuevamente.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await api.get(`/${selectedOption.endpoint}`, {
+        params: {
+          action: exportAction,
+          report_since: reportPeriodSince,
+          report_until: reportPeriodUntil,
+          consecutive: String(consecutive),
+        },
+        responseType: "blob",
+      });
 
-    url.searchParams.set("access_token", token);
-    url.searchParams.set("action", exportAction);
-    url.searchParams.set("report_since", reportPeriodSince);
-    url.searchParams.set("report_until", reportPeriodUntil);
-    url.searchParams.set("consecutive", String(consecutive));
-
-    setConsecutive((prev) => prev + 1);
-    window.open(url.toString(), "_blank");
+      const baseName = `reporte-${selectedOption.reportNumber}-${consecutive}.pdf`;
+      downloadFromResponse(response, baseName);
+      setConsecutive((prev) => prev + 1);
+    } catch (error) {
+      console.error("Error generando archivo", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

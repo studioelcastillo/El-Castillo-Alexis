@@ -1,0 +1,217 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "GK-TEMPLATE",
+        "description": "Documentation about use of API",
+        "contact": {
+            "name": "Geckode Team",
+            "email": "geckode@bygeckode.com"
+        },
+        "version": "1.0",
+        "x-logo": {
+            "url": "https://www.jimdo.com/static/ab2ee7b411a610479211ac292fd89ef4/5ce94/Logo_LogoExample_Header_4_ES.png"
+        }
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000/api/",
+            "description": "API Server"
+        }
+    ],
+    "paths": {
+        "/auth/login": {
+            "post": {
+                "tags": [
+                    "AUTH"
+                ],
+                "summary": "iniciar session",
+                "description": "Returna token",
+                "operationId": "8cb7742ae98d0990acb2907c4e00bf24",
+                "requestBody": {
+                    "description": "informacion requerida",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Operacion exitosa",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Operacion fallida",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "tags": [
+                    "AUTH"
+                ],
+                "summary": "cerrar session",
+                "description": "Returna token",
+                "operationId": "0d29c740dc06d77602af8095bf4654cc",
+                "responses": {
+                    "200": {
+                        "description": "Operacion exitosa",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Operacion fallida",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearer_token": []
+                    }
+                ]
+            }
+        },
+        "/auth/user": {
+            "get": {
+                "tags": [
+                    "AUTH"
+                ],
+                "summary": "obtener usuario",
+                "description": "Returna user",
+                "operationId": "e5e22c8e605f4e5e6f53f7861afd1c81",
+                "responses": {
+                    "200": {
+                        "description": "Operacion exitosa",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Operacion fallida",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearer_token": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "LoginDto": {
+                "title": "LoginDto",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "example": "example@gmail.com"
+                    },
+                    "password": {
+                        "type": "string",
+                        "example": ""
+                    }
+                },
+                "type": "object"
+            },
+            "SuccessResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "default": "Success"
+                    },
+                    "message": {
+                        "type": "string",
+                        "default": ""
+                    },
+                    "data": {
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "QueryResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "default": "Success"
+                    },
+                    "message": {
+                        "type": "string",
+                        "default": ""
+                    },
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "ErrorResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "default": "Error"
+                    },
+                    "message": {
+                        "type": "string",
+                        "default": ""
+                    },
+                    "data": {
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "bearer_token": {
+                "type": "apiKey",
+                "description": "Enter token in format (Bearer <token>)",
+                "name": "Authorization",
+                "in": "header"
+            }
+        }
+    }
+}

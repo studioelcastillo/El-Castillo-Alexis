@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Users, Calendar, AlertTriangle, CheckCircle2,
   Search, Filter, DollarSign, ChevronRight,
@@ -10,128 +10,21 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   AreaChart, Area, PieChart, Pie, Cell, Legend
 } from 'recharts';
+import LicenseService from '../LicenseService';
 
-// --- INITIAL DATA ---
-const INITIAL_REVENUE_DATA = [
-  { month: 'Ene', revenue: 4200, licenses: 120 },
-  { month: 'Feb', revenue: 4800, licenses: 145 },
-  { month: 'Mar', revenue: 5100, licenses: 160 },
-  { month: 'Abr', revenue: 5900, licenses: 190 },
-  { month: 'May', revenue: 6500, licenses: 210 },
-  { month: 'Jun', revenue: 7200, licenses: 240 },
-];
-
-const INITIAL_CLIENTS = [
-  {
-    id: 'c1',
-    studioName: 'Red Dreams (Principal)',
-    adminName: 'Admin Castillo',
-    email: 'admin@elcastillo.app',
-    totalLicenses: 45, // Includes sub-studios
-    subStudiosCount: 2,
-    plan: '31 a 50 Licencias',
-    nextBillingDate: '2025-06-15',
-    daysUntilDue: 14,
-    status: 'ACTIVE',
-    paymentMethod: 'Stripe (Auto)',
-    monthlyValue: 100
-  },
-  {
-    id: 'c2',
-    studioName: 'Blue Ocean Studios',
-    adminName: 'Carlos Gomez',
-    email: 'carlos@blueocean.com',
-    totalLicenses: 12,
-    subStudiosCount: 0,
-    plan: '1 a 15 Licencias',
-    nextBillingDate: '2025-05-28',
-    daysUntilDue: 4,
-    status: 'EXPIRING_SOON',
-    paymentMethod: 'Manual (Transferencia)',
-    monthlyValue: 45
-  },
-  {
-    id: 'c3',
-    studioName: 'Neon Lights Agency',
-    adminName: 'Laura Martinez',
-    email: 'laura@neonlights.com',
-    totalLicenses: 180,
-    subStudiosCount: 5,
-    plan: '151 a 200 Licencias',
-    nextBillingDate: '2025-05-20',
-    daysUntilDue: -4,
-    status: 'EXPIRED',
-    paymentMethod: 'Stripe (Auto)',
-    monthlyValue: 200,
-    isExempt: false
-  },
-  {
-    id: 'c4',
-    studioName: 'Golden Models',
-    adminName: 'Maria Silva',
-    email: 'maria@golden.com',
-    totalLicenses: 10,
-    subStudiosCount: 0,
-    plan: '1 a 15 Licencias',
-    nextBillingDate: '2025-06-25',
-    daysUntilDue: 24,
-    status: 'ACTIVE',
-    paymentMethod: 'Stripe (Auto)',
-    monthlyValue: 45,
-    isExempt: false
-  },
-  {
-    id: 'c5',
-    studioName: 'Diamond Agency',
-    adminName: 'Roberto Sanchez',
-    email: 'roberto@diamond.com',
-    totalLicenses: 250,
-    subStudiosCount: 8,
-    plan: '201 a 250 Licencias',
-    nextBillingDate: '2025-06-05',
-    daysUntilDue: 4,
-    status: 'EXPIRING_SOON',
-    paymentMethod: 'Stripe (Auto)',
-    monthlyValue: 300,
-    isExempt: false
-  },
-  {
-    id: 'c6',
-    studioName: 'Silver Stars',
-    adminName: 'Ana Lopez',
-    email: 'ana@silver.com',
-    totalLicenses: 85,
-    subStudiosCount: 3,
-    plan: '51 a 100 Licencias',
-    nextBillingDate: '2025-06-20',
-    daysUntilDue: 19,
-    status: 'ACTIVE',
-    paymentMethod: 'Stripe (Auto)',
-    monthlyValue: 150,
-    isExempt: false
-  },
-  {
-    id: 'c7',
-    studioName: 'Bronze Studio',
-    adminName: 'Luis Perez',
-    email: 'luis@bronze.com',
-    totalLicenses: 25,
-    subStudiosCount: 1,
-    plan: '16 a 30 Licencias',
-    nextBillingDate: '2025-06-10',
-    daysUntilDue: 9,
-    status: 'ACTIVE',
-    paymentMethod: 'Manual (Transferencia)',
-    monthlyValue: 80,
-    isExempt: false
-  }
-];
+// --- DATA PLACEHOLDERS (NO HARDCODED CLIENT DATA) ---
+const INITIAL_REVENUE_DATA: { month: string; revenue: number; licenses: number }[] = [];
+const INITIAL_CLIENTS: any[] = [];
 
 const SubscriptionManagementPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'LIST'>('DASHBOARD');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [clients, setClients] = useState(INITIAL_CLIENTS);
+  const [revenueData, setRevenueData] = useState(INITIAL_REVENUE_DATA);
+  const [loadingData, setLoadingData] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const hasData = clients.length > 0;
 
   // Time Filter State
   const [timeFilter, setTimeFilter] = useState<'MONTH' | 'QUARTER' | 'SEMESTER' | 'YEAR' | 'CUSTOM'>('MONTH');
@@ -143,19 +36,28 @@ const SubscriptionManagementPage: React.FC = () => {
   const [editDate, setEditDate] = useState('');
   const [editIsExempt, setEditIsExempt] = useState(false);
 
-  const handleMarkAsPaid = (id: string) => {
+  const handleMarkAsPaid = async (id: string) => {
     if (window.confirm('¿Confirmar pago manual para este cliente? Se actualizará su fecha de vencimiento +1 mes.')) {
-      setClients(prev => prev.map(c => {
+      const nextDate = new Date();
+      nextDate.setMonth(nextDate.getMonth() + 1);
+      const nextBillingDate = nextDate.toISOString().split('T')[0];
+      const updated = clients.map(c => {
         if (c.id === id) {
           return {
             ...c,
             status: 'ACTIVE',
-            daysUntilDue: 30, // Reset
-            nextBillingDate: '2025-07-15' // Next date
+            daysUntilDue: 30,
+            nextBillingDate,
           };
         }
         return c;
-      }));
+      });
+      setClients(updated);
+      try {
+        await LicenseService.saveClients(updated);
+      } catch (error) {
+        setLoadError('No se pudo guardar el cambio en licencias.');
+      }
     }
   };
 
@@ -169,13 +71,13 @@ const SubscriptionManagementPage: React.FC = () => {
     setEditIsExempt(client.isExempt || false);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingClient) return;
 
-    setClients(prev => prev.map(c => {
+    const updated = clients.map(c => {
       if (c.id === editingClient.id) {
         // Calculate new days until due
-        const today = new Date('2025-06-01'); // Current date
+        const today = new Date();
         const targetDate = new Date(editDate);
         const diffTime = targetDate.getTime() - today.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -197,10 +99,34 @@ const SubscriptionManagementPage: React.FC = () => {
         };
       }
       return c;
-    }));
+    });
+
+    setClients(updated);
+    try {
+      await LicenseService.saveClients(updated);
+    } catch (error) {
+      setLoadError('No se pudo guardar el cambio en licencias.');
+    }
 
     setEditingClient(null);
   };
+
+  useEffect(() => {
+    const loadLicenses = async () => {
+      setLoadingData(true);
+      setLoadError(null);
+      try {
+        const overview = await LicenseService.getOverview();
+        setClients(overview.clients);
+        setRevenueData(overview.revenueData);
+      } catch (error) {
+        setLoadError('No se pudieron cargar los datos de licencias.');
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    loadLicenses();
+  }, []);
 
   const filteredClients = useMemo(() => {
     return clients.filter(c => {
@@ -260,7 +186,9 @@ const SubscriptionManagementPage: React.FC = () => {
     if (timeFilter === 'YEAR') multiplier = 0.40;
 
     const prevRevenue = stats.totalRevenue * multiplier;
-    const growth = ((stats.totalRevenue - prevRevenue) / prevRevenue) * 100;
+    const growth = prevRevenue > 0
+      ? ((stats.totalRevenue - prevRevenue) / prevRevenue) * 100
+      : 0;
 
     return {
       prevRevenue,
@@ -281,6 +209,24 @@ const SubscriptionManagementPage: React.FC = () => {
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
+
+      {loadingData && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-xs font-bold text-slate-500">
+          Cargando datos de licencias...
+        </div>
+      )}
+
+      {loadError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs font-bold text-red-700">
+          {loadError}
+        </div>
+      )}
+
+      {!loadingData && !hasData && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-bold text-amber-800">
+          Sin datos de licencias configurados. Conecta esta vista al backend para mostrar informacion real.
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -429,7 +375,7 @@ const SubscriptionManagementPage: React.FC = () => {
               </div>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={INITIAL_REVENUE_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <BarChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} tickFormatter={(val) => `$${val}`} />
@@ -460,7 +406,7 @@ const SubscriptionManagementPage: React.FC = () => {
               </div>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={INITIAL_REVENUE_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorLicenses" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>

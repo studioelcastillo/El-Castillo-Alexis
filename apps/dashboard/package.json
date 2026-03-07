@@ -1,9 +1,8 @@
 {
   "dependencies": {
     "@tanstack/react-query": "^5.90.21",
-    "@types/react-router-dom": "^5.3.3",
     "date-fns": "^4.1.0",
-    "react-router-dom": "^7.13.1",
-    "recharts": "^3.7.0"
+    "react-router-dom": "^6.28.0",
+    "recharts": "^3.5.1"
   }
 }

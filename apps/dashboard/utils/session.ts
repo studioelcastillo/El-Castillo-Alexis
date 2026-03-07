@@ -5,9 +5,16 @@ import CryptoJS from "crypto-js";
  * Falls back to a random key stored in sessionStorage (per-tab only).
  * NEVER hardcode this value in source code.
  */
+const getStorage = () => {
+  if (typeof window === "undefined") return null;
+  const storageType = String(import.meta.env.VITE_SESSION_STORAGE || "session").toLowerCase();
+  return storageType === "session" ? window.sessionStorage : window.localStorage;
+};
+
 const passEncrypt = (): string => {
   const envKey = import.meta.env.VITE_SESSION_KEY;
   if (envKey) return envKey;
+  if (typeof window === "undefined") return "";
 
   // Fallback: per-session random key (not persistent across tabs, but better than hardcoded)
   let sessionKey = window.sessionStorage.getItem("_sk");
@@ -41,16 +48,20 @@ const tryParse = (value: string) => {
 };
 
 const encryptSession = (key: string, data: unknown) => {
+  const storage = getStorage();
+  if (!storage) return;
   const payload =
     typeof data === "string" || typeof data === "number"
       ? String(data)
       : JSON.stringify(data);
   const encrypted = CryptoJS.AES.encrypt(payload, passEncrypt()).toString();
-  localStorage.setItem(key, encrypted);
+  storage.setItem(key, encrypted);
 };
 
 const decryptSession = (key: string) => {
-  const raw = localStorage.getItem(key);
+  const storage = getStorage();
+  if (!storage) return null;
+  const raw = storage.getItem(key);
   if (!raw) return raw;
 
   try {
@@ -71,4 +82,18 @@ const decryptSession = (key: string) => {
   }
 };
 
-export { encryptSession, decryptSession };
+const clearSessionKeys = (keys: string[]) => {
+  if (typeof window === "undefined") return;
+  const primary = getStorage();
+  const secondary = primary === window.localStorage ? window.sessionStorage : window.localStorage;
+  keys.forEach((key) => {
+    primary?.removeItem(key);
+    secondary?.removeItem(key);
+  });
+};
+
+const clearAuthSession = () => {
+  clearSessionKeys(["user", "dashboard_user", "token"]);
+};
+
+export { encryptSession, decryptSession, clearSessionKeys, clearAuthSession };

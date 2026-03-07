@@ -1,4 +1,4 @@
-import { decryptSession } from "./utils/session";
+import { decryptSession, encryptSession } from "./utils/session";
 
 const normalizeUser = (user: any) => {
   if (!user || typeof user !== 'object') return user;
@@ -31,4 +31,11 @@ export const getStoredUser = () => {
   const user = dashboardUser ?? readSession("user");
   if (!user) return null;
   return normalizeUser(user);
+};
+
+export const setStoredUser = (user: any) => {
+  const normalized = normalizeUser(user);
+  encryptSession("user", normalized);
+  encryptSession("dashboard_user", normalized);
+  return normalized;
 };

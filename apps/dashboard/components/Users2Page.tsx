@@ -77,7 +77,7 @@ const Users2Page: React.FC = () => {
         { key: "user_name", label: "Nombre", required: true },
         { key: "user_surname", label: "Apellido" },
         { key: "user_email", label: "Email" },
-        { key: "user_password", label: "Contrasena" },
+        { key: "user_password", label: "Contrasena", type: "password" },
         { key: "user_active", label: "Activo", type: "checkbox" },
         { key: "user_token_recovery_password", label: "Token recuperacion" },
         { key: "user_telephone", label: "Telefono" },

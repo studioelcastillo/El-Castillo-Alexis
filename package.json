@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config apps/dashboard/vite.config.ts apps/dashboard",
-    "build": "vite build --config apps/dashboard/vite.config.ts apps/dashboard",
+    "build": "node scripts/build-dashboard.mjs",
     "postbuild": "node scripts/copy-dashboard.mjs",
+    "secrets:check": "node scripts/check-secrets.mjs",
+    "secure:migrate": "node scripts/migrate-existing-envs.mjs",
+    "secure:materialize": "node scripts/materialize-secure-env.mjs",
     "deploy:staging": "node scripts/deploy.mjs staging",
     "deploy:production": "node scripts/deploy.mjs production",
     "preview": "vite preview --config apps/dashboard/vite.config.ts apps/dashboard",

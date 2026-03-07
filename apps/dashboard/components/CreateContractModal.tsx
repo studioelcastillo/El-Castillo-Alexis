@@ -12,6 +12,7 @@ import ContractService, {
   DOCUMENT_TYPES,
 } from '../ContractService';
 import type { ContractPayload } from '../ContractService';
+import { downloadFromResponse } from '../utils/download';
 
 // ==================== TYPES ====================
 
@@ -55,6 +56,11 @@ const fmtDate = (d: string | null) => {
     const date = new Date(d);
     return date.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
   } catch { return d; }
+};
+
+const maskSecret = (value: string | null | undefined) => {
+  if (!value) return '---';
+  return '••••••••';
 };
 
 // ==================== SHARED UI COMPONENTS ====================
@@ -177,6 +183,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({
   const [loadingDepts, setLoadingDepts] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
   const [activeTab, setActiveTab] = useState<'form' | 'accounts' | 'goals' | 'payments'>('form');
+  const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
 
   // ============ SUBGRID DATA (edit mode only) ============
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -202,6 +209,19 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
   const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }));
+
+  const handleDownloadDocument = async (docType: string) => {
+    if (!contract?.stdmod_id || downloadingDoc) return;
+    setDownloadingDoc(docType);
+    try {
+      const response = await ContractService.downloadDocument(contract.stdmod_id, docType);
+      downloadFromResponse(response, `documento-${contract.stdmod_id}-${docType}.pdf`);
+    } catch (err) {
+      console.error('Error descargando documento:', err);
+    } finally {
+      setDownloadingDoc(null);
+    }
+  };
 
   // ============ LOAD INITIAL DATA ============
   useEffect(() => {
@@ -552,11 +572,16 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({
                 <SubSection title="Documentos" icon={Download} defaultOpen={false}>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                     {DOCUMENT_TYPES.map(doc => (
-                      <a key={doc.type} href={ContractService.getDocumentUrl(contract.stdmod_id, doc.type)} target="_blank" rel="noopener noreferrer"
-                        className="flex flex-col items-center gap-2 p-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-white hover:border-amber-300 hover:shadow-sm transition-all group cursor-pointer">
+                      <button
+                        key={doc.type}
+                        type="button"
+                        onClick={() => handleDownloadDocument(doc.type)}
+                        disabled={downloadingDoc === doc.type}
+                        className="flex flex-col items-center gap-2 p-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-white hover:border-amber-300 hover:shadow-sm transition-all group cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
                         <FileText size={20} className="text-slate-400 group-hover:text-amber-500 transition-colors" />
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide text-center group-hover:text-amber-600">{doc.label}</span>
-                      </a>
+                      </button>
                     ))}
                   </div>
                 </SubSection>
@@ -574,7 +599,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <ModalSelect label="Plataforma" value={accForm.app} onChange={v => setAccForm(p => ({ ...p, app: v }))} options={PLATFORM_OPTIONS.map(p => ({ label: p, value: p }))} disabled={!!editingAccount} required />
                     <ModalInput label="Nombre de usuario" value={accForm.username} onChange={v => setAccForm(p => ({ ...p, username: v }))} required />
-                    <ModalInput label="Contrasena" value={accForm.password} onChange={v => setAccForm(p => ({ ...p, password: v }))} required />
+                    <ModalInput label="Contrasena" value={accForm.password} onChange={v => setAccForm(p => ({ ...p, password: v }))} type="password" required />
                     <ModalInput label="Nick de pago" value={accForm.payment_username} onChange={v => setAccForm(p => ({ ...p, payment_username: v }))} required />
                     <ModalInput label="Correo" value={accForm.mail} onChange={v => setAccForm(p => ({ ...p, mail: v }))} required />
                     {accForm.app === 'LIVEJASMIN' && (
@@ -622,7 +647,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({
                         <tr key={a.modacc_id} className="border-t border-slate-50 hover:bg-slate-50/50">
                           <td className="p-3"><span className="px-2 py-0.5 bg-purple-50 text-purple-600 rounded text-[10px] font-bold">{a.modacc_app}</span></td>
                           <td className="p-3 font-medium text-slate-700">{a.modacc_username}</td>
-                          <td className="p-3 text-slate-500 font-mono">{a.modacc_password}</td>
+                          <td className="p-3 text-slate-500 font-mono">{maskSecret(a.modacc_password)}</td>
                           <td className="p-3">
                             {a.modacc_screen_name ? (
                               <button onClick={() => copyScreenName(a)} className="flex items-center gap-1 text-slate-600 hover:text-amber-600 transition-colors" title="Click para copiar">

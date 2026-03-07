@@ -1,7 +1,7 @@
 -- ==========================================================
 -- EL CASTILLO GROUP SAS — Supabase Database Schema
 -- Generado automáticamente desde los servicios del proyecto
--- URL: https://wukvaemawvjavwqocxyb.supabase.co
+-- URL de referencia: https://ysorlqfwqccsgxxkpzdx.supabase.co
 -- ==========================================================
 
 -- Habilitar extensiones necesarias
@@ -896,7 +896,7 @@ $$;
 -- ==========================================================
 -- EL CASTILLO GROUP SAS — Configuración de RLS
 -- Ejecutar en: Dashboard Supabase > SQL Editor
--- Proyecto: wukvaemawvjavwqocxyb (El_Castillo_BaseDatos)
+-- Proyecto de referencia: ysorlqfwqccsgxxkpzdx (produccion)
 -- ==========================================================
 -- ESTRATEGIA: Acceso total solo para super admins.
 -- El resto de usuarios depende de políticas específicas por tabla.
@@ -1132,7 +1132,7 @@ ORDER BY tablename;
 -- ==========================================================
 -- EL CASTILLO GROUP SAS — Sistema de Módulos y Permisos API
 -- Ejecutar en: Dashboard Supabase > SQL Editor
--- Proyecto: wukvaemawvjavwqocxyb (El_Castillo_BaseDatos)
+-- Proyecto de referencia: ysorlqfwqccsgxxkpzdx (produccion)
 -- ==========================================================
 
 CREATE OR REPLACE FUNCTION public.is_super_admin()

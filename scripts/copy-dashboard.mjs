@@ -70,7 +70,7 @@ const nginxConfig = `server {
         root /usr/share/nginx/html;
         index index.html index.htm;
         ${basePath ? `rewrite ^/$ /${basePath}/ redirect;` : ''}
-        try_files $uri $uri/ /${basePath ? basePath + '/' : 'index.html'};
+        try_files $uri $uri/ /${basePath ? `${basePath}/index.html` : 'index.html'};
     }
 
 
@@ -84,8 +84,7 @@ const nginxConfig = `server {
     ` : ''}
 }
 `;
-// console.log(`Generated nginx.conf at ${path.join(distRoot, 'nginx.conf')}`);
-// await writeFile(path.join(distRoot, 'nginx.conf'), nginxConfig, 'utf8');
+await writeFile(path.join(distRoot, 'nginx.conf'), nginxConfig, 'utf8');
 
 console.log(`Copied dashboard build to ${dest}`);
 console.log(`Generated nginx.conf at ${path.join(distRoot, 'nginx.conf')}`);

@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { supabase } from "../supabaseClient";
+import AuthService from "../AuthService";
 
 const AuthCallbackPage: React.FC = () => {
   const navigate = useNavigate();
@@ -10,8 +10,8 @@ const AuthCallbackPage: React.FC = () => {
     let timeoutId: number | undefined;
 
     const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
+      const user = await AuthService.syncStoredSession();
+      if (user) {
         navigate("/dashboard", { replace: true });
         return;
       }

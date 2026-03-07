@@ -16,11 +16,13 @@ if (!connectionString) {
   process.exit(1);
 }
 
-const filesToRun = [
+const defaultFilesToRun = [
   'supabase/schema.sql',
   'supabase/legacy_schema_missing.sql',
   'supabase/legacy_aws_alignment.sql',
   'supabase/configure_rls.sql',
+  'apps/dashboard/supabase/schema_extensions.sql',
+  'supabase/tenant_hardening.sql',
   'supabase/api_modules_seed.sql',
   'supabase/payroll_setup.sql',
   'supabase/audit.sql',
@@ -28,6 +30,9 @@ const filesToRun = [
   'supabase/storage_setup.sql',
   'supabase/seed_attendance.sql'
 ];
+
+const cliFiles = process.argv.slice(2);
+const filesToRun = cliFiles.length > 0 ? cliFiles : defaultFilesToRun;
 
 async function run() {
   const client = new Client({

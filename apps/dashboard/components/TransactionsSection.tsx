@@ -5,6 +5,7 @@ import {
   Loader2, AlertCircle, ChevronDown, Download, Search
 } from 'lucide-react';
 import TransactionService from '../TransactionService';
+import { downloadFromResponse } from '../utils/download';
 
 // ==================== HELPERS ====================
 
@@ -372,6 +373,7 @@ const TransactionsSection: React.FC<TransactionsSectionProps> = ({ userId, isMod
   const [egresos, setEgresos] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -401,6 +403,19 @@ const TransactionsSection: React.FC<TransactionsSectionProps> = ({ userId, isMod
   }, [userId]);
 
   useEffect(() => { loadTransactions(); }, [loadTransactions]);
+
+  const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const response = await TransactionService.downloadExport(userId);
+      downloadFromResponse(response, `transacciones-${userId}.xlsx`);
+    } catch (err) {
+      console.error('Error exportando transacciones:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Load contracts once (from legacy endpoint /petitions/studios_models)
   useEffect(() => {
@@ -472,10 +487,15 @@ const TransactionsSection: React.FC<TransactionsSectionProps> = ({ userId, isMod
               className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors" title={`Nuevo ${group.toLowerCase()}`}>
               <Plus size={14} />
             </button>
-            <a href={TransactionService.getExportUrl(userId)} target="_blank" rel="noopener noreferrer"
-              className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors" title="Exportar Excel">
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={isExporting}
+              className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              title="Exportar Excel"
+            >
               <Download size={14} />
-            </a>
+            </button>
           </div>
         </div>
 

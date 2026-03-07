@@ -1,0 +1,14 @@
+node_modules
+dist
+apps/dashboard/dist
+playwright-temp
+_zip_review
+problemas
+.git
+.github
+.secure
+.env
+.env.*
+backend-legacy/vendor
+backend-legacy/node_modules
+*.log

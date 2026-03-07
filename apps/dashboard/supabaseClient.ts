@@ -12,4 +12,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
   }
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+const hasWindow = typeof window !== 'undefined';
+const storage = hasWindow ? window.sessionStorage : undefined;
+
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
+  auth: {
+    persistSession: hasWindow,
+    storage,
+  },
+});

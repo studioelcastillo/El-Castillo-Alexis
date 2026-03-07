@@ -1,7 +1,7 @@
 -- ==========================================================
 -- EL CASTILLO GROUP SAS — Configuración de RLS
 -- Ejecutar en: Dashboard Supabase > SQL Editor
--- Proyecto: wukvaemawvjavwqocxyb (El_Castillo_BaseDatos)
+-- Proyecto de referencia: ysorlqfwqccsgxxkpzdx (produccion)
 -- ==========================================================
 -- ESTRATEGIA: Acceso total solo para super admins.
 -- El resto de usuarios depende de políticas específicas por tabla.

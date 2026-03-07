@@ -1,8 +1,10 @@
-// Temporary script to create api_modules tables via Supabase REST API
-// Run: node supabase/run_migration.mjs
+// Temporary script to create api_modules tables via Supabase Management API
+// Run: node supabase/run_migration.mjs [service_role_key] [supabase_url]
 
-const SUPABASE_URL = 'https://wukvaemawvjavwqocxyb.supabase.co';
+const DEFAULT_SUPABASE_URL = 'https://pnnrsqocukixusmzrlhy.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL || process.argv[3] || DEFAULT_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.argv[2];
+const PROJECT_REF = new URL(SUPABASE_URL).hostname.split('.')[0];
 
 if (!SUPABASE_SERVICE_KEY) {
   console.log('Usage: node supabase/run_migration.mjs <service_role_key>');
@@ -35,7 +37,7 @@ async function executeSql(sql, label) {
 async function executeSqlViaPgMeta(sql, label) {
   console.log(`\n⏳ Executing via pg-meta: ${label}...`);
   // Use the Supabase Management API to run SQL
-  const res = await fetch(`https://api.supabase.com/v1/projects/wukvaemawvjavwqocxyb/database/query`, {
+  const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
@@ -101,19 +103,37 @@ CREATE TABLE IF NOT EXISTS api_user_overrides (
 `;
 
 const ENABLE_RLS = `
+CREATE OR REPLACE FUNCTION public.is_super_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE auth_user_id = auth.uid()
+      AND prof_id IN (1, 11)
+  );
+$$;
+
 ALTER TABLE api_modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE api_permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE api_user_overrides ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'authenticated_full_access' AND tablename = 'api_modules') THEN
-    CREATE POLICY "authenticated_full_access" ON api_modules FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  DROP POLICY IF EXISTS authenticated_full_access ON api_modules;
+  DROP POLICY IF EXISTS authenticated_full_access ON api_permissions;
+  DROP POLICY IF EXISTS authenticated_full_access ON api_user_overrides;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'admin_full_access' AND tablename = 'api_modules') THEN
+    CREATE POLICY "admin_full_access" ON api_modules FOR ALL TO authenticated USING (public.is_super_admin()) WITH CHECK (public.is_super_admin());
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'authenticated_full_access' AND tablename = 'api_permissions') THEN
-    CREATE POLICY "authenticated_full_access" ON api_permissions FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'admin_full_access' AND tablename = 'api_permissions') THEN
+    CREATE POLICY "admin_full_access" ON api_permissions FOR ALL TO authenticated USING (public.is_super_admin()) WITH CHECK (public.is_super_admin());
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'authenticated_full_access' AND tablename = 'api_user_overrides') THEN
-    CREATE POLICY "authenticated_full_access" ON api_user_overrides FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'admin_full_access' AND tablename = 'api_user_overrides') THEN
+    CREATE POLICY "admin_full_access" ON api_user_overrides FOR ALL TO authenticated USING (public.is_super_admin()) WITH CHECK (public.is_super_admin());
   END IF;
 END $$;
 `;

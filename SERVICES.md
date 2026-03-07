@@ -19,7 +19,7 @@ src/services/
 ```
 
 **Backend**: Supabase (PostgreSQL + Auth + Storage)
-**Proyecto Supabase**: `wukvaemawvjavwqocxyb` (El_Castillo_BaseDatos)
+**Proyectos vigentes**: `ysorlqfwqccsgxxkpzdx` (produccion) y `pnnrsqocukixusmzrlhy` (staging)
 
 ---
 

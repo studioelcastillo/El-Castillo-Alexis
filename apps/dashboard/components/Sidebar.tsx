@@ -2,6 +2,8 @@
 import React from 'react';
 import { Menu, X, ChevronRight, Crown, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { SIDEBAR_SECTIONS } from '../constants';
+import { getStoredUser } from '../session';
+import { filterSidebarSections, isAdminUser } from '../utils/permissions';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -13,6 +15,9 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed, toggleSidebar, toggleCollapse, onNavigate, activePage }) => {
+  const currentUser = getStoredUser();
+  const isAdmin = isAdminUser(currentUser);
+  const sections = filterSidebarSections(SIDEBAR_SECTIONS, isAdmin);
   return (
     <>
       {/* Mobile Overlay */}
@@ -56,7 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed, toggleSidebar, t
 
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-6 px-3 space-y-8 custom-scrollbar">
-          {SIDEBAR_SECTIONS.map((section, idx) => (
+          {sections.map((section, idx) => (
             <div key={idx}>
               {!isCollapsed && (
                 <h3 className="px-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-3 font-sans animate-in fade-in duration-500">

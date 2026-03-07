@@ -27,6 +27,8 @@ import LogoutConfirmDialog from './LogoutConfirmDialog';
 import AuthService from '../AuthService';
 import { Lock } from 'lucide-react'; 
 import { getStoredUser } from '../session';
+import { clearAuthSession } from '../utils/session';
+import { buildAppUrl } from '../utils/baseUrl';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -49,11 +51,12 @@ function App() {
   const toggleCollapse = () => setIsCollapsed(!isCollapsed);
 
   const redirectToLogin = () => {
+    const loginUrl = buildAppUrl('login');
     try {
       const target = window.top ?? window;
-      target.location.href = '/login';
+      target.location.href = loginUrl;
     } catch (error) {
-      window.location.href = '/login';
+      window.location.href = loginUrl;
     }
   };
   
@@ -74,9 +77,7 @@ function App() {
     } catch (error) {
       console.error('Error during API logout:', error);
     } finally {
-      localStorage.removeItem('user');
-      localStorage.removeItem('dashboard_user');
-      localStorage.removeItem('token');
+      clearAuthSession();
       localStorage.removeItem('dashboardMode');
       redirectToLogin();
     }

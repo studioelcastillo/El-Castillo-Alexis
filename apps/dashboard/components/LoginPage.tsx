@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Crown, ArrowRight, Lock, Mail, AlertCircle, CheckCircle2, ShieldCheck, ExternalLink, X } from 'lucide-react';
 import AuthService, { Policy } from '../AuthService';
-import { encryptSession } from '../utils/session';
+import { setStoredUser } from '../session';
 import PolicyModal from './PolicyModal';
 
 interface LoginPageProps {
@@ -33,9 +33,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         const response = await AuthService.getActiveDataPolicy();
         if (response.data && response.data.data) {
           setPolicy(response.data.data);
+          return;
         }
+        showNotification('error', 'No se encontró una política de datos activa.');
       } catch (err: any) {
         console.error('Error loading policy:', err);
+        const message = String(err?.message || '').toLowerCase();
+        if (message.includes('policy')) {
+          showNotification('error', 'No se encontró una política de datos activa.');
+          return;
+        }
         showNotification('error', 'No se pudo cargar la política de datos. Verifica tu conexión.');
       }
     };
@@ -80,21 +87,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                           (resData as any).status?.toLowerCase() === 'success' ||
                           (resData as any).message === 'User logged';
 
-      if (isSuccessful && resData.data) {
-        const { access_token, token_type, expires_at, user } = resData.data;
+        if (isSuccessful && resData.data) {
+          const { user } = resData.data;
 
-        // Persist session
-        const sessionUser = {
-          access_token,
-          token_type,
-          expires_at,
-          ...user,
-        };
-        encryptSession('user', sessionUser);
-        encryptSession('dashboard_user', sessionUser);
-        encryptSession('token', access_token);
+          setStoredUser(user);
 
-        showNotification('success', resData.message || '¡Ingreso exitoso!');
+          showNotification('success', resData.message || '¡Ingreso exitoso!');
 
         // Redirigir al dashboard
         setTimeout(() => {
@@ -118,7 +116,22 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           default: showNotification('error', message || `Error del servidor (${status}).`);
         }
       } else {
-        showNotification('error', 'No hay conexión con el servidor de producción.');
+        const rawMessage = String(
+          err?.message || err?.error_description || err?.details || err?.hint || ''
+        ).trim();
+        const normalizedMessage = rawMessage.toLowerCase();
+
+        if (normalizedMessage.includes('invalid login credentials')) {
+          showNotification('error', 'Credenciales inválidas. Verifica tu usuario y clave.');
+        } else if (normalizedMessage.includes('email not confirmed')) {
+          showNotification('error', 'Tu correo aun no ha sido confirmado en Supabase.');
+        } else if (normalizedMessage.includes('usuario no encontrado')) {
+          showNotification('error', 'Usuario no encontrado. Verifica tu identificación o correo.');
+        } else if (rawMessage) {
+          showNotification('error', rawMessage);
+        } else {
+          showNotification('error', 'No se pudo completar el inicio de sesión.');
+        }
       }
     } finally {
       setIsLoading(false);

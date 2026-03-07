@@ -190,6 +190,7 @@ const MonetizationPage: React.FC = () => {
   const [platforms, setPlatforms] = useState<MonetizationPlatform[]>([]);
   const [liquidations, setLiquidations] = useState<Liquidation[]>([]);
   const [loading, setLoading] = useState(false);
+  const [tokenValue, setTokenValue] = useState<number | null>(null);
 
   // User Role Mock (Superadmin check)
   const currentUser = getStoredUser();
@@ -201,14 +202,16 @@ const MonetizationPage: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [b, p, l] = await Promise.all([
+    const [b, p, l, token] = await Promise.all([
         MonetizationService.getBeneficiaries(),
         MonetizationService.getPlatforms(),
-        MonetizationService.getLiquidations()
+        MonetizationService.getLiquidations(),
+        MonetizationService.getTokenValue(),
     ]);
     setBeneficiaries(b);
     setPlatforms(p);
     setLiquidations(l);
+    setTokenValue(token);
     setLoading(false);
   };
 
@@ -298,7 +301,14 @@ const MonetizationPage: React.FC = () => {
 
         {/* Content */}
         <div className="min-h-[600px]">
-            {activeTab === 'NEW' && <NewLiquidationView beneficiaries={beneficiaries} platforms={platforms} onSave={handleSaveLiquidation} />}
+            {activeTab === 'NEW' && (
+              <NewLiquidationView
+                beneficiaries={beneficiaries}
+                platforms={platforms}
+                onSave={handleSaveLiquidation}
+                tokenValue={tokenValue}
+              />
+            )}
             {activeTab === 'HISTORY' && <LiquidationHistory liquidations={liquidations} />}
             {activeTab === 'BENEFICIARIES' && <BeneficiariesList data={beneficiaries} onCreate={handleCreateBeneficiary} />}
             {activeTab === 'PLATFORMS' && <PlatformsList data={platforms} onCreate={handleCreatePlatform} />}
@@ -311,7 +321,7 @@ const MonetizationPage: React.FC = () => {
 
 // --- 1. NEW LIQUIDATION VIEW ---
 
-const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], platforms: MonetizationPlatform[], onSave: (data: any) => void }> = ({ beneficiaries, platforms, onSave }) => {
+const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], platforms: MonetizationPlatform[], onSave: (data: any) => void; tokenValue: number | null }> = ({ beneficiaries, platforms, onSave, tokenValue }) => {
     // Form State
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [beneficiaryId, setBeneficiaryId] = useState('');
@@ -322,6 +332,8 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
     const [retentionEnabled, setRetentionEnabled] = useState(false);
     const [retentionPct, setRetentionPct] = useState(0);
     const [errors, setErrors] = useState<{[key: string]: boolean}>({});
+    const tokenSnapshot = tokenValue ?? 0;
+    const tokenValueMissing = tokenValue === null;
 
     // Private (Optional input here or only in private view, prompt implies it might be separate but calculation needs it for internal record)
     // I'll add TRM Real here but hidden unless superadmin or just default to 0 for now.
@@ -350,7 +362,7 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
 
         // Let's use the service function logic here reactively
         // Reconstruct basic payload
-        let rawItems = items.map(i => ({...i, id: i.id || `temp_${Date.now()}_${Math.random()}`, token_value_snapshot: 0.05})) as LiquidationItem[];
+        let rawItems = items.map(i => ({...i, id: i.id || `temp_${Date.now()}_${Math.random()}`, token_value_snapshot: tokenSnapshot})) as LiquidationItem[];
 
         // Mock calculating retentions if enabled
         // This is circular because base depends on retentions? No, retentions depend on base.
@@ -381,7 +393,7 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
             trm_real: trmReal || trmPago // Default to same if not set
         }) as Liquidation;
 
-    }, [items, trmPago, commissionPct, discounts, retentionEnabled, retentionPct, trmReal]);
+    }, [items, trmPago, commissionPct, discounts, retentionEnabled, retentionPct, trmReal, tokenSnapshot]);
 
     const addItem = () => {
         setItems([...items, { id: `new_${Date.now()}`, type: 'USD', amount_usd: 0, tokens: 0 }]);
@@ -446,6 +458,12 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
 
         setErrors(newErrors);
 
+        const usesTokens = items.some((item) => item.type === 'TOKENS' && (item.tokens || 0) > 0);
+        if (tokenValueMissing && usesTokens) {
+            alert('Configura el valor del token antes de liquidar ingresos por tokens.');
+            return;
+        }
+
         if (isValid) {
             onSave({
                 ...liquidationData,
@@ -461,6 +479,11 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {tokenValueMissing && (
+                <div className="lg:col-span-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-bold text-amber-800">
+                    Falta configurar el valor del token en ajustes. Los calculos por tokens quedaran en cero hasta configurar.
+                </div>
+            )}
             <div className="lg:col-span-2 space-y-6">
 
                 {/* SECTION A: General */}

@@ -2,7 +2,7 @@ import fs from 'fs';
 import readline from 'readline';
 import { Client } from 'pg';
 
-const DUMP_PATH = process.env.AWS_DUMP_PATH || 'E:/Documentos/Downloads/castillo_prod_aws.sql.txt';
+const DUMP_PATH = process.env.AWS_DUMP_PATH || 'castillo_prod_aws.sql.txt';
 const connectionString = process.env.SUPABASE_DB_CONNECTION;
 const START_AT = process.env.IMPORT_START_AT || '';
 const ONLY_TABLES = String(process.env.IMPORT_ONLY_TABLES || '')

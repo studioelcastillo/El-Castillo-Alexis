@@ -104,7 +104,7 @@ const MembershipPage: React.FC = () => {
     const loadBilling = async () => {
       const data = await BillingService.getSubscription();
       setSubscription(data);
-      setActiveUsers(data.active_users_count || 1);
+      setActiveUsers(data?.active_users_count || 1);
       const inv = await BillingService.getInvoices();
       setInvoices(inv);
 
@@ -116,6 +116,20 @@ const MembershipPage: React.FC = () => {
     };
     loadBilling();
   }, []);
+
+  const isSubscriptionActive = subscription?.status === 'ACTIVE';
+  const isSubscriptionExpired = subscription?.status === 'EXPIRED';
+  const subscriptionBadgeClass = isSubscriptionActive
+    ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+    : isSubscriptionExpired
+      ? 'bg-red-50 border-red-100 text-red-700'
+      : 'bg-slate-50 border-slate-200 text-slate-600';
+  const subscriptionLabel = isSubscriptionActive
+    ? 'Suscripción Activa'
+    : isSubscriptionExpired
+      ? 'Vencida'
+      : 'Sin datos';
+  const nextBillingLabel = subscription?.next_billing_date || '--';
 
   const handleApplyCoupon = () => {
     // TODO: validate coupon against backend API
@@ -144,11 +158,11 @@ const MembershipPage: React.FC = () => {
           <p className="text-sm text-slate-500 font-medium pl-14">Administra tu plan, simula costos y gestiona pagos.</p>
         </div>
 
-        <div className={`flex items-center gap-3 px-5 py-3 border rounded-2xl ${subscription?.status === 'ACTIVE' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
-            {subscription?.status === 'ACTIVE' ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}
+        <div className={`flex items-center gap-3 px-5 py-3 border rounded-2xl ${subscriptionBadgeClass}`}>
+            {isSubscriptionActive ? <CheckCircle2 size={20} /> : isSubscriptionExpired ? <AlertTriangle size={20} /> : <Info size={20} />}
             <div>
-                <p className="text-xs font-black uppercase tracking-widest">{subscription?.status === 'ACTIVE' ? 'Suscripción Activa' : 'Vencida'}</p>
-                <p className="text-[10px] font-bold opacity-80">Próximo cobro: {subscription?.next_billing_date || '--'}</p>
+                <p className="text-xs font-black uppercase tracking-widest">{subscriptionLabel}</p>
+                <p className="text-[10px] font-bold opacity-80">Próximo cobro: {nextBillingLabel}</p>
             </div>
         </div>
       </div>

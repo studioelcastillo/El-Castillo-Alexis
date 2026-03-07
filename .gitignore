@@ -39,6 +39,9 @@ yarn-error.log*
 .env.tmp
 .npmrc.bak
 castillo_prod_aws.sql.txt
+/.secure/*
+!/.secure/README.md
+!/.secure/*.example
 /apps/**/.env
 /apps/**/.env.*
 !/apps/**/.env.example

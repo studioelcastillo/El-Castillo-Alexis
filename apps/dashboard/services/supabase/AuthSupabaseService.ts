@@ -1,4 +1,7 @@
 import { supabase } from "../../supabaseClient";
+import { buildAppUrl } from "../../utils/baseUrl";
+import { setStoredUser } from "../../session";
+import { clearAuthSession } from "../../utils/session";
 
 type LoginParams = {
   email: string;
@@ -17,11 +20,32 @@ const AuthSupabaseService = {
     } | null = null;
 
     if (!email.includes("@")) {
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("user_email, user_identification, auth_user_id")
-        .eq("user_identification", email)
-        .single();
+      let userData: typeof userRecord = null;
+      let userError: Error | null = null;
+
+      try {
+        const response = await fetch(
+          `/__local/login-lookup?identifier=${encodeURIComponent(email)}`
+        );
+
+        if (response.ok) {
+          const payload = await response.json();
+          userData = payload?.data || null;
+        }
+      } catch {
+        // ignore local lookup failures and fall back to direct query
+      }
+
+      if (!userData) {
+        const directLookup = await supabase
+          .from("users")
+          .select("user_email, user_identification, auth_user_id")
+          .eq("user_identification", email)
+          .single();
+
+        userData = directLookup.data || null;
+        userError = directLookup.error;
+      }
 
       if (userError || !userData) {
         throw new Error("Usuario no encontrado por identificación");
@@ -76,6 +100,28 @@ const AuthSupabaseService = {
     };
   },
 
+  async syncStoredSession() {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError || !session?.user?.id) {
+      clearAuthSession();
+      return null;
+    }
+
+    const { data: profile, error: profileError } =
+      await AuthSupabaseService.getUserProfile(session.user.id);
+
+    if (profileError || !profile) {
+      clearAuthSession();
+      return null;
+    }
+
+    return setStoredUser(profile);
+  },
+
   logout() {
     return supabase.auth.signOut();
   },
@@ -84,14 +130,14 @@ const AuthSupabaseService = {
     return supabase.auth.signInWithOAuth({
       provider: provider as any,
       options: {
-        redirectTo: window.location.origin + "/auth/callback",
+        redirectTo: buildAppUrl("auth/callback"),
       },
     });
   },
 
   recoveryPassword({ email }: { email: string }) {
     return supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + "/recovery-password",
+      redirectTo: buildAppUrl("recovery-password"),
     });
   },
 
@@ -119,37 +165,37 @@ const AuthSupabaseService = {
   },
 
   async getActiveDataPolicy() {
-    try {
-      const { data, error } = await supabase
-        .from("data_policies")
-        .select("pol_id, pol_description")
-        .eq("pol_active", true)
-        .order("pol_id", { ascending: false })
-        .limit(1)
-        .single();
+    const { data, error } = await supabase
+      .from("data_policies")
+      .select("pol_id, pol_description, pol_type, pol_active")
+      .eq("pol_active", true)
+      .order("pol_id", { ascending: false })
+      .limit(1)
+      .single();
 
-      if (!error && data) {
-        return {
+    if (error || !data) {
+      return {
+        data: {
+          status: "Success",
           data: {
-            status: "Success",
-            data: {
-              pol_id: data.pol_id,
-              pol_description: data.pol_description,
-            },
+            pol_id: 0,
+            pol_description:
+              "Autorizo el tratamiento de mis datos personales para el uso operativo y administrativo del sistema El Castillo.",
+            pol_type: "default",
+            pol_active: true,
           },
-        };
-      }
-    } catch (error) {
-      // fallback if table does not exist
+        },
+      };
     }
 
     return {
       data: {
         status: "Success",
         data: {
-          pol_id: 1,
-          pol_description:
-            "Al iniciar sesión en el sistema de El Castillo Group SAS, usted acepta el tratamiento de sus datos personales de acuerdo con las leyes vigentes de protección de datos personales de la República de Colombia (Ley 1581 de 2012) y sus decretos reglamentarios. Sus datos serán utilizados exclusivamente para la gestión administrativa, contractual y operativa al interior de la empresa.",
+          pol_id: data.pol_id,
+          pol_description: data.pol_description,
+          pol_type: data.pol_type ?? null,
+          pol_active: data.pol_active ?? null,
         },
       },
     };

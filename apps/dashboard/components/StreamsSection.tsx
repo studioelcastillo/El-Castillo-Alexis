@@ -5,6 +5,7 @@ import {
   Loader2, AlertCircle, ChevronDown, Download, Search
 } from 'lucide-react';
 import StreamService from '../StreamService';
+import { downloadFromResponse } from '../utils/download';
 
 // ==================== HELPERS ====================
 
@@ -81,6 +82,7 @@ const StreamsSection: React.FC<StreamsSectionProps> = ({ userId }) => {
   const [totals, setTotals] = useState<{ tokens: number; usd: number; eur: number; cop: number }>({ tokens: 0, usd: 0, eur: 0, cop: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Form
   const [showForm, setShowForm] = useState(false);
@@ -110,6 +112,19 @@ const StreamsSection: React.FC<StreamsSectionProps> = ({ userId }) => {
       console.error('Error cargando streams:', err);
     } finally { setLoading(false); }
   }, [userId]);
+
+  const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const response = await StreamService.downloadExport(userId);
+      downloadFromResponse(response, `streams-${userId}.xlsx`);
+    } catch (err) {
+      console.error('Error exportando streams:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   useEffect(() => { loadStreams(); }, [loadStreams]);
 
@@ -271,10 +286,15 @@ const StreamsSection: React.FC<StreamsSectionProps> = ({ userId }) => {
               className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors" title="Nuevo stream">
               <Plus size={14} />
             </button>
-            <a href={StreamService.getExportUrl(userId)} target="_blank" rel="noopener noreferrer"
-              className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors" title="Exportar Excel">
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={isExporting}
+              className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              title="Exportar Excel"
+            >
               <Download size={14} />
-            </a>
+            </button>
           </div>
         </div>
 

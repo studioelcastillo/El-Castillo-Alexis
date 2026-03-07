@@ -623,12 +623,23 @@ const RemoteDesktopPage: React.FC = () => {
     };
 
     const handleAutoEnroll = async () => {
+        const hostname = prompt('Nombre/hostname del dispositivo:');
+        if (!hostname) return;
+        const osInput = (prompt('Sistema operativo (WINDOWS/MAC/LINUX):', 'WINDOWS') || 'WINDOWS').toUpperCase();
+        const os = (['WINDOWS', 'MAC', 'LINUX'].includes(osInput) ? osInput : 'WINDOWS') as 'WINDOWS' | 'MAC' | 'LINUX';
+        const version = prompt('Version del agente:', '1.0.0') || '1.0.0';
+        const monitorsValue = Number(prompt('Numero de monitores:', '1')) || 1;
+        const ipAddress = (prompt('IP del dispositivo (opcional):') || '').trim();
+        const previewUrl = (prompt('URL de vista previa (opcional):') || '').trim();
+
         const newDevice = await RemoteDesktopService.autoEnroll({
             device_uuid: crypto.randomUUID(),
-            hostname: `NEW-PC-${Math.floor(Math.random() * 1000)}`,
-            os: 'WINDOWS',
-            version: '1.5.0',
-            monitors: 2
+            hostname,
+            os,
+            version,
+            monitors: monitorsValue,
+            ip_address: ipAddress || null,
+            preview_url: previewUrl || null,
         });
         alert(`Dispositivo auto-enrolado: ${newDevice.name}`);
         loadData();
