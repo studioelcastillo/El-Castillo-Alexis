@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -72,6 +73,21 @@ const exposeDebugConfig = process.env.ENABLE_DEBUG_CONFIG === 'true';
 
 // Trust proxy for Easypanel/Nginx
 app.set('trust proxy', true);
+
+// Proxy API requests to the Laravel backend
+const apiProxyTarget = process.env.API_URL || 'http://localhost:4101'; // Default internal VPS port for backend, or staging URL
+app.use('/api', createProxyMiddleware({
+  target: apiProxyTarget,
+  changeOrigin: true,
+  logLevel: 'debug',
+  pathRewrite: {
+    // If the target already has /api, we map /api to /api. Or if the root is just the server, we keep /api.
+    // The default behavior is it keeps the original path `/api/...` and appends it to target.
+  },
+  onProxyReq: (proxyReq, req, res) => {
+    // Optionally log or modify
+  }
+}));
 
 if (!isProduction || shouldLogRequestHeaders) {
   app.use((req, res, next) => {
