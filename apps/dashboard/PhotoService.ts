@@ -1,5 +1,7 @@
 import { supabase } from './supabaseClient';
 import { getStoredUser } from './session';
+import { requireStudioId } from './tenant';
+import { getTenantJsonSetting, upsertTenantSetting } from './tenantSettings';
 import {
   PhotoRequest,
   PhotoRequestStatus,
@@ -11,8 +13,7 @@ import {
   PhotoRestrictionStatus,
 } from './types';
 
-const DEFAULT_STUDIO_ID = 1;
-const getStudioId = () => Number(getStoredUser()?.std_id || DEFAULT_STUDIO_ID);
+const getStudioId = () => requireStudioId(getStoredUser()?.std_id);
 
 const RESTRICTION_KEY = 'photo_restrictions';
 const AVAILABILITY_KEY = 'photo_availability';
@@ -32,7 +33,7 @@ const mapAsset = (row: any): PhotoAsset => ({
 
 const PhotoService = {
   async getRequests(filters: { studioId: string; role?: string; userId?: number }) {
-    const stdId = Number(filters?.studioId || getStudioId());
+    const stdId = requireStudioId(filters?.studioId || getStoredUser()?.std_id);
     let query = supabase.from('photo_requests').select('*').eq('std_id', stdId);
     if (filters?.role === 'MODELO' && filters?.userId) {
       query = query.eq('requester_id', filters.userId);
@@ -209,9 +210,11 @@ const PhotoService = {
   },
 
   async getCalendarEvents(): Promise<PhotoCalendarEvent[]> {
+    const stdId = getStudioId();
     const { data, error } = await supabase
       .from('photo_calendar_events')
       .select('*')
+      .eq('std_id', stdId)
       .order('start_at', { ascending: true });
 
     if (error) {
@@ -297,22 +300,29 @@ const PhotoService = {
   },
 
   async getDashboardStats(): Promise<PhotoDashboardKPI> {
+    const stdId = getStudioId();
     const { data: requests } = await supabase
       .from('photo_requests')
-      .select('photo_req_id, status, created_at, confirmed_date, updated_at');
+      .select('photo_req_id, std_id, status, created_at, confirmed_date, updated_at')
+      .eq('std_id', stdId);
+    const scopedRequests = requests || [];
+    const requestIds = scopedRequests.map((request: any) => request.photo_req_id).filter(Boolean);
 
-    const { data: ratings } = await supabase
+    const { data: ratings } = requestIds.length
+      ? await supabase
       .from('photo_ratings')
-      .select('score, role_target');
+      .select('score, role_target, photo_req_id')
+      .in('photo_req_id', requestIds)
+      : { data: [] as any[] };
 
-    const total_requests = (requests || []).length;
-    const delivered = (requests || []).filter((r: any) => r.status === 'DELIVERED').length;
+    const total_requests = scopedRequests.length;
+    const delivered = scopedRequests.filter((r: any) => r.status === 'DELIVERED').length;
 
-    const confirmationTimes = (requests || [])
+    const confirmationTimes = scopedRequests
       .filter((r: any) => r.confirmed_date && r.created_at)
       .map((r: any) => (new Date(r.confirmed_date).getTime() - new Date(r.created_at).getTime()) / 3600000);
 
-    const deliveryTimes = (requests || [])
+    const deliveryTimes = scopedRequests
       .filter((r: any) => r.updated_at && r.created_at && r.status === 'DELIVERED')
       .map((r: any) => (new Date(r.updated_at).getTime() - new Date(r.created_at).getTime()) / 3600000);
 
@@ -331,7 +341,7 @@ const PhotoService = {
       ? ratingMakeup.reduce((acc: number, r: any) => acc + Number(r.score), 0) / ratingMakeup.length
       : 0;
 
-    const status_distribution = (requests || []).reduce((acc: any, r: any) => {
+    const status_distribution = scopedRequests.reduce((acc: any, r: any) => {
       const key = r.status || 'PENDIENTE';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
@@ -350,74 +360,24 @@ const PhotoService = {
   },
 
   async getAvailability() {
-    const { data } = await supabase
-      .from('settings')
-      .select('set_value')
-      .eq('set_key', AVAILABILITY_KEY)
-      .maybeSingle();
-
-    if (data?.set_value) {
-      try {
-        return JSON.parse(data.set_value);
-      } catch {
-        return { workingDays: [], startTime: '', endTime: '', blockedDates: [] };
-      }
-    }
-
-    return { workingDays: [], startTime: '', endTime: '', blockedDates: [] };
+    return getTenantJsonSetting(AVAILABILITY_KEY, { workingDays: [], startTime: '', endTime: '', blockedDates: [] }, getStudioId());
   },
 
   async updateAvailability(data: any) {
-    await supabase
-      .from('settings')
-      .upsert(
-        [
-          {
-            set_key: AVAILABILITY_KEY,
-            set_value: JSON.stringify(data),
-            set_description: 'Photo availability',
-          },
-        ],
-        { onConflict: 'set_key' }
-      );
+    await upsertTenantSetting(AVAILABILITY_KEY, data, 'Photo availability', getStudioId());
 
     return data;
   },
 
   async getRestrictionConfig(): Promise<PhotoRestrictionConfig> {
-    const { data } = await supabase
-      .from('settings')
-      .select('set_value')
-      .eq('set_key', RESTRICTION_KEY)
-      .maybeSingle();
-
-    if (data?.set_value) {
-      try {
-        return JSON.parse(data.set_value) as PhotoRestrictionConfig;
-      } catch {
-        return { restrictionDays: 45, unlockedUsers: [] };
-      }
-    }
-
-    return { restrictionDays: 45, unlockedUsers: [] };
+    return getTenantJsonSetting(RESTRICTION_KEY, { restrictionDays: 45, unlockedUsers: [] }, getStudioId());
   },
 
   async updateRestrictionConfig(config: Partial<PhotoRestrictionConfig>) {
     const current = await PhotoService.getRestrictionConfig();
     const updated = { ...current, ...config };
 
-    await supabase
-      .from('settings')
-      .upsert(
-        [
-          {
-            set_key: RESTRICTION_KEY,
-            set_value: JSON.stringify(updated),
-            set_description: 'Photo restriction config',
-          },
-        ],
-        { onConflict: 'set_key' }
-      );
+    await upsertTenantSetting(RESTRICTION_KEY, updated, 'Photo restriction config', getStudioId());
 
     return updated;
   },
@@ -431,6 +391,7 @@ const PhotoService = {
     const { data } = await supabase
       .from('photo_requests')
       .select('created_at, status')
+      .eq('std_id', getStudioId())
       .eq('requester_id', userId)
       .order('created_at', { ascending: false })
       .limit(1)

@@ -1,4 +1,6 @@
 import { supabase } from './supabaseClient';
+import { getCurrentStudioId } from './tenant';
+import { getTenantSettingValue } from './tenantSettings';
 import {
   MonetizationPlatform,
   MonetizationBeneficiary,
@@ -13,19 +15,15 @@ const TOKEN_VALUE_KEY = 'monetization_token_value';
 const toNumber = (value: any) => (Number.isFinite(Number(value)) ? Number(value) : 0);
 
 const MonetizationService = {
-  async getTokenValue() {
-    const { data } = await supabase
-      .from('settings')
-      .select('set_value')
-      .eq('set_key', TOKEN_VALUE_KEY)
-      .maybeSingle();
+  async getTokenValue(): Promise<number | null> {
+    const value = await getTenantSettingValue(TOKEN_VALUE_KEY, getCurrentStudioId());
 
-    if (data?.set_value) {
-      const parsed = Number(data.set_value);
+    if (value) {
+      const parsed = Number(value);
       if (Number.isFinite(parsed)) return parsed;
     }
 
-    return 0.05;
+    return null;
   },
 
   async getPlatforms(): Promise<MonetizationPlatform[]> {

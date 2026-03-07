@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { getStoredUser } from './session';
+import { requireStudioId } from './tenant';
 import {
   ContentAsset,
   ContentPlatform,
@@ -7,8 +8,7 @@ import {
   ContentAssetStatus,
 } from './types';
 
-const DEFAULT_STUDIO_ID = 1;
-const getStudioId = () => Number(getStoredUser()?.std_id || DEFAULT_STUDIO_ID);
+const getStudioId = () => requireStudioId(getStoredUser()?.std_id);
 const TODAY = new Date().toISOString().split('T')[0];
 
 const ContentSalesService = {

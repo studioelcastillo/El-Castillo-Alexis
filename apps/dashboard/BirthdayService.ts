@@ -1,5 +1,7 @@
 import { supabase } from './supabaseClient';
 import { BirthdayUser, BirthdayTemplate } from './types';
+import { getCurrentStudioId } from './tenant';
+import { getTenantJsonSetting, upsertTenantSetting } from './tenantSettings';
 
 const TEMPLATE_KEY = 'birthday_template';
 
@@ -28,11 +30,18 @@ const computeBirthday = (birthDate: string) => {
 
 const BirthdayService = {
   async getBirthdays(filters?: { from?: string; to?: string; search?: string }) {
-    const { data, error } = await supabase
+    const studioId = getCurrentStudioId();
+    let query = supabase
       .from('users')
       .select('user_id, user_name, user_surname, user_birthdate, user_photo_url, profiles(prof_name)')
       .not('user_birthdate', 'is', null)
       .order('user_name', { ascending: true });
+
+    if (studioId) {
+      query = query.eq('std_id', studioId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Birthday users error', error);
@@ -79,40 +88,12 @@ const BirthdayService = {
   },
 
   async getTemplate(): Promise<BirthdayTemplate> {
-    const { data, error } = await supabase
-      .from('settings')
-      .select('set_value')
-      .eq('set_key', TEMPLATE_KEY)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Birthday template error', error);
-    }
-
-    if (data?.set_value) {
-      try {
-        return { ...defaultTemplate, ...JSON.parse(data.set_value) } as BirthdayTemplate;
-      } catch {
-        return { ...defaultTemplate };
-      }
-    }
-
-    return { ...defaultTemplate };
+    const data = await getTenantJsonSetting<Partial<BirthdayTemplate>>(TEMPLATE_KEY, {}, getCurrentStudioId());
+    return { ...defaultTemplate, ...data } as BirthdayTemplate;
   },
 
   async saveTemplate(template: BirthdayTemplate) {
-    await supabase
-      .from('settings')
-      .upsert(
-        [
-          {
-            set_key: TEMPLATE_KEY,
-            set_value: JSON.stringify(template),
-            set_description: 'Birthday template configuration',
-          },
-        ],
-        { onConflict: 'set_key' }
-      );
+    await upsertTenantSetting(TEMPLATE_KEY, template, 'Birthday template configuration', getCurrentStudioId());
 
     return template;
   },

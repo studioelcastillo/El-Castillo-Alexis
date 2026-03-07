@@ -1,4 +1,6 @@
 import { supabase } from './supabaseClient';
+import { getCurrentStudioId } from './tenant';
+import { getTenantJsonSetting } from './tenantSettings';
 import {
   AttendanceDay,
   OnSitePresence,
@@ -12,11 +14,18 @@ const toNumber = (value: any) => (Number.isFinite(Number(value)) ? Number(value)
 
 const AttendanceService = {
   async getDailyAttendance(date: string): Promise<AttendanceDay[]> {
-    const { data, error } = await supabase
+    const studioId = getCurrentStudioId();
+    let query = supabase
       .from('attendance_daily')
       .select('*')
       .eq('att_date', date)
       .order('full_name', { ascending: true });
+
+    if (studioId) {
+      query = query.eq('std_id', studioId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Attendance daily error', error);
@@ -44,11 +53,18 @@ const AttendanceService = {
 
   async getOnSitePresence(): Promise<OnSitePresence[]> {
     const today = new Date().toISOString().split('T')[0];
-    const { data, error } = await supabase
+    const studioId = getCurrentStudioId();
+    let query = supabase
       .from('attendance_daily')
       .select('user_id, full_name, role_name, check_in, check_out')
       .eq('att_date', today)
       .is('check_out', null);
+
+    if (studioId) {
+      query = query.eq('std_id', studioId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Attendance presence error', error);
@@ -56,12 +72,15 @@ const AttendanceService = {
     }
 
     const userIds = (data || []).map((row: any) => row.user_id).filter(Boolean);
-    const { data: users } = userIds.length
-      ? await supabase
-          .from('users')
-          .select('user_id, user_photo_url, std_id')
-          .in('user_id', userIds)
-      : { data: [] };
+    let usersQuery = userIds.length
+      ? supabase.from('users').select('user_id, user_photo_url, std_id').in('user_id', userIds)
+      : null;
+
+    if (usersQuery && studioId) {
+      usersQuery = usersQuery.eq('std_id', studioId);
+    }
+
+    const { data: users } = usersQuery ? await usersQuery : { data: [] };
 
     const studioIds = [...new Set((users || []).map((u: any) => u.std_id).filter(Boolean))];
     const { data: studios } = studioIds.length
@@ -88,10 +107,17 @@ const AttendanceService = {
   },
 
   async getDevices(): Promise<ZKDevice[]> {
-    const { data, error } = await supabase
+    const studioId = getCurrentStudioId();
+    let query = supabase
       .from('attendance_devices')
       .select('*')
       .order('device_alias', { ascending: true });
+
+    if (studioId) {
+      query = query.eq('std_id', studioId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Attendance devices error', error);
@@ -111,12 +137,19 @@ const AttendanceService = {
   },
 
   async getEmployees(): Promise<ZKEmployee[]> {
-    const { data, error } = await supabase
+    const studioId = getCurrentStudioId();
+    let query = supabase
       .from('attendance_employees')
       .select(
         'att_emp_id, std_id, emp_code, first_name, last_name, department, linked_user_id, is_active, users(user_id, user_name, user_surname, user_photo_url, prof_id, profiles(prof_name))'
       )
       .order('first_name', { ascending: true });
+
+    if (studioId) {
+      query = query.eq('std_id', studioId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Attendance employees error', error);
@@ -140,11 +173,18 @@ const AttendanceService = {
   },
 
   async getTransactions(limit = 200): Promise<ZKTransaction[]> {
-    const { data, error } = await supabase
+    const studioId = getCurrentStudioId();
+    let query = supabase
       .from('attendance_transactions')
       .select('att_tran_id, std_id, emp_code, punch_time, punch_state, terminal_sn, verify_type')
       .order('punch_time', { ascending: false })
       .limit(limit);
+
+    if (studioId) {
+      query = query.eq('std_id', studioId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Attendance transactions error', error);
@@ -163,28 +203,14 @@ const AttendanceService = {
   },
 
   async getValuationSettings(): Promise<TimeValuationSettings> {
-    const { data, error } = await supabase
-      .from('settings')
-      .select('set_value')
-      .eq('set_key', 'attendance_valuation')
-      .maybeSingle();
-
-    if (error) {
-      console.error('Attendance valuation error', error);
-    }
-
-    if (data?.set_value) {
-      try {
-        const parsed = JSON.parse(data.set_value);
-        return {
-          minute_debt_price: toNumber(parsed.minute_debt_price),
-          hour_debt_price: toNumber(parsed.hour_debt_price),
-          overtime_hour_price: toNumber(parsed.overtime_hour_price),
-          currency: parsed.currency || 'COP',
-        };
-      } catch (parseError) {
-        console.error('Attendance valuation parse error', parseError);
-      }
+    const parsed = await getTenantJsonSetting<any>('attendance_valuation', null, getCurrentStudioId());
+    if (parsed) {
+      return {
+        minute_debt_price: toNumber(parsed.minute_debt_price),
+        hour_debt_price: toNumber(parsed.hour_debt_price),
+        overtime_hour_price: toNumber(parsed.overtime_hour_price),
+        currency: parsed.currency || 'COP',
+      };
     }
 
     return {

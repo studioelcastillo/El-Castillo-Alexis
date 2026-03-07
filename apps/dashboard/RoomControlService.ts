@@ -14,9 +14,9 @@ import {
   StockMovementType,
 } from './types';
 import { getStoredUser } from './session';
+import { requireStudioId } from './tenant';
 
-const DEFAULT_STUDIO_ID = 1;
-const getStudioId = () => Number(getStoredUser()?.std_id || DEFAULT_STUDIO_ID);
+const getStudioId = () => requireStudioId(getStoredUser()?.std_id);
 
 const toNumber = (value: any) => (Number.isFinite(Number(value)) ? Number(value) : 0);
 
@@ -209,10 +209,12 @@ const RoomControlService = {
   },
 
   async getRoomDetails(roomId: string): Promise<Room | undefined> {
+    const stdId = getStudioId();
     const { data, error } = await supabase
       .from('studios_rooms')
       .select('*')
       .eq('stdroom_id', Number(roomId))
+      .eq('std_id', stdId)
       .single();
 
     if (error || !data) {

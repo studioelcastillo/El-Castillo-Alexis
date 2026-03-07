@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { getStoredUser } from './session';
+import { getCurrentStudioId, requireStudioId } from './tenant';
 import {
   StoreProduct,
   StoreCategory,
@@ -18,9 +19,7 @@ import {
   CategoryPerformance,
 } from './types';
 
-const DEFAULT_STUDIO_ID = 1;
-
-const getStudioId = () => Number(getStoredUser()?.std_id || DEFAULT_STUDIO_ID);
+const getStudioId = () => requireStudioId(getStoredUser()?.std_id);
 
 const toNumber = (value: any) => (Number.isFinite(Number(value)) ? Number(value) : 0);
 
@@ -65,7 +64,7 @@ const mapProduct = (row: any): StoreProduct => {
 
   return {
     id: String(row.prod_id),
-    studio_id: String(row.std_id || DEFAULT_STUDIO_ID),
+    studio_id: String(row.std_id || getCurrentStudioId() || ''),
     name: row.prod_name,
     category_id: String(row.cate_id),
     brand: row.prod_brand || undefined,
@@ -228,7 +227,7 @@ const StoreService = {
 
     return (data || []).map((row: any) => ({
       id: String(row.order_id),
-      studio_id: String(row.std_id || DEFAULT_STUDIO_ID),
+      studio_id: String(row.std_id || getCurrentStudioId() || ''),
       buyer_user_id: row.buyer_user_id,
       buyer_name: row.buyer_name || '',
       cost_center_id: row.cost_center_id ? String(row.cost_center_id) : undefined,
@@ -562,7 +561,7 @@ const StoreService = {
     return order
       ? {
           id: String(order.order_id),
-          studio_id: String(order.std_id || DEFAULT_STUDIO_ID),
+          studio_id: String(order.std_id || getCurrentStudioId() || ''),
           buyer_user_id: order.buyer_user_id,
           buyer_name: order.buyer_name,
           cost_center_id: order.cost_center_id ? String(order.cost_center_id) : undefined,

@@ -33,6 +33,10 @@
 - URL interna de pruebas disponible: `https://pruebas.livstre.com`.
 - URL de produccion: `https://login.livstre.com`.
 - Se dejo una rama segura para revision en GitHub: `supabase-migration-final-safe`.
+- Se endurecio la logica multi-tenant en frontend con `apps/dashboard/tenant.ts` y `apps/dashboard/tenantSettings.ts` para tomar `std_id` de la sesion activa en vez de caer por defecto al estudio `1`.
+- Se ajustaron servicios criticos para respetar el estudio actual y aislar configuraciones por sede: `PhotoService`, `ContentSalesService`, `RoomControlService`, `StoreService`, `BillingService`, `LicenseService`, `MasterSettingsService`, `MonetizationService`, `BirthdayService`, `AttendanceService` y `ReportSupabaseService`.
+- Las configuraciones guardadas en `settings` ahora usan clave por sede con formato `studio:{std_id}:{set_key}` y mantienen compatibilidad de lectura con claves legacy globales.
+- Verificacion tecnica completada: `npm run lint` y `npm run build` ejecutaron correctamente y se regenero `dist/spa` local.
 
 ### Archivos tocados recientemente
 - `MEMORIA.md`
@@ -47,6 +51,19 @@
 - `scripts/import_aws_dump_rest.mjs`
 - `scripts/sync_auth_from_users_admin.mjs`
 - `supabase/sync_legacy_auth.sql`
+- `apps/dashboard/tenant.ts`
+- `apps/dashboard/tenantSettings.ts`
+- `apps/dashboard/AttendanceService.ts`
+- `apps/dashboard/BillingService.ts`
+- `apps/dashboard/BirthdayService.ts`
+- `apps/dashboard/ContentSalesService.ts`
+- `apps/dashboard/LicenseService.ts`
+- `apps/dashboard/MasterSettingsService.ts`
+- `apps/dashboard/MonetizationService.ts`
+- `apps/dashboard/PhotoService.ts`
+- `apps/dashboard/RoomControlService.ts`
+- `apps/dashboard/StoreService.ts`
+- `apps/dashboard/services/supabase/ReportSupabaseService.ts`
 
 ### GitHub
 - Rama activa: `supabase-migration-final-safe`
@@ -59,12 +76,15 @@
 - Abrir PR o merge desde `supabase-migration-final-safe` cuando haya herramienta GitHub disponible (`gh` no esta instalada en este entorno).
 - Confirmar si las tablas legacy ya fueron importadas en ambos proyectos o si primero hay que cargar el dump base.
 - Revisar y sanear archivos locales con secretos expuestos o credenciales antiguas que ya no son validas.
+- Auditar y aislar los modulos que todavia dependen fuerte de API legacy o no tienen `std_id` claro en esquema, especialmente `RemoteDesktopService`, `ChatService`, `WalletService`, `DashboardService`, `TransactionService`, `StreamService` y `ContractService`.
 
 ### Bloqueos
 - El repositorio tiene muchos cambios previos no relacionados; hay que evitar incluirlos en el commit de esta tarea.
 - Las credenciales antiguas encontradas para conexion directa a `staging` no autenticaron con el pooler actual.
 - `production` ya tiene datos publicos y usuarios auth operativos; el pendiente principal es validacion funcional completa en interfaz.
 - `gh` no esta instalado en este entorno, asi que no pude crear el PR automaticamente desde CLI.
+- Algunos modulos todavia usan backend/API legacy y requieren una segunda fase para garantizar aislamiento multi-tenant completo en todas las operaciones.
 
 ### Siguiente paso recomendado
 - Usar una muestra real de usuarios en `production` para validar dashboard, consultas, reportes y permisos despues de la importacion completa.
+- Priorizar una segunda fase de hardening para `RemoteDesktopService`, `DashboardService`, `TransactionService`, `StreamService` y `ContractService` antes de declarar el multi-tenant completamente cerrado.
