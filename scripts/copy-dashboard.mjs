@@ -19,7 +19,7 @@ const normalizeBase = (value) => {
 const base = normalizeBase(process.env.VITE_DASHBOARD_BASE || process.env.DASHBOARD_APP_URL || '/');
 const basePath = base === '/' ? '' : base.replace(/^\/+|\/+$/g, '');
 const dest = basePath ? path.join(distRoot, basePath) : distRoot;
-const compatibilityDest = basePath ? distRoot : path.join(distRoot, 'dashboard-app');
+const compatibilityDest = basePath ? null : path.join(distRoot, 'dashboard-app');
 const htaccessPath = path.join(dest, '.htaccess');
 const dashboardRewriteRule = [
   '  RewriteCond %{REQUEST_FILENAME} !-f',
@@ -36,7 +36,7 @@ await rm(dest, { recursive: true, force: true });
 await mkdir(dest, { recursive: true });
 await cp(src, dest, { recursive: true });
 
-if (compatibilityDest !== dest) {
+if (compatibilityDest && compatibilityDest !== dest) {
   await rm(compatibilityDest, { recursive: true, force: true });
   await mkdir(compatibilityDest, { recursive: true });
   await cp(src, compatibilityDest, { recursive: true });
