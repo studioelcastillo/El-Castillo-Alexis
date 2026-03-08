@@ -103,6 +103,7 @@ La utilidad `deploy/vps/remote-exec.mjs` se uso para inspeccionar Hostinger, rec
 - `/dashboard-app/` queda redirigido a `/` para compatibilidad con enlaces antiguos.
 - `deploy/vps/nginx-pruebas.conf` y `deploy/vps/nginx-terminado.conf` ya incluyen `/health`, redireccion de `/dashboard-app/` a `/` y proxy `/api/` consistente hacia Laravel.
 - El `nginx.conf` generado dentro de la imagen frontend tambien soporta `/health` y puede publicar `/api` por proxy si `NGINX_API_UPSTREAM` llega en build.
+- Estado live actual: los dos frontends del VPS ya estan reconstruidos con `NGINX_API_UPSTREAM=https://el-castillo-api.bygeckode.com`, asi que `/api` responde por el mismo dominio aunque el backend legacy todavia no viva fisicamente en ese VPS.
 
 ## Verificaciones esperadas
 

@@ -22,6 +22,8 @@
 - `server.mjs` se simplifico para el flujo local/standalone: ya no deja diagnosticos ruidosos siempre activos, expone `/health`, limita `__local/login-lookup` a loopback en desarrollo y conserva el redirect de compatibilidad `/dashboard-app/ -> /`.
 - `scripts/copy-dashboard.mjs` y `Dockerfile` ahora soportan `NGINX_API_UPSTREAM` para que el frontend servido por Nginx pueda publicar `/api` mediante proxy reverso; esto permite cerrar los dominios `pruebas.livstre.com` y `terminado.livstre.com` con frontend directo en VPS aunque el backend legacy siga viviendo temporalmente en otro host.
 - Validaciones de esta fase: `npm run secrets:check`, `npm run lint`, `npm run build`, `node --check server.mjs scripts/deploy.mjs deploy/vps/remote-exec.mjs`, `php artisan route:list`, `php artisan test`, `bash -n deploy/vps/publish.sh` y `docker compose -f deploy/vps/docker-compose.yml config` con variables placeholder pasaron en este entorno.
+- Se actualizo tambien `/srv/el-castillo` en el VPS a `f9a5b8d`, se reconstruyeron las imagenes `castillo-frontend-pruebas:direct` y `castillo-frontend-terminado:direct` con `NGINX_API_UPSTREAM=https://el-castillo-api.bygeckode.com`, y se recrearon los contenedores live `elcastillo_castilloprueba` y `elcastillo_castilloterminado` sobre las redes `easypanel` y `easypanel-elcastillo`.
+- Verificacion remota posterior al redeploy: `https://pruebas.livstre.com/health` y `https://terminado.livstre.com/health` responden `200 ok`; `https://pruebas.livstre.com/api/app/connectivity` y `https://terminado.livstre.com/api/app/connectivity` ya responden JSON valido desde el backend legacy proxied, en lugar de devolver HTML del dashboard.
 - Se dejo preparada una ruta de despliegue en VPS propio sin Easypanel: `deploy/vps/docker-compose.yml`, `deploy/vps/nginx-pruebas.conf`, `deploy/vps/nginx-terminado.conf` y `docs/vps-deploy.md`, con dominios `pruebas.livstre.com` y `terminado.livstre.com` sirviendo frontend en `/` y backend legacy bajo `/api`.
 - Se rehizo `backend-legacy/Dockerfile` para que el backend Laravel pueda construir una imagen utilizable en Docker/Apache con Composer, extensiones PHP, `public/` como document root y permisos basicos de runtime.
 - Se alinearon referencias documentales y ejemplos de CORS/produccion para usar `terminado.livstre.com` en lugar de `login.livstre.com` donde aplica.
@@ -303,12 +305,13 @@
 
 ### GitHub
 - Rama activa: `supabase-migration-final-safe`
-- Ultimo commit propio: `346c702` (`fix: align vps deploy and ci workflow`)
-- Estado: los cambios estructurales de despliegue/CI/documentacion de esta fase ya quedaron enviados a `origin/supabase-migration-final-safe`; el working tree local sigue teniendo archivos ajenos/no relacionados sin commitear.
+- Ultimo commit propio: `f9a5b8d` (`fix: proxy api through frontend nginx`)
+- Estado: los cambios estructurales de despliegue/CI/documentacion de esta fase ya quedaron enviados a `origin/supabase-migration-final-safe`, incluido el redeploy live del frontend con proxy `/api`; el working tree local sigue teniendo archivos ajenos/no relacionados sin commitear.
 
 ### Pendientes
 - Si se mantiene Easypanel como fallback, revisar periodicamente que sus variables sigan alineadas con la ruta real que se quiera publicar (`/` o `/dashboard-app/`) para no reintroducir despliegues inconsistentes.
 - Materializar en el VPS `.secure/vps.pruebas.env.local` y `.secure/vps.terminado.env.local` con las claves anon/publicas correctas de Supabase para que `docker compose` pueda reconstruir ambos frontends sin depender de pasos manuales externos.
+- Si se quiere sacar completamente el backend de `bygeckode`, conseguir o regenerar credenciales SQL/entorno validas para `staging` y `production` y levantar `backend-legacy/` directo en el VPS en lugar del proxy actual `NGINX_API_UPSTREAM`.
 - Rotar y sanear todas las credenciales sensibles expuestas localmente (`service_role`, tokens y passwords auxiliares) y limpiar archivos/scripts con secretos legacy. Pendiente por decision del usuario para el cierre final.
 - Forzar cambio de password o estrategia de credenciales para usuarios creados con `cedula-last5` en `production`. Pendiente por decision del usuario para el cierre final.
 - Instalar PHP 8.1+ y Composer en esta maquina para poder ejecutar y validar `backend-legacy/` (`composer install`, `php artisan route:list`, `php artisan test`).
@@ -338,6 +341,7 @@
 - Algunos modulos todavia dependen de enforcement del backend legacy o de rutas no-Supabase; el frontend ya manda y filtra por tenant y la base versionada ya tiene una cobertura server-side mucho mas amplia, pero la validacion funcional final debe confirmar que no haya endpoints legacy ignorando `std_id`.
 - `php` ya esta instalado pero no quedo en el PATH de esta sesion CLI; por ahora hay que invocarlo por ruta completa (`C:\Users\ElCastillo\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.3_Microsoft.Winget.Source_8wekyb3d8bbwe\php.exe`).
 - La validacion browser end-to-end sigue pendiente, pero ya no por la ruta del frontend: `https://pruebas.livstre.com/` y `https://terminado.livstre.com/` ya sirven el build correcto en raiz; lo que falta es cerrar la parte operativa del backend `/api` y pruebas funcionales completas por sede.
+- El dominio unico ya funciona tambien para `/api`, pero por ahora mediante proxy reverso hacia `https://el-castillo-api.bygeckode.com`; la migracion total del backend al VPS sigue bloqueada por falta de credenciales operativas completas del entorno Laravel/PostgreSQL en este host.
 - El pipeline heredado de Easypanel/CI ya no corre automatico, pero si vuelve a usarse manualmente con variables/ruta mal configuradas todavia podria reintroducir builds inconsistentes.
 - En esta sesion no aparecio de nuevo ningun webhook/token operativo de Easypanel en archivos locales ni variables de entorno, asi que el redeploy remoto sigue bloqueado por acceso y no por codigo local.
 - El despliegue directo por `docker compose` en VPS queda mejor preparado, pero sigue requiriendo que existan los archivos locales `.secure/vps.pruebas.env.local`, `.secure/vps.terminado.env.local`, `.secure/backend-legacy.pruebas.env.local` y `.secure/backend-legacy.terminado.env.local` en el host.
