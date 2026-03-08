@@ -1,0 +1,67 @@
+name: Validate Application
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - supabase-migration-final-safe
+  pull_request:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Secret scan
+        run: npm run secrets:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        env:
+          VITE_DASHBOARD_BASE: /
+          DASHBOARD_APP_URL: /
+        run: npm run build -- --mode staging
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend-legacy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer:v2
+          extensions: mbstring, intl, pdo_pgsql, pgsql, zip, gd, bcmath, soap, dom
+
+      - name: Install backend dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Prepare env
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+
+      - name: Route list
+        run: php artisan route:list --compact
+
+      - name: Backend tests
+        run: php artisan test

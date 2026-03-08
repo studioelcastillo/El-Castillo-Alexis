@@ -15,6 +15,12 @@
 - Integrar la base de datos real del dump AWS (`castillo_prod_aws.sql.txt`) en Supabase para `staging` y `production`, manteniendo compatibilidad con el dashboard actual.
 
 ### Ultimo avance
+- Se alineo la documentacion activa (`README.md`, `docs/vps-deploy.md`, `docs/easypanel.md`, `docs/environments.md`) con el estado real: los dos frontends live ya salen directo desde el VPS, `dashboard-app/` queda solo como compatibilidad y Easypanel pasa a ser ruta auxiliar/fallback, no pipeline principal.
+- Se ajustaron tambien `.github/workflows/staging-deploy.yml` y `.github/workflows/production-deploy.yml` para que el fallback legacy de Easypanel ya no se dispare por `push`; ambos quedan solo por `workflow_dispatch` y validan build con base `/`, alineados con los subdominios servidos en raiz desde el VPS.
+- Se agrego `/.github/workflows/ci.yml` para validar frontend y backend en GitHub sin volver a activar despliegues automaticos legacy; ademas `deploy/vps/docker-compose.yml` y `deploy/vps/publish.sh` ahora cargan variables de build separadas por entorno para que el frontend directo del VPS siempre reciba sus claves correctas de Supabase.
+- `deploy/vps/nginx-pruebas.conf` y `deploy/vps/nginx-terminado.conf` quedaron mas consistentes: exponen `/health`, redirigen `/dashboard-app/` a `/` y mantienen `/api/` apuntando correctamente al backend sin romper el prefijo de Laravel.
+- `server.mjs` se simplifico para el flujo local/standalone: ya no deja diagnosticos ruidosos siempre activos, expone `/health`, limita `__local/login-lookup` a loopback en desarrollo y conserva el redirect de compatibilidad `/dashboard-app/ -> /`.
+- Validaciones de esta fase: `npm run secrets:check`, `npm run lint`, `npm run build`, `node --check server.mjs scripts/deploy.mjs deploy/vps/remote-exec.mjs`, `php artisan route:list`, `php artisan test`, `bash -n deploy/vps/publish.sh` y `docker compose -f deploy/vps/docker-compose.yml config` con variables placeholder pasaron en este entorno.
 - Se dejo preparada una ruta de despliegue en VPS propio sin Easypanel: `deploy/vps/docker-compose.yml`, `deploy/vps/nginx-pruebas.conf`, `deploy/vps/nginx-terminado.conf` y `docs/vps-deploy.md`, con dominios `pruebas.livstre.com` y `terminado.livstre.com` sirviendo frontend en `/` y backend legacy bajo `/api`.
 - Se rehizo `backend-legacy/Dockerfile` para que el backend Laravel pueda construir una imagen utilizable en Docker/Apache con Composer, extensiones PHP, `public/` como document root y permisos basicos de runtime.
 - Se alinearon referencias documentales y ejemplos de CORS/produccion para usar `terminado.livstre.com` en lugar de `login.livstre.com` donde aplica.
@@ -23,6 +29,11 @@
 - Se ajusto tambien `Dockerfile` para que el build por defecto apunte a `/` en vez de `/dashboard-app/`, ya que los nuevos despliegues en `pruebas.livstre.com` y `terminado.livstre.com` se sirven desde la raiz del subdominio; esto evita que `/assets/*.js` caiga en fallback HTML cuando Easypanel construye sin args explicitos.
 - Se endurecio `scripts/copy-dashboard.mjs` para que los builds publiquen tambien una copia de compatibilidad en `/dashboard-app/` cuando el despliegue principal va en `/`, y para que Nginx responda `404` real en `/assets/*` en vez de devolver `index.html`; tambien se retiro la referencia legacy a `el-castillo-api.bygeckode.com` del CSP en `apps/dashboard/index.html`.
 - Se detecto ademas que Easypanel si estaba pasando `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` como build args, pero `Dockerfile` no los exportaba al entorno del build; el bundle resultante inicializaba Supabase con cadenas vacias (`createClient('', '')`) y podia dejar la app en blanco. `Dockerfile` ahora materializa ambos args a `ENV` antes de `npm run build`.
+- Finalmente se saco el frontend de `castilloprueba` y `castilloterminado` del ciclo de despliegue de Easypanel: se clonó el repo en `/srv/el-castillo` del VPS, se construyeron imagenes directas `castillo-frontend-pruebas:direct` y `castillo-frontend-terminado:direct` con base `/`, se eliminaron los servicios Swarm `elcastillo_castilloprueba` y `elcastillo_castilloterminado`, y se reemplazaron por contenedores standalone con los mismos nombres unidos a las redes `easypanel` y `easypanel-elcastillo`, reutilizando el routing existente de Traefik.
+- Se agrego una redireccion de compatibilidad en `scripts/copy-dashboard.mjs` para que `/dashboard-app/` apunte a `/`, evitando que marcadores o rutas viejas sigan abriendo la version legacy en blanco.
+- Se verifico ademas por SSH el routing real de Traefik (`/etc/easypanel/traefik/config/main.yaml`) y se comprobó que ambos hosts siguen entrando por Traefik, pero ya aterrizan en contenedores standalone fuera de Swarm con los nombres `elcastillo_castilloprueba` y `elcastillo_castilloterminado`.
+- Se reconstruyo `castilloterminado` para usar Supabase de produccion (`ysorlqfwqccsgxxkpzdx`) y `castilloprueba` para staging (`pnnrsqocukixusmzrlhy`); los HTML publicos ya sirven assets en raiz (`/assets/...`) y el bundle generado contiene los valores correctos por entorno.
+- Se consulto la tabla `settings` de Supabase y no aparecieron filas con referencias residuales a `bygeckode`, `login.livstre.com`, `dashboard-app`, `pruebas.livstre.com` o `terminado.livstre.com`; el ajuste persistido relevante (`attendance_integration.server_host`) ya estaba en `livstre.com`.
 - Se dejo tambien el archivo local privado `.secure/deploy.env.local` como punto operativo para guardar webhooks reales de Easypanel fuera del codigo versionado.
 - Se intento validar tambien el contenedor final para Easypanel con Docker local: `docker --version` responde `29.2.1`, pero el daemon no esta levantado en esta sesion (`docker build` fallo por `dockerDesktopLinuxEngine` ausente), asi que la verificacion completa de imagen queda pendiente hasta iniciar Docker Desktop o construir en Easypanel.
 - Se preparo el repo para despliegue directo en Easypanel sin depender de archivos manuales externos: se agregaron `Dockerfile`, `.dockerignore` y `docs/easypanel.md` para que el frontend pueda publicarse como contenedor Nginx sirviendo `dist/spa` bajo `/dashboard-app/`.
@@ -161,7 +172,7 @@
 - Claves recibidas y usadas para `production`: publishable `sb_publishable_5Awk9f_...` y secret `sb_secret_K2Fxg1_...`.
 - Token personal Supabase para management API de `production` disponible localmente de forma segura fuera de archivos versionables; no se registra el valor en memoria.
 - URL interna de pruebas disponible: `https://pruebas.livstre.com`.
-- URL de produccion: `https://login.livstre.com`.
+- URL de produccion: `https://terminado.livstre.com`.
 - Se dejo una rama segura para revision en GitHub: `supabase-migration-final-safe`.
 - Se endurecio la logica multi-tenant en frontend con `apps/dashboard/tenant.ts` y `apps/dashboard/tenantSettings.ts` para tomar `std_id` de la sesion activa en vez de caer por defecto al estudio `1`.
 - Se ajustaron servicios criticos para respetar el estudio actual y aislar configuraciones por sede: `PhotoService`, `ContentSalesService`, `RoomControlService`, `StoreService`, `BillingService`, `LicenseService`, `MasterSettingsService`, `MonetizationService`, `BirthdayService`, `AttendanceService` y `ReportSupabaseService`.
@@ -181,17 +192,24 @@
 - `security/private-locations.md`
 - `security/secrets-inventory.md`
 - `security/secrets-policy.md`
+- `.github/workflows/ci.yml`
 - `.secure/README.md`
 - `.secure/root.env.example`
 - `.secure/dashboard.env.example`
 - `.secure/server.env.example`
 - `.secure/backend-legacy.env.example`
 - `.secure/deploy.env.example`
+- `.secure/vps.pruebas.env.example`
+- `.secure/vps.terminado.env.example`
 - `scripts/secure-env-paths.mjs`
 - `scripts/migrate-existing-envs.mjs`
 - `scripts/materialize-secure-env.mjs`
 - `scripts/check-secrets.mjs`
 - `.github/workflows/secret-scan.yml`
+- `deploy/vps/docker-compose.yml`
+- `deploy/vps/publish.sh`
+- `deploy/vps/nginx-pruebas.conf`
+- `deploy/vps/nginx-terminado.conf`
 - `final_init.mjs`
 - `fix_missing_tables.mjs`
 - `local_init_staging.mjs`
@@ -288,8 +306,8 @@
 - Estado: cambios de esta tarea enviados a `origin/supabase-migration-final-safe`; la rama `supabase-migration-final` quedo con un commit local no empujado porque GitHub bloqueo el secreto completo en `MEMORIA.md`.
 
 ### Pendientes
-- Cargar en Easypanel o GitHub los webhooks reales (`EASYPANEL_STAGING_WEBHOOK`, `EASYPANEL_PRODUCTION_WEBHOOK`) si se quiere reactivar el deploy remoto por webhook desde scripts/CI.
-- Crear o ajustar en Easypanel el servicio web apuntando al nuevo `Dockerfile`, con puerto interno `80` y variables `VITE_DASHBOARD_BASE=/dashboard-app/` y `DASHBOARD_APP_URL=/dashboard-app/`.
+- Si se mantiene Easypanel como fallback, revisar periodicamente que sus variables sigan alineadas con la ruta real que se quiera publicar (`/` o `/dashboard-app/`) para no reintroducir despliegues inconsistentes.
+- Materializar en el VPS `.secure/vps.pruebas.env.local` y `.secure/vps.terminado.env.local` con las claves anon/publicas correctas de Supabase para que `docker compose` pueda reconstruir ambos frontends sin depender de pasos manuales externos.
 - Rotar y sanear todas las credenciales sensibles expuestas localmente (`service_role`, tokens y passwords auxiliares) y limpiar archivos/scripts con secretos legacy. Pendiente por decision del usuario para el cierre final.
 - Forzar cambio de password o estrategia de credenciales para usuarios creados con `cedula-last5` en `production`. Pendiente por decision del usuario para el cierre final.
 - Instalar PHP 8.1+ y Composer en esta maquina para poder ejecutar y validar `backend-legacy/` (`composer install`, `php artisan route:list`, `php artisan test`).
@@ -318,19 +336,20 @@
 - `gh` no esta instalado en este entorno, asi que no pude crear el PR automaticamente desde CLI.
 - Algunos modulos todavia dependen de enforcement del backend legacy o de rutas no-Supabase; el frontend ya manda y filtra por tenant y la base versionada ya tiene una cobertura server-side mucho mas amplia, pero la validacion funcional final debe confirmar que no haya endpoints legacy ignorando `std_id`.
 - `php` ya esta instalado pero no quedo en el PATH de esta sesion CLI; por ahora hay que invocarlo por ruta completa (`C:\Users\ElCastillo\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.3_Microsoft.Winget.Source_8wekyb3d8bbwe\php.exe`).
-- Las URLs frontend conocidas no permiten validar el dashboard desplegado: `pruebas.livstre.com/dashboard-app/` muestra Easypanel y `login.livstre.com/dashboard-app/` devuelve `404`.
-- `staging` ahora entrega `https://pruebas.livstre.com/dashboard-app/`, pero el frontend sigue en blanco por error de despliegue/MIME de assets; el bloqueo de login legacy en Supabase `staging` ya quedo reparado y la validacion funcional local por sedes si pudo ejecutarse.
-- El arreglo de base `/dashboard-app/` ya quedo versionado en CI, pero el despliegue remoto seguira roto hasta que corra un nuevo build/deploy de `staging` con esa configuracion.
+- La validacion browser end-to-end sigue pendiente, pero ya no por la ruta del frontend: `https://pruebas.livstre.com/` y `https://terminado.livstre.com/` ya sirven el build correcto en raiz; lo que falta es cerrar la parte operativa del backend `/api` y pruebas funcionales completas por sede.
+- El pipeline heredado de Easypanel/CI ya no corre automatico, pero si vuelve a usarse manualmente con variables/ruta mal configuradas todavia podria reintroducir builds inconsistentes.
 - En esta sesion no aparecio de nuevo ningun webhook/token operativo de Easypanel en archivos locales ni variables de entorno, asi que el redeploy remoto sigue bloqueado por acceso y no por codigo local.
+- El despliegue directo por `docker compose` en VPS queda mejor preparado, pero sigue requiriendo que existan los archivos locales `.secure/vps.pruebas.env.local`, `.secure/vps.terminado.env.local`, `.secure/backend-legacy.pruebas.env.local` y `.secure/backend-legacy.terminado.env.local` en el host.
+- El repo sigue teniendo cambios ajenos/no relacionados (`apps/dashboard/services/supabase/AuthSupabaseService.ts`, `backend-legacy/app/Http/Controllers/UserController.php`, `deploy/vps/nginx-pruebas.conf` y varios scripts sueltos), asi que cualquier commit futuro debe aislar solo los archivos de esta migracion/documentacion.
 
 ### Siguiente paso recomendado
-- Crear/actualizar el servicio de Easypanel usando `Dockerfile`, desplegar `staging` primero y validar que `https://pruebas.livstre.com/dashboard-app/assets/...js` ya responda con MIME correcto.
+- Si en algun momento se decide retirar por completo Easypanel del proyecto, eliminar tambien `scripts/deploy.mjs`, los secrets `EASYPANEL_*` y los workflows fallback para simplificar el repositorio.
+- Publicar en el VPS los nuevos archivos `.secure/vps.*.env.local`, ejecutar `deploy/vps/publish.sh` y validar `https://pruebas.livstre.com/health`, `https://terminado.livstre.com/health`, `https://pruebas.livstre.com/api/...` y `https://terminado.livstre.com/api/...`.
 - Tratar la exposicion de secretos y las passwords `cedula-last5` como prioridad de seguridad inmediata antes de seguir ampliando funcionalidades.
 - Aplicar el inventario y la politica de secretos nuevos para que ninguna credencial vuelva a quedar en `MEMORIA.md`, docs o archivos versionables.
 - Mantener el workflow `secret-scan` activo en cambios hacia `staging` y `main` para bloquear exposiciones accidentales antes del despliegue.
 - Hacer validacion funcional en navegador sobre `staging` y `production` con usuarios de sedes diferentes para confirmar que el RLS nuevo no mezcla datos ni bloquea modulos legitimos.
-- Corregir primero en `staging` el despliegue del frontend (`/dashboard-app/` sirve assets JS con MIME `text/html`) para retomar la validacion browser autenticada por sedes; el fallo de login Supabase en usuarios legacy ya quedo reparado en `staging`.
-- Disparar un nuevo deploy de `staging` para que tome el build con base `/dashboard-app/` y luego validar en la URL remota que los assets JS ya cargan como module scripts normales.
+- Si tambien se quiere sacar `/api` de Easypanel, repetir la misma estrategia de contenedor directo para el backend legacy y validar `https://pruebas.livstre.com/api` y `https://terminado.livstre.com/api` ya fuera del circuito actual.
 - Decidir si el reseteo de passwords `temporary-strong` aplicado en `staging` debe replicarse o no en otros entornos; en `production` no se ha ejecutado.
 - Instalar PHP/Composer, levantar `backend-legacy/` y validar en staging los endpoints legacy reforzados con `resolveTenant` antes de conectarlo formalmente al frontend desplegado.
 - Cuando haya runtime PHP, priorizar pruebas manuales de `banks_accounts`, `studios_accounts`, `payments_files` y `setup_commissions`, porque fueron endurecidos en esta sesion solo con validacion estatica de codigo.

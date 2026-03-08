@@ -26,21 +26,26 @@ Este chequeo revisa archivos versionables y documentacion para detectar tokens o
 Tambien conviene ejecutarlo antes de `npm run build` o de cualquier despliegue manual.
 Los scripts heredados de conexion/importacion deben ejecutarse con variables de entorno (`SUPABASE_DB_PASSWORD`, `SUPABASE_DB_CONNECTION`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SECRET_KEY`) y no con valores pegados en archivo.
 
-## Deploy (Easypanel)
+## Deploy
+
+Estado actual de produccion:
+
+- `https://pruebas.livstre.com` y `https://terminado.livstre.com` ya salen directo desde el VPS.
+- Traefik del host sigue publicando ambos dominios, pero el frontend ya no depende del pipeline de build de Easypanel.
+- La subruta legacy `/dashboard-app/` queda solo como compatibilidad y redirige a `/`.
+
+Si necesitas operar el despliegue directo en el VPS, revisa `docs/vps-deploy.md`.
+
+Si aun quieres conservar un despliegue alterno en Easypanel, el repo sigue trayendo `Dockerfile` y webhooks opcionales:
+
 ```bash
 EASYPANEL_STAGING_WEBHOOK="TU_WEBHOOK" npm run deploy:staging
 EASYPANEL_PRODUCTION_WEBHOOK="TU_WEBHOOK" npm run deploy:production
 ```
 
-Tambien puedes desplegarlo directamente en Easypanel usando el `Dockerfile` del repo.
-Configuracion base recomendada:
-- Metodo de build: `Dockerfile`
-- Puerto interno: `80`
-- Rama: `staging` o `main`
-- Variables: `VITE_DASHBOARD_BASE=/`, `DASHBOARD_APP_URL=/` para VPS/subdominios raiz; usa `/dashboard-app/` solo si publicas en subruta
-- Variables segun entorno: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL`, `API_URL`
+Ese flujo ya no es el activo para los dos dominios live y debe considerarse solo como fallback/manual. Los workflows legacy de GitHub Actions quedaron limitados a disparo manual. Guias: `docs/easypanel.md` y `docs/vps-deploy.md`.
 
-Guias paso a paso: `docs/easypanel.md` y `docs/vps-deploy.md`.
+Ademas, `/.github/workflows/ci.yml` valida frontend y backend en GitHub sin volver a activar despliegues automaticos legacy.
 
 ## Variables de entorno
 Crea un `.env` (en el root o `apps/dashboard/.env`) y define:
@@ -49,7 +54,8 @@ Crea un `.env` (en el root o `apps/dashboard/.env`) y define:
 - `VITE_API_URL` (opcional, usa el API por defecto)
 - `VITE_SESSION_KEY` (opcional, para cifrado de sesion)
 - `VITE_SESSION_STORAGE` (opcional: `session` | `local`, por defecto `local`)
-- `VITE_DASHBOARD_BASE` (staging/production recomendado: `/dashboard-app/`)
+- `VITE_DASHBOARD_BASE` (recomendado actual para VPS: `/`)
+- `DASHBOARD_APP_URL` (recomendado actual para VPS: `/`)
 Plantilla disponible en `apps/dashboard/.env.example` y en `.secure/dashboard.env.example`.
 Para el proxy de Gemini en servidor usa `server/.env.example`, `.secure/server.env.example` y `GEMINI_API_KEY`.
 La documentacion de seguridad ahora vive en `security/` y la zona local privada para credenciales vive en `.secure/`.
@@ -65,11 +71,12 @@ npm run secure:materialize
 - `secure:migrate` copia los `.env` locales existentes hacia `.secure/` sin rotar claves.
 - `secure:materialize` vuelve a materializar esos archivos hacia sus ubicaciones operativas si hace falta.
 - La fuente recomendada de trabajo ahora es `.secure/`.
+- Para despliegue directo en VPS, usa tambien `.secure/vps.pruebas.env.local` y `.secure/vps.terminado.env.local` a partir de sus `.example` versionados.
 
 ## Entornos recomendados
 - Local: usar `.env` y `apps/dashboard/.env` apuntando a `staging` (`pnnrsqocukixusmzrlhy` / `https://pruebas.livstre.com/api`)
-- Staging: usar `.env.staging` para despliegues de prueba
-- Produccion: usar `.env.production` para despliegues reales en `ysorlqfwqccsgxxkpzdx` / `https://terminado.livstre.com/api`
+- Staging: usar `.env.staging` para `https://pruebas.livstre.com`
+- Produccion: usar `.env.production` para `ysorlqfwqccsgxxkpzdx` / `https://terminado.livstre.com/api`
 - Si el login local se hace por identificacion, define `SUPABASE_SERVICE_ROLE_KEY` en `.env` para habilitar la resolucion server-side solo en desarrollo
 
 ## Scripts de base de datos

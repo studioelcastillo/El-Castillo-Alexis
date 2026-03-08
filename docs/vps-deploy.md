@@ -1,6 +1,6 @@
 # Despliegue en VPS propio
 
-Este flujo reemplaza Easypanel por un VPS con Docker Compose y Nginx del host.
+Este flujo reemplaza el build de Easypanel por despliegue directo en VPS.
 
 ## Dominios objetivo
 
@@ -15,6 +15,7 @@ Este flujo reemplaza Easypanel por un VPS con Docker Compose y Nginx del host.
 - `backend-legacy/Dockerfile`: imagen lista para correr Laravel sobre Apache.
 - `backend-legacy/.dockerignore`: evita subir secretos y basura local al build.
 - `Dockerfile`: ahora usa `/` como base por defecto para despliegues en subdominios raiz (`pruebas` y `terminado`).
+- `deploy/vps/remote-exec.mjs`: utilidad local para ejecutar comandos SSH no interactivos contra el VPS.
 
 ## Importante sobre secretos
 
@@ -28,6 +29,8 @@ Crear estos archivos locales a partir de tus valores reales:
 
 - `.secure/backend-legacy.pruebas.env.local` desde `.secure/backend-legacy.pruebas.env.example`
 - `.secure/backend-legacy.terminado.env.local` desde `.secure/backend-legacy.terminado.env.example`
+- `.secure/vps.pruebas.env.local` desde `.secure/vps.pruebas.env.example`
+- `.secure/vps.terminado.env.local` desde `.secure/vps.terminado.env.example`
 
 Minimos recomendados por entorno:
 
@@ -47,19 +50,25 @@ Minimos recomendados por entorno:
 
 Si el frontend va directo a Supabase en build, tambien define en el entorno del build:
 
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+- `PRUEBAS_VITE_SUPABASE_URL`
+- `PRUEBAS_VITE_SUPABASE_ANON_KEY`
+- `TERMINADO_VITE_SUPABASE_URL`
+- `TERMINADO_VITE_SUPABASE_ANON_KEY`
+- `PRUEBAS_VITE_API_URL` y `PRUEBAS_API_URL` si quieres sobreescribir `/api`
+- `TERMINADO_VITE_API_URL` y `TERMINADO_API_URL` si quieres sobreescribir `/api`
 
 ## Flujo recomendado en el VPS
 
-1. Instalar Docker, Docker Compose plugin y Nginx.
-2. Clonar este repo en el VPS.
-3. Crear los archivos `.secure/backend-legacy.pruebas.env.local` y `.secure/backend-legacy.terminado.env.local` con claves reales.
-4. Levantar contenedores:
+1. Instalar Docker, Docker Compose plugin y Nginx si el VPS no los tiene.
+2. Clonar o actualizar este repo en el VPS en `/srv/el-castillo`.
+3. Mantener fuera de Git los valores operativos reales de cada entorno.
+4. Construir y publicar contenedores directos reutilizando Traefik del host.
 
 ```bash
 docker compose -f deploy/vps/docker-compose.yml up -d --build
 ```
+
+`deploy/vps/publish.sh` ya intenta cargar automaticamente `.secure/vps.pruebas.env.local` y `.secure/vps.terminado.env.local` antes del `docker compose`, para que el build del frontend no vuelva a salir sin credenciales correctas de Supabase.
 
 Alternativa automatizada en Ubuntu 24.04:
 
@@ -68,20 +77,43 @@ sudo bash deploy/vps/bootstrap-ubuntu.sh
 sudo bash deploy/vps/publish.sh
 ```
 
-5. Copiar los archivos `deploy/vps/nginx-pruebas.conf` y `deploy/vps/nginx-terminado.conf` a `/etc/nginx/sites-available/`.
+5. Si no reutilizas Traefik y prefieres Nginx del host, copiar `deploy/vps/nginx-pruebas.conf` y `deploy/vps/nginx-terminado.conf` a `/etc/nginx/sites-available/`.
 6. Crear los symlinks en `/etc/nginx/sites-enabled/`.
 7. Emitir SSL con Certbot para ambos dominios.
 8. Recargar Nginx.
 
+## Operacion remota desde esta maquina
+
+Para ejecutar comandos SSH no interactivos desde el repo local:
+
+```bash
+node deploy/vps/remote-exec.mjs <host> <usuario> <password> "docker ps"
+```
+
+La utilidad `deploy/vps/remote-exec.mjs` se uso para inspeccionar Hostinger, reconstruir contenedores y validar el estado real del routing.
+
+## Estado operativo aplicado en Hostinger
+
+- Repo clonado en `/srv/el-castillo`.
+- Frontends directos construidos como `castillo-frontend-pruebas:direct` y `castillo-frontend-terminado:direct`.
+- Contenedores activos fuera de Swarm con nombres `elcastillo_castilloprueba` y `elcastillo_castilloterminado`.
+- Ambos contenedores unidos a las redes `easypanel` y `easypanel-elcastillo` para reutilizar el Traefik ya expuesto en `80/443`.
+- Traefik sigue resolviendo los hosts desde `/etc/easypanel/traefik/config/main.yaml`, pero ya apunta a esos contenedores standalone y no a servicios Swarm desplegados por Easypanel.
+- `/dashboard-app/` queda redirigido a `/` para compatibilidad con enlaces antiguos.
+- `deploy/vps/nginx-pruebas.conf` y `deploy/vps/nginx-terminado.conf` ya incluyen `/health`, redireccion de `/dashboard-app/` a `/` y proxy `/api/` consistente hacia Laravel.
+
 ## Verificaciones esperadas
 
 - `https://pruebas.livstre.com/` carga el dashboard.
-- `https://pruebas.livstre.com/api/...` responde desde Laravel.
+- `https://pruebas.livstre.com/api/...` debe responder desde el backend del mismo dominio cuando se conecte formalmente el backend legacy fuera de Easypanel.
 - `https://terminado.livstre.com/` carga el dashboard.
-- `https://terminado.livstre.com/api/...` responde desde Laravel.
+- `https://terminado.livstre.com/api/...` debe responder desde el backend del mismo dominio cuando se conecte formalmente el backend legacy fuera de Easypanel.
+- `https://pruebas.livstre.com/dashboard-app/` redirige a `/`.
+- `https://terminado.livstre.com/dashboard-app/` redirige a `/`.
 
 ## Notas operativas
 
 - Este despliegue sirve el frontend en la raiz `/` del subdominio, no en `/dashboard-app/`.
 - El frontend usa `/api` para hablar con el backend del mismo dominio.
 - Si usas una base de datos distinta para pruebas y final, separa por completo sus variables `DB_*`.
+- El frontend de `pruebas` debe construirse con `staging` y el de `terminado` con `production`; no mezclar `.env.staging` y `.env.production` al rebuild.

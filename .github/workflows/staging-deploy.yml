@@ -1,9 +1,7 @@
-name: Deploy to Staging
+name: Legacy Easypanel Staging Fallback
 
 on:
-  push:
-    branches:
-      - staging
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -28,15 +26,15 @@ jobs:
 
       - name: Build
         env:
-          VITE_DASHBOARD_BASE: /dashboard-app/
-          DASHBOARD_APP_URL: /dashboard-app/
+          VITE_DASHBOARD_BASE: /
+          DASHBOARD_APP_URL: /
         run: npm run build -- --mode staging
 
       - name: Security audit
         run: npm audit --audit-level=critical
         continue-on-error: false
 
-      - name: Trigger Easypanel Staging Webhook
+      - name: Trigger legacy Easypanel staging webhook
         env:
           WEBHOOK_URL: ${{ secrets.EASYPANEL_STAGING_WEBHOOK }}
         run: |
@@ -44,6 +42,6 @@ jobs:
             echo "Error: EASYPANEL_STAGING_WEBHOOK secret is empty or not set."
             exit 1
           fi
-          echo "Triggering deployment to Staging..."
+          echo "Triggering legacy Easypanel fallback for staging..."
           curl -X POST -f "$WEBHOOK_URL"
-          echo "Deployment triggered successfully."
+          echo "Legacy fallback triggered successfully."

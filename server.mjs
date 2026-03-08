@@ -3,57 +3,16 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const root = path.resolve(__dirname);
 const distDir = process.env.DIST_DIR || path.join('dist', 'spa');
 const distRoot = path.isAbsolute(distDir) ? distDir : path.join(root, distDir);
-
-console.log('--- DIAGNOSTICS START ---');
-console.log('Current Time:', new Date().toISOString());
-console.log('Root directory:', root);
-console.log('Distribution directory:', distRoot);
-
-// Recursively find index.html to see where the build actually landed
-function findIndexHtml(dir, depth = 0) {
-  if (depth > 4) return null;
-  if (!fs.existsSync(dir)) return null;
-  const files = fs.readdirSync(dir);
-  for (const file of files) {
-    const fullPath = path.join(dir, file);
-    if (fs.statSync(fullPath).isDirectory()) {
-      const found = findIndexHtml(fullPath, depth + 1);
-      if (found) return found;
-    } else if (file === 'index.html') {
-      return fullPath;
-    }
-  }
-  return null;
-}
-
-const foundPath = findIndexHtml(root);
-if (foundPath) {
-  console.log('CRITICAL: Found index.html at:', foundPath);
-} else {
-  console.error('CRITICAL: index.html NOT FOUND in any subfolder of root!');
-}
-
-if (fs.existsSync(distRoot)) {
-  console.log('Distribution directory EXISTS');
-  try {
-    const files = fs.readdirSync(distRoot);
-    console.log('Files in distRoot:', files);
-  } catch (e) {
-    console.error('Error reading distRoot:', e.message);
-  }
-} else {
-  console.error('Distribution directory DOES NOT EXIST at', distRoot);
-  // List current directory to see what IS here
-  console.log('Listing project root:', fs.readdirSync(root));
-}
-console.log('--- DIAGNOSTICS END ---');
 
 const normalizeBase = (value) => {
   const raw = String(value || '').trim();
@@ -64,33 +23,63 @@ const normalizeBase = (value) => {
 
 const base = normalizeBase(process.env.VITE_DASHBOARD_BASE || process.env.DASHBOARD_APP_URL || '/');
 const basePath = base === '/' ? '' : base.replace(/^\/+|\/+$/g, '');
-
-const app = express();
-const PORT = process.env.PORT || 3000;
+const port = Number(process.env.PORT || 3000);
 const isProduction = process.env.NODE_ENV === 'production';
 const shouldLogRequestHeaders = process.env.LOG_REQUEST_HEADERS === 'true';
-const exposeDebugConfig = process.env.ENABLE_DEBUG_CONFIG === 'true';
+const exposeDebugConfig = process.env.ENABLE_DEBUG_CONFIG === 'true' && !isProduction;
+const apiProxyTarget = process.env.API_URL || process.env.VITE_API_URL || 'http://127.0.0.1:4101';
 
-// Trust proxy for Easypanel/Nginx
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = supabaseUrl && supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : null;
+
+const app = express();
 app.set('trust proxy', true);
 
-// Proxy API requests to the Laravel backend
-const apiProxyTarget = process.env.API_URL || 'http://localhost:4101'; // Default internal VPS port for backend, or staging URL
+const isLoopbackRequest = (req) => {
+  const remote = req.ip || req.socket?.remoteAddress || '';
+  const normalized = String(remote).replace('::ffff:', '');
+  return normalized === '127.0.0.1' || normalized === '::1' || normalized === 'localhost';
+};
+
+const sendIndex = (res, indexPath, notFoundMessage) => {
+  if (!fs.existsSync(indexPath)) {
+    res.status(404).send(notFoundMessage);
+    return;
+  }
+  res.sendFile(indexPath);
+};
+
+if (!fs.existsSync(distRoot)) {
+  console.warn(`[server] Build directory not found: ${distRoot}`);
+}
+
+if (!supabase) {
+  console.warn('[server] Missing SUPABASE_URL/VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. /__local/login-lookup is disabled.');
+}
+
+app.get('/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    base,
+    basePath: basePath || '/',
+    distRoot,
+    distExists: fs.existsSync(distRoot),
+    apiProxyTarget,
+  });
+});
+
 app.use('/api', createProxyMiddleware({
   target: apiProxyTarget,
   changeOrigin: true,
-  logLevel: 'debug',
-  pathRewrite: {
-    // If the target already has /api, we map /api to /api. Or if the root is just the server, we keep /api.
-    // The default behavior is it keeps the original path `/api/...` and appends it to target.
-  },
-  onProxyReq: (proxyReq, req, res) => {
-    // Optionally log or modify
-  }
+  xfwd: true,
+  logLevel: isProduction ? 'warn' : 'info',
 }));
 
 if (!isProduction || shouldLogRequestHeaders) {
-  app.use((req, res, next) => {
+  app.use((req, _res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     if (shouldLogRequestHeaders) {
       console.log('Forwarded-Proto:', req.get('x-forwarded-proto'));
@@ -100,9 +89,62 @@ if (!isProduction || shouldLogRequestHeaders) {
   });
 }
 
+app.get('/__local/login-lookup', async (req, res) => {
+  if (isProduction || !isLoopbackRequest(req)) {
+    return res.status(403).json({ status: 'Error', message: 'Endpoint disponible solo en desarrollo local' });
+  }
 
-// Serve static files from the dist directory
+  const { identifier } = req.query;
+  if (!identifier) {
+    return res.status(400).json({ status: 'Error', message: 'Identifier is required' });
+  }
+
+  if (!supabase) {
+    return res.status(500).json({ status: 'Error', message: 'Auth lookup service not configured on server' });
+  }
+
+  try {
+    const normalizedIdentifier = String(identifier).trim();
+    const isEmail = normalizedIdentifier.includes('@');
+
+    let query = supabase
+      .from('users')
+      .select('user_email, user_identification, auth_user_id, user_active, user_name, user_personal_email')
+      .is('deleted_at', null);
+
+    if (isEmail) {
+      query = query.or(`user_email.ilike.${normalizedIdentifier},user_personal_email.ilike.${normalizedIdentifier}`);
+    } else {
+      query = query.or(`user_identification.eq.${normalizedIdentifier},user_name.ilike.${normalizedIdentifier}`);
+    }
+
+    const { data: userRecords, error } = await query;
+    if (error) {
+      console.error('[server] Lookup DB error:', error);
+      return res.status(500).json({ status: 'Error', message: 'Database error' });
+    }
+
+    if (!userRecords?.length) {
+      return res.status(404).json({ status: 'Error', message: 'User not found' });
+    }
+
+    const user = userRecords.find((candidate) => candidate.user_active) || userRecords[0];
+    return res.json({ status: 'Success', data: user });
+  } catch (error) {
+    console.error('[server] Lookup internal error:', error);
+    return res.status(500).json({ status: 'Error', message: 'Internal server error' });
+  }
+});
+
 app.use(express.static(distRoot));
+
+app.get('/dashboard-app', (_req, res) => {
+  res.redirect(301, '/');
+});
+
+app.get('/dashboard-app/*', (_req, res) => {
+  res.redirect(301, '/');
+});
 
 if (exposeDebugConfig) {
   app.get('/debug-config', (req, res) => {
@@ -110,61 +152,45 @@ if (exposeDebugConfig) {
       currentTime: new Date().toISOString(),
       base,
       basePath,
+      apiProxyTarget,
       env: {
         VITE_DASHBOARD_BASE: process.env.VITE_DASHBOARD_BASE,
         DASHBOARD_APP_URL: process.env.DASHBOARD_APP_URL,
         PORT: process.env.PORT,
-        NODE_ENV: process.env.NODE_ENV
+        NODE_ENV: process.env.NODE_ENV,
       },
       headers: req.headers,
       protocol: req.get('x-forwarded-proto') || req.protocol,
       host: req.get('x-forwarded-host') || req.get('host'),
       distRoot,
       distExists: fs.existsSync(distRoot),
-      rootFiles: fs.readdirSync(root)
     });
   });
 }
 
-// Root redirect to the dashboard base path
 if (basePath) {
-  app.get('/', (req, res) => {
-    console.log('Redirecting root to:', `/${basePath}/`);
-    res.redirect(`/${basePath}/`);
+  app.get('/', (_req, res) => {
+    res.redirect(302, `/${basePath}/`);
   });
 
-  app.get(`/${basePath}`, (req, res) => {
-    res.redirect(`/${basePath}/`);
+  app.get(`/${basePath}`, (_req, res) => {
+    res.redirect(302, `/${basePath}/`);
   });
 
-
-  // SPA routing for the subfolder
-  app.get(`/${basePath}/*`, (req, res) => {
-    const indexPath = path.join(distRoot, basePath, 'index.html');
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      console.error('SPA fallback failed: index.html not found at', indexPath);
-      res.status(404).send('Dashboard files not found. Check server logs.');
-    }
+  app.get(`/${basePath}/*`, (_req, res) => {
+    sendIndex(res, path.join(distRoot, basePath, 'index.html'), 'Dashboard files not found. Check server logs.');
   });
 } else {
-  // SPA routing for the root
-  app.get('*', (req, res) => {
-    const indexPath = path.join(distRoot, 'index.html');
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      console.error('SPA fallback failed: index.html not found at', indexPath);
-      res.status(404).send('Root files not found. Check server logs.');
-    }
+  app.get('*', (_req, res) => {
+    sendIndex(res, path.join(distRoot, 'index.html'), 'Root files not found. Check server logs.');
   });
 }
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Serving static files from ${distRoot}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`[server] Listening on port ${port}`);
+  console.log(`[server] Serving static files from ${distRoot}`);
+  console.log(`[server] API proxy target: ${apiProxyTarget}`);
   if (basePath) {
-    console.log(`Base path configured as /${basePath}/`);
+    console.log(`[server] Base path configured as /${basePath}/`);
   }
 });

@@ -13,6 +13,8 @@ Esta carpeta esta pensada para archivos locales con informacion sensible del pro
 - `.secure/server.env.local`
 - `.secure/backend-legacy.env.local`
 - `.secure/deploy.env.local`
+- `.secure/vps.pruebas.env.local`
+- `.secure/vps.terminado.env.local`
 
 ## Recomendacion
 - Si el proveedor permite secrets nativos, prefiere el panel del proveedor sobre archivos locales.

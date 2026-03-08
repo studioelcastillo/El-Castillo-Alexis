@@ -1,10 +1,7 @@
-name: Deploy to Production
+name: Legacy Easypanel Production Fallback
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 jobs:
   deploy:
@@ -29,15 +26,15 @@ jobs:
 
       - name: Build
         env:
-          VITE_DASHBOARD_BASE: /dashboard-app/
-          DASHBOARD_APP_URL: /dashboard-app/
+          VITE_DASHBOARD_BASE: /
+          DASHBOARD_APP_URL: /
         run: npm run build
 
       - name: Security audit
         run: npm audit --audit-level=critical
         continue-on-error: false
 
-      - name: Trigger Easypanel Deploy
+      - name: Trigger legacy Easypanel production webhook
         env:
           WEBHOOK_URL: ${{ secrets.EASYPANEL_PRODUCTION_WEBHOOK }}
         run: |
@@ -45,5 +42,6 @@ jobs:
             echo "Error: EASYPANEL_PRODUCTION_WEBHOOK secret is empty or not set."
             exit 1
           fi
+          echo "Triggering legacy Easypanel fallback for production..."
           curl -X POST -f "$WEBHOOK_URL"
-          echo "Deployment triggered successfully."
+          echo "Legacy fallback triggered successfully."

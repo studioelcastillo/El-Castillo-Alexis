@@ -25,4 +25,4 @@ if (!response.ok) {
   process.exit(1);
 }
 
-console.log(`Deploy disparado: ${target}`);
+console.log(`Webhook legacy de Easypanel disparado: ${target}`);
