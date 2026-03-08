@@ -102,5 +102,21 @@ jobs:
 
       - name: Verify staging health
         run: |
-          curl -fsS https://pruebas.livstre.com/health
-          curl -fsS https://pruebas.livstre.com/api/app/connectivity
+          urls=(
+            "https://pruebas.livstre.com/health"
+            "https://pruebas.livstre.com/api/app/connectivity"
+          )
+          for url in "${urls[@]}"; do
+            ok=""
+            for attempt in $(seq 1 12); do
+              if curl -fsS "$url"; then
+                ok=1
+                break
+              fi
+              sleep 10
+            done
+            if [ -z "$ok" ]; then
+              echo "Health check failed: $url" >&2
+              exit 1
+            fi
+          done
