@@ -74,6 +74,15 @@ const nginxConfig = `server {
 
     root /usr/share/nginx/html;
 
+    ${!basePath ? `location = /dashboard-app {
+        return 301 /;
+    }
+
+    location ^~ /dashboard-app/ {
+        return 301 /;
+    }
+` : ''}
+
     location /assets/ {
         try_files $uri =404;
         access_log off;
