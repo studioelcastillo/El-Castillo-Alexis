@@ -24,6 +24,7 @@
 - Validaciones de esta fase: `npm run secrets:check`, `npm run lint`, `npm run build`, `node --check server.mjs scripts/deploy.mjs deploy/vps/remote-exec.mjs`, `php artisan route:list`, `php artisan test`, `bash -n deploy/vps/publish.sh` y `docker compose -f deploy/vps/docker-compose.yml config` con variables placeholder pasaron en este entorno.
 - Se actualizo tambien `/srv/el-castillo` en el VPS a `f9a5b8d`, se reconstruyeron las imagenes `castillo-frontend-pruebas:direct` y `castillo-frontend-terminado:direct` con `NGINX_API_UPSTREAM=https://el-castillo-api.bygeckode.com`, y se recrearon los contenedores live `elcastillo_castilloprueba` y `elcastillo_castilloterminado` sobre las redes `easypanel` y `easypanel-elcastillo`.
 - Verificacion remota posterior al redeploy: `https://pruebas.livstre.com/health` y `https://terminado.livstre.com/health` responden `200 ok`; `https://pruebas.livstre.com/api/app/connectivity` y `https://terminado.livstre.com/api/app/connectivity` ya responden JSON valido desde el backend legacy proxied, en lugar de devolver HTML del dashboard.
+- Ajuste final adicional: los redirects legacy de `/dashboard-app/` ya quedaron relativos (`location: /`) en vivo, evitando bajar de HTTPS a HTTP detras de Traefik.
 - Se dejo preparada una ruta de despliegue en VPS propio sin Easypanel: `deploy/vps/docker-compose.yml`, `deploy/vps/nginx-pruebas.conf`, `deploy/vps/nginx-terminado.conf` y `docs/vps-deploy.md`, con dominios `pruebas.livstre.com` y `terminado.livstre.com` sirviendo frontend en `/` y backend legacy bajo `/api`.
 - Se rehizo `backend-legacy/Dockerfile` para que el backend Laravel pueda construir una imagen utilizable en Docker/Apache con Composer, extensiones PHP, `public/` como document root y permisos basicos de runtime.
 - Se alinearon referencias documentales y ejemplos de CORS/produccion para usar `terminado.livstre.com` en lugar de `login.livstre.com` donde aplica.
@@ -305,7 +306,7 @@
 
 ### GitHub
 - Rama activa: `supabase-migration-final-safe`
-- Ultimo commit propio: `f9a5b8d` (`fix: proxy api through frontend nginx`)
+- Ultimo commit propio: `ca5773d` (`fix: preserve https on legacy redirects`)
 - Estado: los cambios estructurales de despliegue/CI/documentacion de esta fase ya quedaron enviados a `origin/supabase-migration-final-safe`, incluido el redeploy live del frontend con proxy `/api`; el working tree local sigue teniendo archivos ajenos/no relacionados sin commitear.
 
 ### Pendientes
