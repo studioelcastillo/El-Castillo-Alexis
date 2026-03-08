@@ -91,6 +91,7 @@ const nginxConfig = `server {
     listen 3033;
 
     root /usr/share/nginx/html;
+    absolute_redirect off;
 
     location = /health {
         default_type text/plain;
