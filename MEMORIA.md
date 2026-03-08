@@ -302,8 +302,8 @@
 
 ### GitHub
 - Rama activa: `supabase-migration-final-safe`
-- Ultimo commit propio: `3bb7e9a` (`docs: store production keys in session memory`)
-- Estado: cambios de esta tarea enviados a `origin/supabase-migration-final-safe`; la rama `supabase-migration-final` quedo con un commit local no empujado porque GitHub bloqueo el secreto completo en `MEMORIA.md`.
+- Ultimo commit propio: `346c702` (`fix: align vps deploy and ci workflow`)
+- Estado: los cambios estructurales de despliegue/CI/documentacion de esta fase ya quedaron enviados a `origin/supabase-migration-final-safe`; el working tree local sigue teniendo archivos ajenos/no relacionados sin commitear.
 
 ### Pendientes
 - Si se mantiene Easypanel como fallback, revisar periodicamente que sus variables sigan alineadas con la ruta real que se quiera publicar (`/` o `/dashboard-app/`) para no reintroducir despliegues inconsistentes.
