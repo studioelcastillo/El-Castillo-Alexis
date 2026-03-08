@@ -1,0 +1,24 @@
+services:
+  frontend-terminado:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      args:
+        VITE_DASHBOARD_BASE: /
+        DASHBOARD_APP_URL: /
+        VITE_SUPABASE_URL: ${TERMINADO_VITE_SUPABASE_URL:?missing TERMINADO_VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${TERMINADO_VITE_SUPABASE_ANON_KEY:?missing TERMINADO_VITE_SUPABASE_ANON_KEY}
+        VITE_API_URL: ${TERMINADO_VITE_API_URL:-/api}
+        API_URL: ${TERMINADO_API_URL:-/api}
+        NGINX_API_UPSTREAM: ${TERMINADO_NGINX_API_UPSTREAM:-}
+    container_name: elcastillo_castilloterminado
+    restart: unless-stopped
+    networks:
+      - easypanel
+      - easypanel-elcastillo
+
+networks:
+  easypanel:
+    external: true
+  easypanel-elcastillo:
+    external: true

@@ -1,10 +1,17 @@
-name: Legacy Easypanel Production Fallback
+name: Deploy Production VPS
 
 on:
   workflow_dispatch:
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
-  deploy:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -14,9 +21,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Secret scan
         run: npm run secrets:check
@@ -30,18 +38,66 @@ jobs:
           DASHBOARD_APP_URL: /
         run: npm run build
 
-      - name: Security audit
-        run: npm audit --audit-level=critical
-        continue-on-error: false
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer:v2
+          extensions: mbstring, intl, pdo_pgsql, pgsql, zip, gd, bcmath, soap, dom
 
-      - name: Trigger legacy Easypanel production webhook
-        env:
-          WEBHOOK_URL: ${{ secrets.EASYPANEL_PRODUCTION_WEBHOOK }}
+      - name: Install backend dependencies
+        working-directory: backend-legacy
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Prepare backend env
+        working-directory: backend-legacy
         run: |
-          if [ -z "$WEBHOOK_URL" ]; then
-            echo "Error: EASYPANEL_PRODUCTION_WEBHOOK secret is empty or not set."
-            exit 1
-          fi
-          echo "Triggering legacy Easypanel fallback for production..."
-          curl -X POST -f "$WEBHOOK_URL"
-          echo "Legacy fallback triggered successfully."
+          cp .env.example .env
+          php artisan key:generate --force
+
+      - name: Route list
+        working-directory: backend-legacy
+        run: php artisan route:list
+
+      - name: Backend tests
+        working-directory: backend-legacy
+        run: php artisan test
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Load SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+
+      - name: Configure known hosts
+        env:
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          : "${VPS_KNOWN_HOSTS:?Missing VPS_SSH_KNOWN_HOSTS}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy production on VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_SSH_HOST }}
+          VPS_USER: ${{ secrets.VPS_SSH_USER }}
+          VPS_PORT: ${{ secrets.VPS_SSH_PORT }}
+          VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
+        run: |
+          set -euo pipefail
+          : "${VPS_HOST:?Missing VPS_SSH_HOST}"
+          : "${VPS_USER:?Missing VPS_SSH_USER}"
+          PORT="${VPS_PORT:-22}"
+          APP_DIR="${VPS_APP_DIR:-/srv/el-castillo}"
+          ssh -p "$PORT" "$VPS_USER@$VPS_HOST" "set -euo pipefail; APP_DIR='$APP_DIR'; if [ ! -d \"\$APP_DIR/.git\" ]; then echo 'Missing git repo in VPS_APP_DIR' >&2; exit 1; fi; cd \"\$APP_DIR\"; git fetch origin main; if git show-ref --verify --quiet refs/heads/main; then git checkout main; else git checkout -b main --track origin/main; fi; git pull --ff-only origin main; if sudo -n true >/dev/null 2>&1; then sudo -n bash deploy/vps/publish.sh production; else bash deploy/vps/publish.sh production; fi"
+
+      - name: Verify production health
+        run: |
+          curl -fsS https://terminado.livstre.com/health
+          curl -fsS https://terminado.livstre.com/api/app/connectivity

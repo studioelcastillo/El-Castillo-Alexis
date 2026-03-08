@@ -20,10 +20,12 @@ Para agilizar el desarrollo, se establecen las siguientes reglas de operación:
    - **GitHub**: Repositorio oficial (ramas `main` para producción y `staging` para pruebas).
    - **Carpeta del Proyecto**: Sincronización continua con el entorno local.
 3. **Despliegue Actual**:
-   - El frontend live de `pruebas.livstre.com` se publica hoy directo en el VPS de Hostinger.
-   - El frontend live de `terminado.livstre.com` se publica hoy directo en el VPS de Hostinger.
-   - Los webhooks/flows de Easypanel quedan solo como ruta auxiliar o fallback, no como pipeline principal de estos dos dominios.
-   - La validacion automatica en GitHub corre aparte en `/.github/workflows/ci.yml` para frontend y backend.
+    - El frontend live de `pruebas.livstre.com` se publica hoy directo en el VPS de Hostinger.
+    - El frontend live de `terminado.livstre.com` se publica hoy directo en el VPS de Hostinger.
+    - La rama `staging` puede desplegar automaticamente al VPS por GitHub Actions.
+    - `production` debe salir solo por disparo manual del workflow de produccion.
+    - Los webhooks/flows de Easypanel quedan solo como ruta auxiliar o fallback, no como pipeline principal de estos dos dominios.
+    - La validacion automatica en GitHub corre aparte en `/.github/workflows/ci.yml` para frontend y backend.
 4. **Persistencia de Datos**: Nunca se deben mezclar las credenciales de un entorno con otro. El archivo `.env.production` y `.env.staging` deben ser respetados estrictamente.
 
 ## 2.1 Convención operativa

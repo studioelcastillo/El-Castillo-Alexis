@@ -10,6 +10,8 @@ Este flujo reemplaza el build de Easypanel por despliegue directo en VPS.
 ## Que queda preparado en este repo
 
 - `deploy/vps/docker-compose.yml`: levanta frontend y backend para ambos dominios.
+- `deploy/vps/docker-compose.staging.yml`: levanta solo `pruebas`.
+- `deploy/vps/docker-compose.production.yml`: levanta solo `terminado`.
 - `deploy/vps/nginx-pruebas.conf`: proxy del dominio de pruebas.
 - `deploy/vps/nginx-terminado.conf`: proxy del dominio final.
 - `backend-legacy/Dockerfile`: imagen lista para correr Laravel sobre Apache.
@@ -31,6 +33,7 @@ Crear estos archivos locales a partir de tus valores reales:
 - `.secure/backend-legacy.terminado.env.local` desde `.secure/backend-legacy.terminado.env.example`
 - `.secure/vps.pruebas.env.local` desde `.secure/vps.pruebas.env.example`
 - `.secure/vps.terminado.env.local` desde `.secure/vps.terminado.env.example`
+- `.secure/backend-rebuild.env.local` desde `.secure/backend-rebuild.env.example` si vas a reconstruir el backend desde un dump
 
 Minimos recomendados por entorno:
 
@@ -66,10 +69,11 @@ Si el frontend va directo a Supabase en build, tambien define en el entorno del 
 4. Construir y publicar contenedores directos reutilizando Traefik del host.
 
 ```bash
-docker compose -f deploy/vps/docker-compose.yml up -d --build
+sudo bash deploy/vps/publish.sh staging
+sudo bash deploy/vps/publish.sh production
 ```
 
-`deploy/vps/publish.sh` ya intenta cargar automaticamente `.secure/vps.pruebas.env.local` y `.secure/vps.terminado.env.local` antes del `docker compose`, para que el build del frontend no vuelva a salir sin credenciales correctas de Supabase.
+`deploy/vps/publish.sh` acepta `staging`, `production` o `all` y carga automaticamente los `.secure/*.env.local` requeridos para el entorno solicitado.
 
 Alternativa automatizada en Ubuntu 24.04:
 
@@ -92,6 +96,22 @@ node deploy/vps/remote-exec.mjs <host> <usuario> <password> "docker ps"
 ```
 
 La utilidad `deploy/vps/remote-exec.mjs` se uso para inspeccionar Hostinger, reconstruir contenedores y validar el estado real del routing.
+
+## Automatizacion desde GitHub Actions
+
+- `/.github/workflows/staging-deploy.yml` despliega `staging` automaticamente en cada push a la rama `staging`.
+- `/.github/workflows/production-deploy.yml` despliega `production` solo por `workflow_dispatch`.
+- Ambos esperan estos secretos en GitHub:
+  - `VPS_SSH_HOST`
+  - `VPS_SSH_USER`
+  - `VPS_SSH_PRIVATE_KEY`
+  - `VPS_SSH_KNOWN_HOSTS`
+  - opcionales: `VPS_SSH_PORT`, `VPS_APP_DIR`
+- Ademas el VPS debe tener un clon funcional del repo en `/srv/el-castillo` (o en `VPS_APP_DIR`) con permisos para `git pull` y con estos archivos locales presentes:
+  - `.secure/vps.pruebas.env.local`
+  - `.secure/vps.terminado.env.local`
+  - `.secure/backend-legacy.pruebas.env.local`
+  - `.secure/backend-legacy.terminado.env.local`
 
 ## Estado operativo aplicado en Hostinger
 

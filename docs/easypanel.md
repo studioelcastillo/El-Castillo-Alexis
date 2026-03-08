@@ -8,7 +8,7 @@ Usalo solo si necesitas levantar un despliegue alterno o temporal en Easypanel.
 
 - No es el pipeline activo de los dos dominios live.
 - El flujo actual recomendado para publicar cambios reales esta en `docs/vps-deploy.md`.
-- Los webhooks `deploy:staging` y `deploy:production` quedan como fallback/manual y los workflows de GitHub Actions ya no corren por `push`; ahora son solo `workflow_dispatch`.
+- Los webhooks `deploy:staging` y `deploy:production` quedan como fallback/manual; el pipeline activo de GitHub Actions despliega al VPS y no a Easypanel.
 - La validacion continua del codigo quedo separada en `/.github/workflows/ci.yml` para no mezclar CI con el fallback legacy.
 
 ## Resumen tecnico

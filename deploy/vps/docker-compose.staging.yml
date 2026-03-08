@@ -1,0 +1,24 @@
+services:
+  frontend-pruebas:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      args:
+        VITE_DASHBOARD_BASE: /
+        DASHBOARD_APP_URL: /
+        VITE_SUPABASE_URL: ${PRUEBAS_VITE_SUPABASE_URL:?missing PRUEBAS_VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${PRUEBAS_VITE_SUPABASE_ANON_KEY:?missing PRUEBAS_VITE_SUPABASE_ANON_KEY}
+        VITE_API_URL: ${PRUEBAS_VITE_API_URL:-/api}
+        API_URL: ${PRUEBAS_API_URL:-/api}
+        NGINX_API_UPSTREAM: ${PRUEBAS_NGINX_API_UPSTREAM:-}
+    container_name: elcastillo_castilloprueba
+    restart: unless-stopped
+    networks:
+      - easypanel
+      - easypanel-elcastillo
+
+networks:
+  easypanel:
+    external: true
+  easypanel-elcastillo:
+    external: true

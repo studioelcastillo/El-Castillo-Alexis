@@ -34,6 +34,8 @@ Estado actual de produccion:
 - Traefik del host sigue publicando ambos dominios, pero el frontend ya no depende del pipeline de build de Easypanel.
 - La subruta legacy `/dashboard-app/` queda solo como compatibilidad y redirige a `/`.
 - El contenedor frontend tambien puede publicar `/api` por proxy Nginx cuando se define `NGINX_API_UPSTREAM` en build, para cerrar el dominio unico sin tocar el bundle del cliente.
+- GitHub Actions ahora puede desplegar `staging` automaticamente al VPS en cada push a la rama `staging`.
+- `production` queda manual: se publica solo cuando se dispara el workflow `Deploy Production VPS` o cuando se pida explicitamente desde la CLI.
 
 Si necesitas operar el despliegue directo en el VPS, revisa `docs/vps-deploy.md`.
 
@@ -44,9 +46,24 @@ EASYPANEL_STAGING_WEBHOOK="TU_WEBHOOK" npm run deploy:staging
 EASYPANEL_PRODUCTION_WEBHOOK="TU_WEBHOOK" npm run deploy:production
 ```
 
-Ese flujo ya no es el activo para los dos dominios live y debe considerarse solo como fallback/manual. Los workflows legacy de GitHub Actions quedaron limitados a disparo manual. Guias: `docs/easypanel.md` y `docs/vps-deploy.md`.
+Ese flujo ya no es el activo para los dos dominios live y debe considerarse solo como fallback/manual. El pipeline activo de GitHub Actions ahora despliega al VPS. Guias: `docs/easypanel.md` y `docs/vps-deploy.md`.
+
+## Automatizacion GitHub -> VPS
+
+- Push a rama `staging` -> workflow `Deploy Staging VPS` -> redeploy automatico de `https://pruebas.livstre.com`.
+- Produccion -> workflow manual `Deploy Production VPS` -> redeploy de `https://terminado.livstre.com` solo cuando se decida.
+- Ambos workflows validan `npm run secrets:check`, `npm run lint`, `npm run build`, `php artisan route:list` y `php artisan test` antes de desplegar.
+- Secretos esperados en GitHub Actions:
+  - `VPS_SSH_HOST`
+  - `VPS_SSH_USER`
+  - `VPS_SSH_PRIVATE_KEY`
+  - `VPS_SSH_KNOWN_HOSTS`
+  - opcionales: `VPS_SSH_PORT`, `VPS_APP_DIR`
+- Requisito operativo en el VPS: el clon en `/srv/el-castillo` (o el `VPS_APP_DIR` configurado) debe poder hacer `git pull` del repo y tener materializados los archivos `.secure/*.env.local` necesarios para cada entorno.
 
 Ademas, `/.github/workflows/ci.yml` valida frontend y backend en GitHub sin volver a activar despliegues automaticos legacy.
+
+Si solo tienes una copia descargada del backend y un dump PostgreSQL, revisa `docs/backend-rebuild-from-zip.md` para levantar una reconstruccion funcional sin depender del servidor antiguo.
 
 ## Variables de entorno
 Crea un `.env` (en el root o `apps/dashboard/.env`) y define:

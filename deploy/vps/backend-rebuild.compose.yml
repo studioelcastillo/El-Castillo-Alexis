@@ -1,0 +1,32 @@
+services:
+  castillo-backend-db:
+    image: postgres:16
+    container_name: castillo-backend-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-castillo_backend}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?missing DB_PASSWORD}
+    ports:
+      - "127.0.0.1:${BACKEND_DB_PORT:-5434}:5432"
+    volumes:
+      - castillo-backend-db-data:/var/lib/postgresql/data
+
+  castillo-backend-app:
+    build:
+      context: ../../backend-legacy
+      dockerfile: Dockerfile
+    container_name: castillo-backend-app
+    restart: unless-stopped
+    depends_on:
+      - castillo-backend-db
+    env_file:
+      - ../../.secure/backend-rebuild.env.local
+    environment:
+      DB_HOST: castillo-backend-db
+      DB_PORT: 5432
+    ports:
+      - "127.0.0.1:${BACKEND_APP_PORT:-5101}:80"
+
+volumes:
+  castillo-backend-db-data:
