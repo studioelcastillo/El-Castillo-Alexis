@@ -56,6 +56,7 @@ Si el frontend va directo a Supabase en build, tambien define en el entorno del 
 - `TERMINADO_VITE_SUPABASE_ANON_KEY`
 - `PRUEBAS_VITE_API_URL` y `PRUEBAS_API_URL` si quieres sobreescribir `/api`
 - `TERMINADO_VITE_API_URL` y `TERMINADO_API_URL` si quieres sobreescribir `/api`
+- `PRUEBAS_NGINX_API_UPSTREAM` y `TERMINADO_NGINX_API_UPSTREAM` si quieres que Nginx del frontend haga proxy de `/api` hacia otro backend HTTP/HTTPS
 
 ## Flujo recomendado en el VPS
 
@@ -101,6 +102,7 @@ La utilidad `deploy/vps/remote-exec.mjs` se uso para inspeccionar Hostinger, rec
 - Traefik sigue resolviendo los hosts desde `/etc/easypanel/traefik/config/main.yaml`, pero ya apunta a esos contenedores standalone y no a servicios Swarm desplegados por Easypanel.
 - `/dashboard-app/` queda redirigido a `/` para compatibilidad con enlaces antiguos.
 - `deploy/vps/nginx-pruebas.conf` y `deploy/vps/nginx-terminado.conf` ya incluyen `/health`, redireccion de `/dashboard-app/` a `/` y proxy `/api/` consistente hacia Laravel.
+- El `nginx.conf` generado dentro de la imagen frontend tambien soporta `/health` y puede publicar `/api` por proxy si `NGINX_API_UPSTREAM` llega en build.
 
 ## Verificaciones esperadas
 

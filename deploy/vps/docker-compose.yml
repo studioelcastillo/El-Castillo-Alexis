@@ -10,6 +10,7 @@ services:
         VITE_SUPABASE_ANON_KEY: ${PRUEBAS_VITE_SUPABASE_ANON_KEY:?missing PRUEBAS_VITE_SUPABASE_ANON_KEY}
         VITE_API_URL: ${PRUEBAS_VITE_API_URL:-/api}
         API_URL: ${PRUEBAS_API_URL:-/api}
+        NGINX_API_UPSTREAM: ${PRUEBAS_NGINX_API_UPSTREAM:-}
     container_name: castillo-frontend-pruebas
     restart: unless-stopped
     depends_on:
@@ -45,6 +46,7 @@ services:
         VITE_SUPABASE_ANON_KEY: ${TERMINADO_VITE_SUPABASE_ANON_KEY:?missing TERMINADO_VITE_SUPABASE_ANON_KEY}
         VITE_API_URL: ${TERMINADO_VITE_API_URL:-/api}
         API_URL: ${TERMINADO_API_URL:-/api}
+        NGINX_API_UPSTREAM: ${TERMINADO_NGINX_API_UPSTREAM:-}
     container_name: castillo-frontend-terminado
     restart: unless-stopped
     depends_on:

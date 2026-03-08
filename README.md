@@ -33,6 +33,7 @@ Estado actual de produccion:
 - `https://pruebas.livstre.com` y `https://terminado.livstre.com` ya salen directo desde el VPS.
 - Traefik del host sigue publicando ambos dominios, pero el frontend ya no depende del pipeline de build de Easypanel.
 - La subruta legacy `/dashboard-app/` queda solo como compatibilidad y redirige a `/`.
+- El contenedor frontend tambien puede publicar `/api` por proxy Nginx cuando se define `NGINX_API_UPSTREAM` en build, para cerrar el dominio unico sin tocar el bundle del cliente.
 
 Si necesitas operar el despliegue directo en el VPS, revisa `docs/vps-deploy.md`.
 

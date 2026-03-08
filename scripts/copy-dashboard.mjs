@@ -18,6 +18,24 @@ const normalizeBase = (value) => {
 };
 const base = normalizeBase(process.env.VITE_DASHBOARD_BASE || process.env.DASHBOARD_APP_URL || '/');
 const basePath = base === '/' ? '' : base.replace(/^\/+|\/+$/g, '');
+const rawApiUpstream = String(process.env.NGINX_API_UPSTREAM || '').trim();
+const apiUpstream = rawApiUpstream.replace(/\/$/, '');
+const apiProxyBlock = apiUpstream
+  ? `location = /api {
+        return 301 /api/;
+    }
+
+    location ^~ /api/ {
+        proxy_pass ${apiUpstream};
+        proxy_http_version 1.1;
+        proxy_set_header Host ${apiUpstream.startsWith('http://127.0.0.1') || apiUpstream.startsWith('http://localhost') ? '$host' : new URL(apiUpstream).host};
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_ssl_server_name on;
+    }
+`
+  : '';
 const dest = basePath ? path.join(distRoot, basePath) : distRoot;
 const compatibilityDest = basePath ? null : path.join(distRoot, 'dashboard-app');
 const htaccessPath = path.join(dest, '.htaccess');
@@ -73,6 +91,13 @@ const nginxConfig = `server {
     listen 3033;
 
     root /usr/share/nginx/html;
+
+    location = /health {
+        default_type text/plain;
+        return 200 'ok';
+    }
+
+    ${apiProxyBlock}
 
     ${!basePath ? `location = /dashboard-app {
         return 301 /;
