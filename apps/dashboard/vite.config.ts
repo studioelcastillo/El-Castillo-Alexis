@@ -128,6 +128,7 @@ export default defineConfig(({ mode }) => {
       },
     ],
     build: {
+      reportCompressedSize: false,
       rollupOptions: {
         output: {
           manualChunks: (id) => {

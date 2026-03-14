@@ -14,7 +14,7 @@
     "deploy:production": "node scripts/deploy.mjs production",
     "preview": "vite preview --config apps/dashboard/vite.config.ts apps/dashboard",
     "start": "node server.mjs",
-    "lint": "node --max-old-space-size=4096 node_modules/typescript/bin/tsc --noEmit --project apps/dashboard/tsconfig.json"
+    "lint": "node --max-old-space-size=8192 node_modules/typescript/bin/tsc --noEmit --project apps/dashboard/tsconfig.json"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
