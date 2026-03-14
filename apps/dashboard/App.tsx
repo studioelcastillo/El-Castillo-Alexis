@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -25,6 +25,8 @@ const PageFallback = () => (
 
 
 function App() {
+  const initialAuthEventHandledRef = useRef(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return !!getStoredUser();
   });
@@ -92,6 +94,10 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!isAuthReady) {
+      return;
+    }
+
     if (!isAuthenticated && !isPublicRoute) {
       navigate('/login', { replace: true });
     }
@@ -102,7 +108,7 @@ function App() {
     if (aliasTarget && location.pathname !== aliasTarget) {
       navigate(aliasTarget, { replace: true });
     }
-  }, [isAuthenticated, isPublicRoute, location.pathname, navigate]);
+  }, [isAuthReady, isAuthenticated, isPublicRoute, location.pathname, navigate]);
 
   useEffect(() => {
     if (location.pathname.startsWith('/logout') && !isLoggingOut) {
@@ -114,11 +120,33 @@ function App() {
     let active = true;
 
     const syncSession = async () => {
+      const hadCachedUser = !!getStoredUser();
       const user = await AuthService.syncStoredSession();
       if (!active) return;
-      const hasUser = !!user;
-      setIsAuthenticated(hasUser);
-      setIsOnboarded(hasUser);
+
+      if (user) {
+        setIsAuthenticated(true);
+        setIsOnboarded(true);
+        setIsAuthReady(true);
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await AuthService.getSession();
+
+      if (!active) return;
+
+      if (!session?.user?.id) {
+        if (hadCachedUser && !initialAuthEventHandledRef.current) {
+          return;
+        }
+
+        setIsAuthenticated(false);
+        setIsOnboarded(false);
+      }
+
+      setIsAuthReady(true);
     };
 
     void syncSession();
@@ -126,11 +154,21 @@ function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      const hadCachedUser = !!getStoredUser();
+      const shouldIgnoreTransientNull = !session && hadCachedUser && !initialAuthEventHandledRef.current;
+
+      initialAuthEventHandledRef.current = true;
+
       if (!active) return;
+      if (shouldIgnoreTransientNull) {
+        void syncSession();
+        return;
+      }
       if (!session) {
         clearAuthSession();
         setIsAuthenticated(false);
         setIsOnboarded(false);
+        setIsAuthReady(true);
         return;
       }
       void syncSession();
@@ -149,6 +187,7 @@ function App() {
   };
 
   const handleLogin = () => {
+      setIsAuthReady(true);
       setIsAuthenticated(true);
       setIsOnboarded(true);
       navigate(PAGE_TO_PATH.inicio, { replace: true });
@@ -183,6 +222,10 @@ function App() {
 
   if (location.pathname.startsWith('/recovery-password')) {
     return <RecoveryPasswordPage />;
+  }
+
+  if (!isAuthReady && !isPublicRoute) {
+    return <PageFallback />;
   }
 
   if (!isAuthenticated) {
