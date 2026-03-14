@@ -6,7 +6,7 @@ $defaultOrigins = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'https://pruebas.livstre.com',
-    'https://login.livstre.com',
+    'https://terminado.livstre.com',
 ];
 
 $allowedOrigins = array_filter(array_map('trim', explode(',', (string) env('CORS_ALLOWED_ORIGINS', implode(',', $defaultOrigins)))));
