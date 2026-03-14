@@ -61,7 +61,7 @@ jobs:
           php artisan key:generate --force
 
       - name: Route list
-        run: php artisan route:list --compact
+        run: php artisan route:list
 
       - name: Backend tests
         run: php artisan test
