@@ -40,8 +40,14 @@ No debe contener valores reales.
 | `INTERNAL_API_TOKEN` | Privado critico | backend legacy | Integracion interna | `.env` solo en servidor/backend local | `backend-legacy/.env.example` |
 | `INTERNAL_API_ALLOWED_SERVICES` | Sensible | backend legacy | Lista permitida para servicios internos | `.env` solo en servidor/backend local | `backend-legacy/.env.example` |
 | `CORS_ALLOWED_ORIGINS` | Sensible | backend legacy | Allowlist de origenes del API legacy | `.env` solo en servidor/backend local | `backend-legacy/.env.example` |
+| `TERMINADO_VPS_IP` | Sensible | production | IP del servidor Hostinger | `.secure/vps.terminado.env.local` | `README.md` |
+| `TERMINADO_VPS_USER` | Sensible | production | Usuario SSH (root) | `.secure/vps.terminado.env.local` | `README.md` |
+| `TERMINADO_VPS_PASSWORD` | Privado critico | production | Password del usuario root | `.secure/vps.terminado.env.local` | - |
+| `TERMINADO_VPS_SSH_KEY` | Privado critico | production | Clave publica SSH autorizada | `.secure/vps.terminado.env.local` | - |
+| `GITHUB_TOKEN` | Privado critico | todos | Acceso al repo para despliegue | `.secure/deploy.env.local` | `.github/workflows/` |
 
 ## Ubicaciones que hoy requieren vigilancia
+- Las variantes versionadas (`.env.example`, `.env.staging`, `.env.production`) deben permanecer saneadas y pasar por `npm run secrets:check`.
 - `software el castillo/.env`
 - `software el castillo/.env.staging`
 - `software el castillo/.env.production`

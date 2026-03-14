@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { readFile } from 'fs/promises';
 import path from 'path';
+import { loadSupabaseProject } from './load-supabase-env.mjs';
 
 const ROOT = process.cwd();
 const DASHBOARD_ENV = path.join(ROOT, 'apps', 'dashboard', '.env');
@@ -35,10 +36,22 @@ const loadEnvFile = async (filePath) => {
 
 const loadEnv = async (mode) => {
   if (mode === 'staging') {
-    return loadEnvFile(STAGING_ENV);
+    const project = loadSupabaseProject('staging');
+    return {
+      VITE_SUPABASE_URL: project.url,
+      SUPABASE_URL: project.url,
+      VITE_SUPABASE_ANON_KEY: project.anonKey,
+      SUPABASE_ANON_KEY: project.anonKey,
+    };
   }
   if (mode === 'production') {
-    return loadEnvFile(PRODUCTION_ENV);
+    const project = loadSupabaseProject('production');
+    return {
+      VITE_SUPABASE_URL: project.url,
+      SUPABASE_URL: project.url,
+      VITE_SUPABASE_ANON_KEY: project.anonKey,
+      SUPABASE_ANON_KEY: project.anonKey,
+    };
   }
   const [dashboardEnv, rootEnv, rootEnvTmp] = await Promise.all([
     loadEnvFile(DASHBOARD_ENV),

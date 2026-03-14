@@ -26,13 +26,13 @@ Para agilizar el desarrollo, se establecen las siguientes reglas de operación:
     - `production` debe salir solo por disparo manual del workflow de produccion.
     - Los webhooks/flows de Easypanel quedan solo como ruta auxiliar o fallback, no como pipeline principal de estos dos dominios.
     - La validacion automatica en GitHub corre aparte en `/.github/workflows/ci.yml` para frontend y backend.
-4. **Persistencia de Datos**: Nunca se deben mezclar las credenciales de un entorno con otro. El archivo `.env.production` y `.env.staging` deben ser respetados estrictamente.
+4. **Persistencia de Datos**: Nunca se deben mezclar las credenciales de un entorno con otro. Las credenciales reales deben vivir en `/.secure/` o en el proveedor, y los archivos versionados `.env.production` y `.env.staging` deben mantenerse saneados.
 
 ## 2.1 Convención operativa
 
-- `.env` y `apps/dashboard/.env`: desarrollo local, deben apuntar a `staging`.
-- `.env.staging`: despliegue y validación en pruebas.
-- `.env.production`: despliegue real, solo para salida a produccion.
+- `.env` y `apps/dashboard/.env`: desarrollo local, deben apuntar a `staging`; si contienen valores reales, se regeneran desde `.secure/`.
+- `.env.staging`: plantilla versionada para despliegue y validación en pruebas; los valores privados reales viven en `.secure/root.staging.env.local` o en el proveedor.
+- `.env.production`: plantilla versionada para despliegue real; los valores privados reales viven en `.secure/root.production.env.local` o en el proveedor.
 - Scripts de migración SQL: ejecutar primero en `staging` y luego replicar a `produccion` tras validación.
 
 ---

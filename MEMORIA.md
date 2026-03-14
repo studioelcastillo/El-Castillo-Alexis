@@ -12,11 +12,50 @@
 - Responder siempre en espanol.
 
 ### Objetivo actual
-- Integrar la base de datos real del dump AWS (`castillo_prod_aws.sql.txt`) en Supabase para `staging` y `production`, manteniendo compatibilidad con el dashboard actual.
+- Definir y arrancar la reconstruccion greenfield de `StudioCore ERP` dentro del repo: nuevo producto multiempresa y multisede, con plan maestro, arquitectura objetivo y bootstrap tecnico inicial sin depender del legacy actual.
 
 ### Ultimo avance
+- Se publico en vivo la mitigacion del refresh de `staging`: se copio `apps/dashboard/App.tsx` al repo del VPS (`/srv/el-castillo`), se ejecuto `bash deploy/vps/publish.sh staging` por SSH con clave y luego se revalido `https://pruebas.livstre.com/health` (`200 OK`). Validacion browser posterior: login OK y hard refresh/direct load a `https://pruebas.livstre.com/dashboard` ya conserva dashboard (`loginInputs=0`, sin rebote a `/login`). `production` no se toco en este redeploy.
+- Se cerro la revison operativa de entornos y validacion auth/browser. Hallazgo clave: `scripts/load-supabase-env.mjs` estaba resolviendo `production` con la `SUPABASE_URL` heredada de `.env` local (`staging`) cuando el archivo especifico solo traia `VITE_SUPABASE_URL`; por eso varios chequeos devolvian `401 Invalid API key` aunque la `sb_secret` de produccion si era valida. Ya se corrigio la precedencia del loader, `check_prod_url.mjs` ahora muestra la URL/credenciales reales correctas y `test_auth_admin.mjs` + `verify_production_user.mjs` + `check_auth_consistency.mjs` confirmaron acceso Auth Admin operativo en `production` con la credencial actual.
+- Se blindaron mejor los flujos locales de secretos para no reintroducir fugas: `scripts/materialize-secure-env.mjs` y `scripts/migrate-existing-envs.mjs` ahora omiten por defecto `.env.staging` y `.env.production` (solo se incluyen con `--include-versioned` en maquinas aisladas), `scripts/list-settings.mjs` y `scripts/check-settings.mjs` dejaron de depender de los `.env` versionados saneados, y `.secure/root.production.env.local` quedo alineado a `https://terminado.livstre.com/api`.
+- Tambien se capturo una fuga residual nueva detectada por `npm run secrets:check`: `recover_staging.mjs` traia una `sb_secret` hardcodeada dentro de una lista de candidatos. Ya se saneo para leer un candidato extra solo desde `STAGING_PASSWORD_CANDIDATE` por entorno y el scan final volvio a pasar.
+- Validacion funcional nueva completada con dos usuarios reales de sedes distintas (`std_id=7` y `std_id=74`) en `staging` y `production`: login browser OK en `https://pruebas.livstre.com/` y `https://terminado.livstre.com/`, rutas SPA `dashboard`, `studios_models`, `payments`, `studios_rooms` y `studios_accounts` cargando, y validacion por cliente Supabase anon mostrando aislamiento correcto en ambos entornos (`studios_models`, `payments` y `studios_rooms` devuelven datos propios y `0` filas al pedir la otra sede). Se endurecio tambien `scripts/browser_validate_login.mjs` y su copia en `playwright-temp/` para esperar la hidratacion real antes de declarar el login exitoso.
+- Hallazgo residual de navegador: en `staging`, un hard refresh/direct load a `https://pruebas.livstre.com/dashboard` todavia puede rebotar a `/login` aunque la sesion ya este iniciada; por SPA interna las rutas cargan bien. En `production` ese refresh de `/dashboard` ya se comporto correctamente.
+- Se dejo ademas una mitigacion de codigo para ese rebote en `apps/dashboard/App.tsx`: si entra un primer `onAuthStateChange(null)` mientras aun existe usuario cacheado, la app ya no limpia la sesion inmediatamente y fuerza una resincronizacion antes de expulsar al usuario. Verificaciones locales posteriores: `npm run lint` OK y `npm run build` OK. Ojo: el comportamiento live de `staging` despues de esta mitigacion aun no se pudo revalidar porque no hubo redeploy desde esta sesion.
+- Se sanearon `.env.example`, `.env.staging` y `.env.production` para dejar solo placeholders versionados, mientras los valores privados reales quedan en `.secure/root*.env.local` o en el proveedor. Tambien se reforzaron `scripts/load-supabase-env.mjs` (ahora ignora placeholders y prioriza `SUPABASE_SERVICE_ROLE_KEY`) y `scripts/check-secrets.mjs` (vuelve a escanear `.env.staging`/`.env.production`), y se alineo la documentacion en `README.md`, `docs/environments.md`, `.secure/README.md`, `security/private-locations.md` y `security/secrets-inventory.md`. Verificaciones: `node --check scripts/load-supabase-env.mjs` OK y `npm run secrets:check` OK.
+- Se materializaron de nuevo los `.env` operativos reales desde `/.secure/` con `npm run secure:materialize -- --force`, dejando actualizados `.env`, `.env.staging`, `.env.production`, `apps/dashboard/.env`, `server/.env` y `backend-legacy/.env` a partir de las credenciales privadas locales.
+- Se valido la conectividad real actual: `staging` y `production` responden consultas de datos via Supabase con las credenciales privadas materializadas, y el `GITHUB_TOKEN` local sigue teniendo acceso al repo `studioelcastillo/El-Castillo-Alexis` y al listado de secrets de GitHub Actions. Tambien `php artisan test` siguio pasando en `backend-legacy` y el build frontend con variables reales volvio a completar.
+- Se ajusto `scripts/load-supabase-env.mjs` para separar mejor `SUPABASE_SECRET_KEY` y `SUPABASE_SERVICE_ROLE_KEY`, y se agregaron helpers `authAdmin*` por REST para no depender de `supabase-js` cuando solo existe `sb_secret`. Aun asi, el `SUPABASE_SECRET_KEY` actual de `production` sigue devolviendo `401 Invalid API key` contra `/auth/v1/admin`, asi que las utilidades que requieren Auth Admin real en produccion siguen bloqueadas hasta recibir una credencial correcta (idealmente `SUPABASE_SERVICE_ROLE_KEY` de produccion o una `SUPABASE_SECRET_KEY` valida para Auth Admin).
+- Se subio el heap del script `npm run lint` a `8192` MB en `package.json`, porque con el set real de variables/locales el chequeo TypeScript estaba quedando inestable a `4096` MB en esta maquina.
+- Se corrigio otro cuello operativo del frontend: `apps/dashboard/vite.config.ts` ya desactiva `reportCompressedSize`, con lo que `npm run build` volvio a completar aun cuando Vite estaba cayendo en `vite:reporter` por memoria al calcular tamanos comprimidos del bundle.
+- Se saneo una nueva tanda de scripts operativos que tenian credenciales Supabase hardcodeadas (`reset_passwords.mjs`, `apply_rls_*.mjs`, `check_*`, `sync_prod_*`, `test_*`, `verify_*` y `tmp/check_rpc.mjs`). Ahora todos cargan claves desde entorno o `.secure/` mediante `scripts/load-supabase-env.mjs`, y `scripts/check-secrets.mjs` ya ignora `.secure/` pero detecta tambien JWT literales fuera de esa carpeta. Verificaciones de esta fase: `npm run secrets:check` OK, `node --check` sobre los scripts saneados OK, `npm run lint` OK, `npm run build` OK y `php artisan test` OK.
+- Se comparo el alcance pedido por el usuario para `StudioCore ERP` contra el software actual y la conclusion fue clara: el repo vigente cubre parte del dominio (dashboard, personas, nomina parcial, finanzas parciales, asistencia, inventario, acceso/ADMS, reportes parciales), pero no alcanza aun el objetivo de ERP modular multiempresa/multisede con arquitectura limpia. Por eso se documento la estrategia correcta en `docs/studiocore-erp-master-plan.md`: mantener `software el castillo/` como referencia funcional y construir `StudioCore ERP` como producto nuevo dentro de `studiocore-erp/`.
+- Ya quedo creado el bootstrap tecnico inicial de esa nueva linea: `studiocore-erp/package.json`, `studiocore-erp/.env.example`, `studiocore-erp/docker-compose.yml` y `studiocore-erp/apps/api/` con una base NestJS funcional (`health` + Swagger). Verificaciones locales realizadas: `npm install`, `npm run build --workspace @studiocore/api`, `npm run lint --workspace @studiocore/api` y arranque temporal del API OK en `http://localhost:4102/api/v1/health`.
+- Se realizo una nueva revision panoramica del proyecto activo para dejar contexto listo antes de futuras solicitudes: se confirmo que la base real de trabajo es `software el castillo/`, con frontend React/Vite en `apps/dashboard`, backend Laravel en `backend-legacy`, capa de datos principal en Supabase (`supabase/`) y servicios auxiliares Node (`server.mjs`, `server/gemini-proxy.mjs`, `scripts/adms-receiver.mjs`). Tambien se remarco que `_zip_review/`, `problemas/` y `playwright-temp/` son material auxiliar/historico y no parte del runtime principal.
+- Se revisaron tambien `ms-wscrap/` y `ms-sso/` del monorepo extraido. Hallazgo: ninguno esta integrado hoy en `software el castillo`, pero `backend-legacy` ya conserva el acople opcional a `ms-wscrap` via `MS_WSCRAP_URL` y rutas internas scheduler; `ms-sso` quedo fuera a proposito porque el dashboard vigente no lo consume y su superficie es sensible (passwords/cookies de terceros). Se documento este estado en `docs/backend-rebuild-from-zip.md`.
+- Se hizo una validacion HTTP local del backend actual con `php artisan serve`: `api/app/connectivity` respondio `200`, `api/app/proxy` sin token devolvio `401` correcto, `api/auth/login` con `Accept: application/json` devolvio `422` por validacion esperada, y las rutas protegidas `api/livejasmin/current-period` / `api/dynamic-bonuses/dashboard-summary` inicialmente revelaron un bug local: sin header `Accept` caian en `500` por `Route [login] not defined` en el flujo de no autenticado. Se corrigio en `backend-legacy/app/Http/Middleware/Authenticate.php` + `backend-legacy/app/Exceptions/Handler.php`, se agrego `backend-legacy/tests/Feature/ApiAuthenticationTest.php`, se generaron claves Passport locales ignoradas por git para la prueba (`storage/*.key`) y luego `php artisan test` quedo `3 passed`; las rutas protegidas ya responden `401` JSON aun sin `Accept`.
+- Verificacion posterior a esa comparacion del backend: en `software el castillo/backend-legacy` no se integraron archivos del `server/` extraido porque no habia merges seguros relevantes. Se valido con `php artisan route:list --json` que siguen activos `358` endpoints y que las rutas criticas revisadas mantienen el hardening esperado (`api/app/proxy`, `api/app/platform`, `api/bots`, `api/bot-views` bajo `InternalService`; `api/dynamic-bonuses/dashboard-summary` y `api/livejasmin/current-period` bajo `auth + tenant`). Tambien `php artisan test` siguio pasando (`2 passed`).
+- Se comparo el backend `server/` del paquete ubicado en `E:\Documentos\Desktop\Aplicacion Castillo Alexis\problemas\Problema\el-castillo-webapp-develop (1).zip` (tomando como base su extraccion en `problemas\_extracted_webapp\el-castillo-webapp-develop\server`) contra `software el castillo/backend-legacy`. Resultado: no aparecieron modulos nuevos ni cambios funcionales seguros pendientes de traer; `backend-legacy` ya esta mas adaptado al entorno actual y mas endurecido. Las diferencias encontradas corresponden sobre todo a hardening local que no debe perderse (`internal.service`, allowlist de CORS, tenant scoping en controladores, `AddHeaderAccessToken` mas restrictivo, `Bot` ocultando `password`, `ModelAccountSeeder` sin credenciales reales, `.env.example` y `Dockerfile` mas alineados al entorno actual). Por esta revision no se aplicaron reemplazos desde `server`.
+- Se hizo una nueva revision operativa del repo activo `software el castillo` para dejar listo el contexto antes de nuevas tareas: el proyecto vigente sigue siendo React/Vite (`apps/dashboard`) + Supabase + backend Laravel legacy (`backend-legacy`) + servicios Node auxiliares (`server.mjs`, `server/gemini-proxy.mjs`, `scripts/adms-receiver.mjs`). Tambien se confirmo el mapa actual de integraciones/credenciales sin exponer valores: frontend mezclando Supabase directo y `/api` legacy, secretos locales repartidos entre `.env*`, `apps/dashboard/.env`, `backend-legacy/.env` y `.secure/*.env.local`, `SUPABASE_SECRET_KEY` presente en `.secure/root.staging.env.local` y `.secure/root.production.env.local`, `GITHUB_TOKEN` + credenciales VPS en `.secure/`, Gemini y ADMS sin claves reales cargadas localmente en esta copia, y `OPENAI_API_KEY` apareciendo solo en envs raiz sin referencias activas en codigo fuente.
+- Tercera correccion sobre el rebote login/logout: se endurecio la rehidratacion en `apps/dashboard/App.tsx`, `apps/dashboard/AuthService.ts` y `apps/dashboard/services/supabase/AuthSupabaseService.ts`. Ahora el arranque espera a que la validacion auth termine antes de aplicar redirects, muestra fallback en rutas privadas mientras se resuelve la sesion inicial, y `syncStoredSession()` ya no borra la sesion de UI por una lectura transitoria nula/fallida del perfil; primero intenta reutilizar el usuario cacheado de la misma `auth_user_id` y deja que `onAuthStateChange` sea quien confirme el cierre real. Esto ataca el caso en que la app manda al usuario al login y luego lo vuelve a autenticar automaticamente por una sesion Supabase aun valida. Verificaciones: `npm run lint` OK y build Vite OK con heap ampliado.
+- Segunda correccion sobre el login loop: el problema visible reportado por el usuario ahora quedo mejor delimitado. `apps/dashboard/api.ts` envia el `Bearer` de Supabase al backend legacy, pero `backend-legacy/routes/api.php` protege `/dashboard/*` con `auth:api` de Passport; por eso el dashboard puede devolver `401` justo despues del login. Para evitar que eso cierre y reabra la sesion en bucle, `apps/dashboard/components/Dashboard.tsx` ahora solo limpia/redirige si tambien falta la sesion real de Supabase; si la sesion sigue activa, mantiene al usuario logueado y muestra error del backend en lugar de expulsarlo. Verificaciones: `npm run lint` OK y build Vite OK con `node --max-old-space-size=4096 node_modules/vite/bin/vite.js build --config apps/dashboard/vite.config.ts apps/dashboard`.
+- Se revisaron los nuevos artefactos en `E:\Documentos\Desktop\Aplicacion Castillo Alexis\problemas\Problema`: `el-castillo-webapp-develop (1).zip` trae un monorepo legacy mas amplio (`server/`, `client/`, `ms-sso/`, `ms-wscrap/`, `ninpo/`), `el-castillo-dashboard-main (1).zip` es solo snapshot frontend, `el-castillo-webapp-develop.zip` sigue corrupto y `castillo_prod_aws.sql (1).txt` coincide con el dump base usado para la migracion.
+- Se realizo una revision transversal del proyecto activo `software el castillo` para dejar contexto listo para futuras consultas: se confirmo la arquitectura React/Vite + Supabase + Laravel legacy + servicios Node auxiliares, el mapa principal de pantallas/rutas, los puntos de integracion (`/api`, Supabase, Gemini, ADMS, OAuth/social, MercadoPago, Twilio, LiveJasmin) y la ubicacion canonica de secretos en `security/` + `.secure/`.
+- Hallazgo operativo reiterado de esa revision: el workspace local sigue conteniendo credenciales reales de alto impacto en `.secure/*`, `.env*`, `backend-legacy/.env` y algunos scripts/artefactos; no deben repetirse en conversaciones ni documentacion y conviene priorizar saneamiento/rotacion cuando el foco sea seguridad.
+- Verificacion actual del estado real: `backend-legacy/` si corresponde al `server/` Laravel del zip y `php artisan route:list` sigue respondiendo (`358` rutas) mientras `php artisan test`, `npm run secrets:check`, `npm run lint` y `npm run build` pasaron; pero `ms-sso/`, `ms-wscrap/` y `ninpo/` no estan integrados en este repo, asi que el backend disponible aqui sigue siendo parcial frente al zip completo.
+- Verificacion de datos/infra: en `staging` se comprobaron por REST `82` tablas esperadas (dump AWS + extras endurecidos) y no falto ninguna; aun asi el despliegue VPS completo del backend sigue bloqueado porque faltan `.secure/backend-legacy.pruebas.env.local` y `.secure/backend-legacy.terminado.env.local`, y el flujo live documentado todavia depende de `/api` proxied hacia backend externo en vez de quedar completamente auto-contenido en el VPS.
+- Se dejo preparado el flujo pedido por el usuario para despliegue automatizado: `/.github/workflows/staging-deploy.yml` ahora despliega al VPS automaticamente en cada push a `staging`, `/.github/workflows/production-deploy.yml` queda manual para publicar `main` solo cuando se solicite, y `deploy/vps/publish.sh` ya acepta `staging|production|all` usando compose separados por entorno (`deploy/vps/docker-compose.staging.yml`, `deploy/vps/docker-compose.production.yml`).
+- GitHub actual: el repo si esta enlazado a remotos y ya existen workflows de CI/secret scan; el guardado en GitHub sigue dependiendo de push/merge al repo, pero una vez llega a `staging` el redeploy a pruebas queda automatico y `production` sigue bajo disparo manual.
+- Nueva revision de secretos operativos: ahora si existe `GITHUB_TOKEN` local en `.secure/deploy.env.local` y tambien hay metadatos del VPS terminado en `.secure/vps.terminado.env.local` (host, usuario, password y clave publica SSH). Aun asi, siguen faltando `.secure/backend-legacy.pruebas.env.local` y `.secure/backend-legacy.terminado.env.local`, y el intento de acceso SSH al VPS con la credencial almacenada fallo por autenticacion; por eso el cierre total del pipeline remoto sigue bloqueado hasta validar una credencial SSH utilizable o cambiar la estrategia de despliegue.
+- Segunda revision tras nueva actualizacion del usuario: aparecio tambien `PRUEBAS_VPS_SSH_KEY` en `.secure/vps.pruebas.env.local`, el `GITHUB_TOKEN` sigue siendo valido contra la API de GitHub, pero en el repo remoto todavia no existen los secrets `VPS_SSH_*` ni environments `staging/production`; solo siguen visibles secrets legacy de Easypanel. El acceso SSH por password al VPS terminado sigue rechazado y los archivos `.secure/backend-legacy.pruebas.env.local` / `.secure/backend-legacy.terminado.env.local` todavia no aparecen.
+- Tercera revision de credenciales: aparecieron `.secure/vps.private.key`, `.secure/vps.public.key` y `.secure/CREDENTIALS.md`. La clave privada corresponde a la publica local, pero al probar `ssh` contra el VPS con el usuario `root` el servidor rechazo esa clave (`Permission denied (publickey,password)`), lo que apunta a que aun no esta autorizada para ese usuario o que el usuario SSH correcto es otro. GitHub tampoco tiene aun cargados los secrets `VPS_SSH_*` requeridos por los workflows nuevos.
+- Se confirmo acceso SSH real al VPS `srv1081705.hstgr.cloud` como `root` con clave; se genero ademas una nueva clave sin passphrase para GitHub Actions (`.secure/vps.github-actions.key`) y se autorizo en `/root/.ssh/authorized_keys` del VPS.
+- Ya quedaron creados en GitHub los environments `staging` y `production`, y tambien los secrets repo-level `VPS_SSH_HOST`, `VPS_SSH_USER`, `VPS_SSH_PRIVATE_KEY`, `VPS_SSH_KNOWN_HOSTS`, `VPS_SSH_PORT` y `VPS_APP_DIR`. Tambien se creo la rama remota `staging` a partir de `supabase-migration-final-safe`.
+- Se ajusto el despliegue VPS para la topologia live actual: `deploy/vps/docker-compose.staging.yml` y `deploy/vps/docker-compose.production.yml` ahora solo reconstruyen frontend y reutilizan las redes externas `easypanel` / `easypanel-elcastillo`, mientras `deploy/vps/publish.sh` reemplaza los contenedores live `elcastillo_castilloprueba` / `elcastillo_castilloterminado` y omite pasos de Nginx del host si ese binario no existe.
+- Se materializaron en el VPS `.secure/vps.pruebas.env.local` y `.secure/vps.terminado.env.local`, se publico manualmente `staging` con el flujo nuevo y se verifico `https://pruebas.livstre.com/health` + `https://pruebas.livstre.com/api/app/connectivity` respondiendo OK. El checkout del repo en el VPS quedo limpio al final sobre la rama `staging` para no bloquear futuros `git pull`.
+- Bloqueo restante: toda la automatizacion GitHub->VPS ya esta preparada en secretos/branch/VPS, pero los workflows y scripts nuevos siguen solo en el working tree local; hasta que esos cambios no se suban al repo (`staging` y luego `main`), GitHub Actions seguira usando la version antigua versionada.
 - Se alineo la documentacion activa (`README.md`, `docs/vps-deploy.md`, `docs/easypanel.md`, `docs/environments.md`) con el estado real: los dos frontends live ya salen directo desde el VPS, `dashboard-app/` queda solo como compatibilidad y Easypanel pasa a ser ruta auxiliar/fallback, no pipeline principal.
-- Se ajustaron tambien `.github/workflows/staging-deploy.yml` y `.github/workflows/production-deploy.yml` para que el fallback legacy de Easypanel ya no se dispare por `push`; ambos quedan solo por `workflow_dispatch` y validan build con base `/`, alineados con los subdominios servidos en raiz desde el VPS.
+- Se ajustaron tambien `.github/workflows/staging-deploy.yml` y `.github/workflows/production-deploy.yml` para que el pipeline activo apunte al VPS: `staging` ya corre por `push` y `workflow_dispatch`, mientras `production` queda solo manual por `workflow_dispatch`, ambos con validaciones frontend/backend antes del despliegue remoto por SSH.
 - Se agrego `/.github/workflows/ci.yml` para validar frontend y backend en GitHub sin volver a activar despliegues automaticos legacy; ademas `deploy/vps/docker-compose.yml` y `deploy/vps/publish.sh` ahora cargan variables de build separadas por entorno para que el frontend directo del VPS siempre reciba sus claves correctas de Supabase.
 - `deploy/vps/nginx-pruebas.conf` y `deploy/vps/nginx-terminado.conf` quedaron mas consistentes: exponen `/health`, redirigen `/dashboard-app/` a `/` y mantienen `/api/` apuntando correctamente al backend sin romper el prefijo de Laravel.
 - `server.mjs` se simplifico para el flujo local/standalone: ya no deja diagnosticos ruidosos siempre activos, expone `/health`, limita `__local/login-lookup` a loopback en desarrollo y conserva el redirect de compatibilidad `/dashboard-app/ -> /`.
@@ -25,6 +64,7 @@
 - Se actualizo tambien `/srv/el-castillo` en el VPS a `f9a5b8d`, se reconstruyeron las imagenes `castillo-frontend-pruebas:direct` y `castillo-frontend-terminado:direct` con `NGINX_API_UPSTREAM=https://el-castillo-api.bygeckode.com`, y se recrearon los contenedores live `elcastillo_castilloprueba` y `elcastillo_castilloterminado` sobre las redes `easypanel` y `easypanel-elcastillo`.
 - Verificacion remota posterior al redeploy: `https://pruebas.livstre.com/health` y `https://terminado.livstre.com/health` responden `200 ok`; `https://pruebas.livstre.com/api/app/connectivity` y `https://terminado.livstre.com/api/app/connectivity` ya responden JSON valido desde el backend legacy proxied, en lugar de devolver HTML del dashboard.
 - Ajuste final adicional: los redirects legacy de `/dashboard-app/` ya quedaron relativos (`location: /`) en vivo, evitando bajar de HTTPS a HTTP detras de Traefik.
+- Se inspeccionaron los zip subidos en `problemas/Problema/`: `el-castillo-webapp-develop (1).zip` si contiene un backend Laravel completo en `server/` y `castillo_prod_aws.sql (1).txt` es un dump PostgreSQL valido; no aparecio ningun `.env` real, solo `*.env.example`, asi que se preparo una ruta de reconstruccion basada en dump con `deploy/vps/backend-rebuild.compose.yml`, `deploy/vps/restore-prod-dump.sh`, `.secure/backend-rebuild.env.example` y `docs/backend-rebuild-from-zip.md`.
 - Se dejo preparada una ruta de despliegue en VPS propio sin Easypanel: `deploy/vps/docker-compose.yml`, `deploy/vps/nginx-pruebas.conf`, `deploy/vps/nginx-terminado.conf` y `docs/vps-deploy.md`, con dominios `pruebas.livstre.com` y `terminado.livstre.com` sirviendo frontend en `/` y backend legacy bajo `/api`.
 - Se rehizo `backend-legacy/Dockerfile` para que el backend Laravel pueda construir una imagen utilizable en Docker/Apache con Composer, extensiones PHP, `public/` como document root y permisos basicos de runtime.
 - Se alinearon referencias documentales y ejemplos de CORS/produccion para usar `terminado.livstre.com` en lugar de `login.livstre.com` donde aplica.
@@ -173,10 +213,11 @@
 - Con esa `sb_secret` se importaron en `production` las tablas publicas principales mediante `scripts/import_aws_dump_rest.mjs`: `users` (4182), `studios` (97), `studios_models` (4243), `models_accounts` (16394), `models_streams` (382752), `transactions` (4163), `payments` (575), `accounts` (11), `bank_accounts` (39), `exchange_rates` (496) y `payment_files` (23).
 - Se crearon usuarios de autenticacion en `production` desde `public.users` con `scripts/sync_auth_from_users_admin.mjs`, usando como password los ultimos 5 digitos de la cedula. Quedaron `4182` filas de `public.users` enlazadas con `auth_user_id`.
 - Se valido login real en `production` con un usuario de prueba y password legacy temporal, tanto por email directo como por flujo de identificacion.
-- Claves recibidas y usadas para `production`: publishable `sb_publishable_5Awk9f_...` y secret `sb_secret_K2Fxg1_...`.
+- Claves de gestion recibidas para `production` y `staging`; no registrar valores ni fragmentos en memoria.
 - Token personal Supabase para management API de `production` disponible localmente de forma segura fuera de archivos versionables; no se registra el valor en memoria.
-- URL interna de pruebas disponible: `https://pruebas.livstre.com`.
-- URL de produccion: `https://terminado.livstre.com`.
+- URL interna de pruebas confirmada: `https://pnnrsqocukixusmzrlhy.supabase.co` (pruebas.livstre.com).
+- URL de producción confirmada: `https://ysorlqfwqccsgxxkpzdx.supabase.co` (terminado.livstre.com).
+- Detalles operativos del VPS terminado y del token GitHub quedaron guardados solo en archivos privados locales; no repetir valores en `MEMORIA.md`.
 - Se dejo una rama segura para revision en GitHub: `supabase-migration-final-safe`.
 - Se endurecio la logica multi-tenant en frontend con `apps/dashboard/tenant.ts` y `apps/dashboard/tenantSettings.ts` para tomar `std_id` de la sesion activa en vez de caer por defecto al estudio `1`.
 - Se ajustaron servicios criticos para respetar el estudio actual y aislar configuraciones por sede: `PhotoService`, `ContentSalesService`, `RoomControlService`, `StoreService`, `BillingService`, `LicenseService`, `MasterSettingsService`, `MonetizationService`, `BirthdayService`, `AttendanceService` y `ReportSupabaseService`.
@@ -188,6 +229,54 @@
 - `RemoteDesktopService` ahora filtra client-side los registros con `std_id` cuando ese dato existe en la tabla remota, aunque todavia depende de que el backend/esquema remoto exponga ese campo.
 
 ### Archivos tocados recientemente
+- `package.json`
+- `.env`
+- `.env.example`
+- `.env.staging`
+- `.env.production`
+- `.secure/root.production.env.local`
+- `apps/dashboard/.env`
+- `server/.env`
+- `backend-legacy/.env`
+- `scripts/materialize-secure-env.mjs`
+- `scripts/migrate-existing-envs.mjs`
+- `scripts/list-settings.mjs`
+- `scripts/check-settings.mjs`
+- `scripts/browser_validate_login.mjs`
+- `check_auth_consistency.mjs`
+- `check_prod_url.mjs`
+- `recover_staging.mjs`
+- `apps/dashboard/App.tsx`
+- `apps/dashboard/vite.config.ts`
+- `reset_passwords.mjs`
+- `scripts/check-secrets.mjs`
+- `scripts/load-supabase-env.mjs`
+- `apply_rls_all.mjs`
+- `apply_rls_staging.mjs`
+- `apply_rls_rpc.mjs`
+- `check_auth_consistency.mjs`
+- `sync_prod_full.mjs`
+- `sync_prod_terceros.mjs`
+- `test_auth_admin.mjs`
+- `test_mgmt_api.mjs`
+- `verify_prod_rls.mjs`
+- `test_cross_env_login.mjs`
+- `tmp/check_rpc.mjs`
+- `backend-legacy/app/Http/Middleware/Authenticate.php`
+- `backend-legacy/app/Exceptions/Handler.php`
+- `backend-legacy/tests/Feature/ApiAuthenticationTest.php`
+- `docs/backend-rebuild-from-zip.md`
+- `MEMORIA.md`
+- `.github/workflows/staging-deploy.yml`
+- `.github/workflows/production-deploy.yml`
+- `deploy/vps/docker-compose.staging.yml`
+- `deploy/vps/docker-compose.production.yml`
+- `deploy/vps/publish.sh`
+- `README.md`
+- `docs/environments.md`
+- `docs/vps-deploy.md`
+- `docs/easypanel.md`
+- `MEMORIA.md`
 - `Dockerfile`
 - `.dockerignore`
 - `docs/easypanel.md`
@@ -205,6 +294,7 @@
 - `.secure/deploy.env.example`
 - `.secure/vps.pruebas.env.example`
 - `.secure/vps.terminado.env.example`
+- `.secure/backend-rebuild.env.example`
 - `scripts/secure-env-paths.mjs`
 - `scripts/migrate-existing-envs.mjs`
 - `scripts/materialize-secure-env.mjs`
@@ -214,6 +304,9 @@
 - `deploy/vps/publish.sh`
 - `deploy/vps/nginx-pruebas.conf`
 - `deploy/vps/nginx-terminado.conf`
+- `deploy/vps/backend-rebuild.compose.yml`
+- `deploy/vps/restore-prod-dump.sh`
+- `docs/backend-rebuild-from-zip.md`
 - `final_init.mjs`
 - `fix_missing_tables.mjs`
 - `local_init_staging.mjs`
@@ -263,6 +356,9 @@
 - `apps/dashboard/components/LoginPage.tsx`
 - `apps/dashboard/components/AuthCallbackPage.tsx`
 - `apps/dashboard/App.tsx`
+- `apps/dashboard/components/Dashboard.tsx`
+- `apps/dashboard/AuthService.ts`
+- `apps/dashboard/services/supabase/AuthSupabaseService.ts`
 - `apps/dashboard/appRoutes.tsx`
 - `.github/workflows/staging-deploy.yml`
 - `.github/workflows/production-deploy.yml`
@@ -310,17 +406,21 @@
 - Estado: los cambios estructurales de despliegue/CI/documentacion de esta fase ya quedaron enviados a `origin/supabase-migration-final-safe`, incluido el redeploy live del frontend con proxy `/api`; el working tree local sigue teniendo archivos ajenos/no relacionados sin commitear.
 
 ### Pendientes
+- Revisar el resto de `.env` operativos/derivados (`.env`, `apps/dashboard/.env`, `backend-legacy/.env`, `server/.env`) para confirmar que sigan reconstruyendose desde `.secure/` sin volver a filtrar credenciales en archivos versionados o docs.
+- Decidir si realmente se deben ejecutar en `production` los scripts mutantes `reset_passwords.mjs` y/o `sync_prod_full.mjs`; ahora ya tienen Auth Admin operativo, pero ambos cambian passwords masivamente y `sync_prod_full.mjs` ademas upserta `terceros`.
+- Si se quiere dejar tambien limpio el checkout remoto del VPS, subir/versionar formalmente el fix de `apps/dashboard/App.tsx` o volver a sincronizar el repo remoto despues de un commit; hoy el contenedor live ya corre con la imagen nueva, pero `/srv/el-castillo` quedo con `M apps/dashboard/App.tsx`.
 - Si se mantiene Easypanel como fallback, revisar periodicamente que sus variables sigan alineadas con la ruta real que se quiera publicar (`/` o `/dashboard-app/`) para no reintroducir despliegues inconsistentes.
 - Materializar en el VPS `.secure/vps.pruebas.env.local` y `.secure/vps.terminado.env.local` con las claves anon/publicas correctas de Supabase para que `docker compose` pueda reconstruir ambos frontends sin depender de pasos manuales externos.
 - Si se quiere sacar completamente el backend de `bygeckode`, conseguir o regenerar credenciales SQL/entorno validas para `staging` y `production` y levantar `backend-legacy/` directo en el VPS en lugar del proxy actual `NGINX_API_UPSTREAM`.
+- Si no aparece el `.env` real, intentar una reconstruccion controlada desde el dump `castillo_prod_aws.sql (1).txt` usando `docs/backend-rebuild-from-zip.md`, sabiendo que quedara funcional pero no necesariamente identica al entorno historico.
 - Rotar y sanear todas las credenciales sensibles expuestas localmente (`service_role`, tokens y passwords auxiliares) y limpiar archivos/scripts con secretos legacy. Pendiente por decision del usuario para el cierre final.
 - Forzar cambio de password o estrategia de credenciales para usuarios creados con `cedula-last5` en `production`. Pendiente por decision del usuario para el cierre final.
-- Instalar PHP 8.1+ y Composer en esta maquina para poder ejecutar y validar `backend-legacy/` (`composer install`, `php artisan route:list`, `php artisan test`).
+- Levantar PostgreSQL local util o apuntar `backend-legacy/.env` a una base operativa para completar pruebas funcionales reales de endpoints que hoy dependen de DB (`api/app/version`, `api/app/proxy` con token valido, login real, etc.).
 - Completar la auditoria funcional del backend legacy ya integrado ejecutandolo localmente o en staging y verificando que el middleware `resolveTenant` no rompa endpoints historicos.
 - Completar el mapeo de `users.std_id` para los usuarios que siguen `NULL` (`4182` totales, `1688` restaurados automaticamente) solo si aparece una fuente de verdad segura para los casos ambiguos.
 - Validar en `staging` desde navegador con usuarios de distintas sedes que las nuevas politicas no rompan `chat`, `remote desktop`, `nomina`, `monetizacion`, `comisiones`, `streams` ni `settings` por sede.
 - Validar en `production` desde navegador con usuarios reales de distintas sedes que las nuevas politicas no rompan `chat`, `remote desktop`, `nomina`, `monetizacion`, `comisiones`, `streams` ni `settings` por sede.
-- Confirmar la URL frontend real vigente de `staging` y `production`, porque las URLs conocidas hoy no permiten completar la validacion browser del dashboard desplegado.
+- Completar la validacion browser sobre las URLs ya confirmadas `https://pruebas.livstre.com/` y `https://terminado.livstre.com/`, cerrando la parte operativa pendiente del backend `/api` y los recorridos funcionales por sede.
 - Probar en navegador con usuarios reales de distintas sedes los modulos cubiertos por las nuevas politicas (`chat`, `remote_*`, `nomina`, `monetizacion`, `comisiones`, `streams`).
 - Revisar el dashboard en `staging` en navegador con el usuario de prueba validado y confirmar navegacion, graficas y modulos principales.
 - Revisar en navegador el dashboard de `production` con usuarios reales y confirmar que los modulos cargan correctamente con la base importada.
@@ -343,12 +443,19 @@
 - `php` ya esta instalado pero no quedo en el PATH de esta sesion CLI; por ahora hay que invocarlo por ruta completa (`C:\Users\ElCastillo\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.3_Microsoft.Winget.Source_8wekyb3d8bbwe\php.exe`).
 - La validacion browser end-to-end sigue pendiente, pero ya no por la ruta del frontend: `https://pruebas.livstre.com/` y `https://terminado.livstre.com/` ya sirven el build correcto en raiz; lo que falta es cerrar la parte operativa del backend `/api` y pruebas funcionales completas por sede.
 - El dominio unico ya funciona tambien para `/api`, pero por ahora mediante proxy reverso hacia `https://el-castillo-api.bygeckode.com`; la migracion total del backend al VPS sigue bloqueada por falta de credenciales operativas completas del entorno Laravel/PostgreSQL en este host.
+- Los zip subidos ayudan a reconstruir codigo y esquema base, pero no reemplazan el `.env` real: la copia descargada contiene solo `server/.env.example`, `client/.env.example` y otros ejemplos, sin secretos operativos verdaderos.
 - El pipeline heredado de Easypanel/CI ya no corre automatico, pero si vuelve a usarse manualmente con variables/ruta mal configuradas todavia podria reintroducir builds inconsistentes.
 - En esta sesion no aparecio de nuevo ningun webhook/token operativo de Easypanel en archivos locales ni variables de entorno, asi que el redeploy remoto sigue bloqueado por acceso y no por codigo local.
 - El despliegue directo por `docker compose` en VPS queda mejor preparado, pero sigue requiriendo que existan los archivos locales `.secure/vps.pruebas.env.local`, `.secure/vps.terminado.env.local`, `.secure/backend-legacy.pruebas.env.local` y `.secure/backend-legacy.terminado.env.local` en el host.
 - El repo sigue teniendo cambios ajenos/no relacionados (`apps/dashboard/services/supabase/AuthSupabaseService.ts`, `backend-legacy/app/Http/Controllers/UserController.php`, `deploy/vps/nginx-pruebas.conf` y varios scripts sueltos), asi que cualquier commit futuro debe aislar solo los archivos de esta migracion/documentacion.
+- La validacion HTTP local sigue parcial porque PostgreSQL local no esta arriba en `127.0.0.1:5432`; por eso endpoints que consultan DB (`api/app/version`, `api/app/proxy` con auth interna valida y cualquier login real) siguen devolviendo `500 connection refused` mientras no exista una base operativa.
+- Los scripts `reset_passwords.mjs` y `sync_prod_full.mjs` ya no estan bloqueados por credencial, pero siguen bloqueados operativamente hasta decidir si se acepta su impacto en `production` (cambio masivo de passwords y escritura adicional en datos).
+- El checkout del repo en el VPS quedo sucio en `/srv/el-castillo` (`M apps/dashboard/App.tsx`) porque el redeploy de `staging` se hizo copiando el archivo local sin commit remoto; esto no afecta al contenedor live actual, pero conviene limpiarlo cuando el cambio ya quede versionado.
 
 ### Siguiente paso recomendado
+- Completar el saneamiento de `.env*` versionados y reutilizar `scripts/load-supabase-env.mjs` como punto comun para futuras utilidades Supabase, para no volver a introducir tokens pegados en scripts sueltos.
+- Si se quiere avanzar con los scripts pendientes de Auth Admin en `production`, empezar por una decision explicita sobre `reset_passwords.mjs` / `sync_prod_full.mjs`; tecnicamente ya pueden correr, pero su efecto es operativo y no reversible sin coordinacion.
+- Versionar/commitear formalmente el fix de `apps/dashboard/App.tsx` antes de futuros `git pull` en el VPS, para que el checkout remoto vuelva a quedar limpio sin perder la mitigacion ya desplegada.
 - Si en algun momento se decide retirar por completo Easypanel del proyecto, eliminar tambien `scripts/deploy.mjs`, los secrets `EASYPANEL_*` y los workflows fallback para simplificar el repositorio.
 - Publicar en el VPS los nuevos archivos `.secure/vps.*.env.local`, ejecutar `deploy/vps/publish.sh` y validar `https://pruebas.livstre.com/health`, `https://terminado.livstre.com/health`, `https://pruebas.livstre.com/api/...` y `https://terminado.livstre.com/api/...`.
 - Tratar la exposicion de secretos y las passwords `cedula-last5` como prioridad de seguridad inmediata antes de seguir ampliando funcionalidades.
@@ -357,8 +464,8 @@
 - Hacer validacion funcional en navegador sobre `staging` y `production` con usuarios de sedes diferentes para confirmar que el RLS nuevo no mezcla datos ni bloquea modulos legitimos.
 - Si tambien se quiere sacar `/api` de Easypanel, repetir la misma estrategia de contenedor directo para el backend legacy y validar `https://pruebas.livstre.com/api` y `https://terminado.livstre.com/api` ya fuera del circuito actual.
 - Decidir si el reseteo de passwords `temporary-strong` aplicado en `staging` debe replicarse o no en otros entornos; en `production` no se ha ejecutado.
-- Instalar PHP/Composer, levantar `backend-legacy/` y validar en staging los endpoints legacy reforzados con `resolveTenant` antes de conectarlo formalmente al frontend desplegado.
-- Cuando haya runtime PHP, priorizar pruebas manuales de `banks_accounts`, `studios_accounts`, `payments_files` y `setup_commissions`, porque fueron endurecidos en esta sesion solo con validacion estatica de codigo.
+- Levantar PostgreSQL local o usar credenciales operativas de `staging` para validar con datos reales los endpoints legacy reforzados con `resolveTenant` antes de conectarlo formalmente al frontend desplegado.
+- Con PHP ya disponible, priorizar pruebas manuales de `banks_accounts`, `studios_accounts`, `payments_files` y `setup_commissions`, porque fueron endurecidos primero con validacion estatica y ahora ya admiten validacion HTTP/local adicional.
 - Como `backend-legacy/` ya compila y lista rutas, el siguiente cuello real ahora es conseguir la URL frontend correcta de `staging`/`production` para completar la validacion browser end-to-end.
 - Si aparece una fuente confiable adicional de asignacion por sede para usuarios staff/monitor/modelo sin `std_id`, ejecutar un segundo backfill controlado para reducir aun mas los `NULL` remanentes sin mezclar sedes.
 - Priorizar revisiones reales de `chat`, `remote desktop`, `nomina`, `monetizacion`, `streams`, `contratos`, `transacciones` y `settings` por sede para detectar cualquier endpoint legacy que todavia no respete el tenant desde backend.

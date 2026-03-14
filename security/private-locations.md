@@ -69,7 +69,8 @@ Archivos actuales esperados:
 
 ## Ubicaciones operativas derivadas
 
-Estos archivos pueden seguir existiendo por compatibilidad, pero la fuente de verdad local recomendada es `.secure/`:
+Estos archivos pueden seguir existiendo por compatibilidad, pero la fuente de verdad local recomendada es `.secure/`.
+Si estan versionados (`.env.example`, `.env.staging`, `.env.production`), deben mantenerse saneados y sin valores privados reales:
 - `.env`
 - `.env.staging`
 - `.env.production`
@@ -82,6 +83,8 @@ Si hace falta regenerarlos desde `.secure/`, usar:
 ```bash
 npm run secure:materialize
 ```
+
+Por defecto, ese comando no reescribe `.env.staging` ni `.env.production` para no volver a volcar secretos reales en archivos versionados. Solo usar `--include-versioned` en una maquina aislada si hace falta reconstruirlos temporalmente.
 
 Si hace falta volver a copiar los `.env` actuales hacia `.secure/`, usar:
 

@@ -5,6 +5,7 @@ const rootDir = process.cwd();
 
 const ignoredDirs = new Set([
   '.git',
+  '.secure',
   'node_modules',
   'dist',
   'vendor',
@@ -15,10 +16,14 @@ const ignoredDirs = new Set([
 const ignoredFiles = new Set([
   '.env',
   '.env.local',
-  '.env.production',
-  '.env.staging',
   '.env.tmp',
   'package-lock.json',
+]);
+
+const trackedEnvFiles = new Set([
+  '.env.example',
+  '.env.staging',
+  '.env.production',
 ]);
 
 const allowedSuffixes = new Set([
@@ -53,6 +58,10 @@ const patterns = [
     regex: /(?:SUPABASE_SERVICE_ROLE_KEY|SUPABASE_ANON_KEY|VITE_SUPABASE_ANON_KEY|SUPABASE_SECRET_KEY)\s*[:=]\s*['"`]?eyJ[A-Za-z0-9._-]{20,}/g,
   },
   {
+    label: 'JWT-like literal',
+    regex: /['"`]eyJ[A-Za-z0-9._-]{20,}\.[A-Za-z0-9._-]{20,}\.[A-Za-z0-9._-]{20,}['"`]/g,
+  },
+  {
     label: 'Laravel APP_KEY literal',
     regex: /APP_KEY\s*=\s*base64:[A-Za-z0-9+/=]{20,}/g,
   },
@@ -79,7 +88,7 @@ const shouldIgnorePath = (entryPath) => {
     return true;
   }
 
-  if (base.startsWith('.env.') && !base.endsWith('.example')) {
+  if (base.startsWith('.env.') && !trackedEnvFiles.has(base) && !base.endsWith('.example')) {
     return true;
   }
 
@@ -89,6 +98,7 @@ const shouldIgnorePath = (entryPath) => {
 const shouldScanFile = (filePath) => {
   if (shouldIgnorePath(filePath)) return false;
   const base = path.basename(filePath);
+  if (trackedEnvFiles.has(base)) return true;
   if (base === 'MEMORIA.md' || base === 'README.md') return true;
   return allowedSuffixes.has(path.extname(filePath)) || base.endsWith('.env.example');
 };

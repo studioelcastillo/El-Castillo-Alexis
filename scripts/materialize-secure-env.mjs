@@ -3,6 +3,8 @@ import path from 'node:path';
 import { secureEnvMappings, resolveProjectPath } from './secure-env-paths.mjs';
 
 const force = process.argv.includes('--force');
+const includeVersioned = process.argv.includes('--include-versioned');
+const versionedTargets = new Set(['.env.staging', '.env.production']);
 
 const materialize = (sourceRelative, targetRelative) => {
   const source = resolveProjectPath(sourceRelative);
@@ -23,6 +25,7 @@ const materialize = (sourceRelative, targetRelative) => {
 
 const reverseMappings = secureEnvMappings
   .filter((entry) => entry.source !== entry.target)
+  .filter((entry) => includeVersioned || !versionedTargets.has(entry.source))
   .map((entry) => ({
     label: entry.label,
     source: entry.target,
@@ -36,4 +39,10 @@ const results = reverseMappings.map((entry) => ({
 
 for (const result of results) {
   console.log(`${result.status.toUpperCase()}: ${result.label} (${result.source} -> ${result.target})`);
+}
+
+if (!includeVersioned) {
+  for (const target of versionedTargets) {
+    console.log(`SKIPPED: versioned template (${target}) - use --include-versioned only on isolated machines.`);
+  }
 }

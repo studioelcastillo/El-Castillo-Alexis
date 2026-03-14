@@ -86,16 +86,18 @@ npm run secure:migrate
 npm run secure:materialize
 ```
 
-- `secure:migrate` copia los `.env` locales existentes hacia `.secure/` sin rotar claves.
-- `secure:materialize` vuelve a materializar esos archivos hacia sus ubicaciones operativas si hace falta.
+- `secure:migrate` copia los archivos operativos no versionados hacia `.secure/` sin rotar claves.
+- Si necesitas importar secretos reales historicos desde `.env.staging` o `.env.production` en una maquina aislada, usa `npm run secure:migrate -- --include-versioned`.
+- `secure:materialize` vuelve a materializar los archivos operativos no versionados (`.env`, `apps/dashboard/.env`, `server/.env`, `backend-legacy/.env`).
+- Si de verdad necesitas sobrescribir tambien `.env.staging` o `.env.production` en una maquina aislada, usa `npm run secure:materialize -- --include-versioned`.
 - La fuente recomendada de trabajo ahora es `.secure/`.
 - Para despliegue directo en VPS, usa tambien `.secure/vps.pruebas.env.local` y `.secure/vps.terminado.env.local` a partir de sus `.example` versionados.
 
 ## Entornos recomendados
-- Local: usar `.env` y `apps/dashboard/.env` apuntando a `staging` (`pnnrsqocukixusmzrlhy` / `https://pruebas.livstre.com/api`)
-- Staging: usar `.env.staging` para `https://pruebas.livstre.com`
-- Produccion: usar `.env.production` para `ysorlqfwqccsgxxkpzdx` / `https://terminado.livstre.com/api`
-- Si el login local se hace por identificacion, define `SUPABASE_SERVICE_ROLE_KEY` en `.env` para habilitar la resolucion server-side solo en desarrollo
+- Local: usar `.env` y `apps/dashboard/.env` apuntando a `staging` (`pnnrsqocukixusmzrlhy` / `https://pruebas.livstre.com/api`) y guardar los valores privados reales en `.secure/root.env.local` y `.secure/dashboard.env.local`
+- Staging: `.env.staging` queda como plantilla versionada saneada para `https://pruebas.livstre.com`; las credenciales reales deben cargarse desde `.secure/root.staging.env.local` o desde el proveedor
+- Produccion: `.env.production` queda como plantilla versionada saneada para `ysorlqfwqccsgxxkpzdx` / `https://terminado.livstre.com/api`; las credenciales reales deben cargarse desde `.secure/root.production.env.local` o desde el proveedor
+- Si el login local se hace por identificacion, define `SUPABASE_SERVICE_ROLE_KEY` solo en `.secure/root.env.local` o en una variable efimera de shell
 
 ## Scripts de base de datos
 Variables usadas por `test_conn.mjs`, `test_passwords.mjs`, `debug_sql.mjs`, `run_pg.mjs`:

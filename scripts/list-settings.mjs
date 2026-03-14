@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { readFile } from 'fs/promises';
 import path from 'path';
+import { loadSupabaseProject } from './load-supabase-env.mjs';
 
 const ROOT = process.cwd();
 const STAGING_ENV = path.join(ROOT, '.env.staging');
@@ -30,8 +31,15 @@ const loadEnvFile = async (filePath) => {
 };
 
 const loadEnv = async (mode) => {
-  if (mode === 'staging') return loadEnvFile(STAGING_ENV);
-  if (mode === 'production') return loadEnvFile(PRODUCTION_ENV);
+  if (mode === 'staging' || mode === 'production') {
+    const project = loadSupabaseProject(mode);
+    return {
+      VITE_SUPABASE_URL: project.url,
+      SUPABASE_URL: project.url,
+      VITE_SUPABASE_ANON_KEY: project.anonKey,
+      SUPABASE_ANON_KEY: project.anonKey,
+    };
+  }
   return {};
 };
 

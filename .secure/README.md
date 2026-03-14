@@ -6,6 +6,7 @@ Esta carpeta esta pensada para archivos locales con informacion sensible del pro
 - No guardes este contenido en git.
 - No copies tokens reales a `README.md`, `MEMORIA.md`, `docs/` ni `security/`.
 - Usa estos archivos solo como almacenamiento local transitorio o como puente hacia variables del sistema/plataforma.
+- Si versionas `.env.staging`, `.env.production` o cualquier `.env*` compartido, dejalo saneado y con placeholders; los valores reales viven aqui o en el proveedor.
 
 ## Archivos sugeridos
 - `.secure/root.env.local`
@@ -15,6 +16,7 @@ Esta carpeta esta pensada para archivos locales con informacion sensible del pro
 - `.secure/deploy.env.local`
 - `.secure/vps.pruebas.env.local`
 - `.secure/vps.terminado.env.local`
+- `.secure/backend-rebuild.env.local`
 
 ## Recomendacion
 - Si el proveedor permite secrets nativos, prefiere el panel del proveedor sobre archivos locales.

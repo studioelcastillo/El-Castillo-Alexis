@@ -29,10 +29,20 @@ try {
     page.waitForLoadState('networkidle', { timeout: 120000 }).catch(() => null),
   ]);
 
-  await page.waitForTimeout(5000);
+  await page.waitForFunction(
+    () => {
+      const loginInput = document.querySelector('input[placeholder="Ingresa tu usuario"]');
+      const text = document.body?.innerText || '';
+      return !loginInput && (text.includes('EL CASTILLO') || text.includes('Inicio'));
+    },
+    { timeout: 20000 }
+  ).catch(() => null);
+  await page.waitForTimeout(1000);
 
   const bodyText = await page.locator('body').innerText();
-  const loggedIn = !bodyText.includes('Iniciar Sesion') && !bodyText.includes('Credenciales invalidas');
+  const loginInputCount = await page.locator('input[placeholder="Ingresa tu usuario"]').count();
+  const hasDashboardShell = bodyText.includes('EL CASTILLO') || bodyText.includes('Inicio');
+  const loggedIn = loginInputCount === 0 && hasDashboardShell;
 
   if (!loggedIn) {
     throw new Error(`Login no confirmado para ${label}. URL final: ${page.url()}`);
@@ -43,7 +53,8 @@ try {
     ok: true,
     finalUrl: page.url(),
     title: await page.title(),
-    hasSidebar: bodyText.includes('EL CASTILLO') || bodyText.includes('Inicio'),
+    hasSidebar: hasDashboardShell,
+    loginInputCount,
   }));
 } catch (error) {
   await page.screenshot({ path: `browser-validate-${label}.png`, fullPage: true }).catch(() => null);
