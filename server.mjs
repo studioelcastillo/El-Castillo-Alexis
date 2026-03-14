@@ -90,8 +90,9 @@ if (!isProduction || shouldLogRequestHeaders) {
 }
 
 app.get('/__local/login-lookup', async (req, res) => {
-  if (isProduction || !isLoopbackRequest(req)) {
-    return res.status(403).json({ status: 'Error', message: 'Endpoint disponible solo en desarrollo local' });
+  const isStaging = process.env.ENVIRONMENT === 'staging';
+  if (isProduction && !isStaging && !isLoopbackRequest(req)) {
+    return res.status(403).json({ status: 'Error', message: 'Endpoint disponible solo en desarrollo local o staging' });
   }
 
   const { identifier } = req.query;

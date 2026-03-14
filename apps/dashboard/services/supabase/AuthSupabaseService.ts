@@ -1,6 +1,6 @@
 import { supabase } from "../../supabaseClient";
 import { buildAppUrl } from "../../utils/baseUrl";
-import { setStoredUser } from "../../session";
+import { getStoredUser, setStoredUser } from "../../session";
 import { clearAuthSession } from "../../utils/session";
 
 type LoginParams = {
@@ -12,53 +12,54 @@ type LoginParams = {
 
 const AuthSupabaseService = {
   async login({ email, password }: LoginParams) {
+    const identifier = String(email || '').trim();
+    const isEmailFormat = identifier.includes("@");
     let targetEmail = email;
-    let userRecord: {
-      user_email?: string;
-      user_identification?: string | number | null;
-      auth_user_id?: string | null;
-    } | null = null;
+    let userRecord: any = null;
 
-    if (!email.includes("@")) {
-      let userData: typeof userRecord = null;
-      let userError: Error | null = null;
+    // Use server-side proxy to bypass RLS for user lookup
+    try {
+      const response = await fetch(
+        `/__local/login-lookup?identifier=${encodeURIComponent(identifier)}`
+      );
 
-      try {
-        const response = await fetch(
-          `/__local/login-lookup?identifier=${encodeURIComponent(email)}`
-        );
+      if (response.ok) {
+        const payload = await response.json();
+        const userData = payload?.data;
 
-        if (response.ok) {
-          const payload = await response.json();
-          userData = payload?.data || null;
+        if (userData) {
+          userRecord = userData;
+          targetEmail = userData.user_email;
         }
-      } catch {
-        // ignore local lookup failures and fall back to direct query
       }
+    } catch (e) {
+      console.error("Local lookup failed:", e);
+    }
 
-      if (!userData) {
-        const directLookup = await supabase
-          .from("users")
-          .select("user_email, user_identification, auth_user_id")
-          .eq("user_identification", email)
-          .single();
-
-        userData = directLookup.data || null;
-        userError = directLookup.error;
-      }
-
-      if (userError || !userData) {
-        throw new Error("Usuario no encontrado por identificación");
-      }
-      targetEmail = userData.user_email;
-      userRecord = userData;
-    } else {
-      const { data: userData } = await supabase
+    if (!userRecord) {
+      // Fallback for development or if proxy fails - direct lookup (might be blocked by RLS)
+      let query = supabase
         .from("users")
-        .select("user_email, user_identification, auth_user_id")
-        .eq("user_email", email)
-        .single();
-      userRecord = userData || null;
+        .select("user_email, user_identification, auth_user_id, user_active")
+        .is("deleted_at", null);
+
+      if (isEmailFormat) {
+        query = query.or(`user_email.ilike.${identifier},user_personal_email.ilike.${identifier}`);
+      } else {
+        query = query.or(`user_identification.eq.${identifier},user_name.ilike.${identifier}`);
+      }
+
+      const { data: userRecords } = await query;
+      userRecord = userRecords?.find(u => u.user_active) || userRecords?.[0] || null;
+      if (userRecord) targetEmail = userRecord.user_email;
+    }
+
+    if (!userRecord) {
+      throw new Error(`Usuario no encontrado: ${identifier}`);
+    }
+
+    if (!userRecord.auth_user_id) {
+       throw new Error(`El usuario ${identifier} no tiene cuenta de autenticación configurada.`);
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -107,19 +108,26 @@ const AuthSupabaseService = {
     } = await supabase.auth.getSession();
 
     if (sessionError || !session?.user?.id) {
-      clearAuthSession();
       return null;
     }
+
+    const cachedUser = getStoredUser();
+    const canReuseCachedUser =
+      !!cachedUser &&
+      String((cachedUser as any).auth_user_id || '') === String(session.user.id || '');
 
     const { data: profile, error: profileError } =
       await AuthSupabaseService.getUserProfile(session.user.id);
 
-    if (profileError || !profile) {
-      clearAuthSession();
-      return null;
+    if (!profileError && profile) {
+      return setStoredUser(profile);
     }
 
-    return setStoredUser(profile);
+    if (canReuseCachedUser) {
+      return cachedUser;
+    }
+
+    return null;
   },
 
   logout() {

@@ -9,6 +9,8 @@ import { ModelsTable, TasksList } from './Tables';
 import DashboardService, { DashboardParams } from '../DashboardService';
 import { getStoredUser } from '../session';
 import { clearAuthSession } from '../utils/session';
+import { buildAppUrl } from '../utils/baseUrl';
+import { supabase } from '../supabaseClient';
 
 // Definición de periodos comunes para la operación
 const PREDEFINED_PERIODS = [
@@ -20,6 +22,7 @@ const PREDEFINED_PERIODS = [
 
 const Dashboard: React.FC = () => {
     const queryClient = useQueryClient();
+    const unauthorizedHandledRef = useRef(false);
 
     // Memoizamos el usuario
     const user = useMemo(() => {
@@ -101,12 +104,38 @@ const Dashboard: React.FC = () => {
     const isLoading = isLoadingIndicators || isLoadingTasks || isLoadingCharts;
     const error = errorIndicators || errorTasks || errorCharts;
 
-    // Handle 401 Errors Globally
+    // Solo cerrar sesion si Supabase realmente ya no tiene sesion activa.
     useEffect(() => {
-        if (error && (error as any).response?.status === 401) {
-            clearAuthSession();
-            window.location.reload();
+        const isUnauthorized = !!error && (error as any).response?.status === 401;
+
+        if (!isUnauthorized) {
+            unauthorizedHandledRef.current = false;
+            return;
         }
+
+        if (unauthorizedHandledRef.current) {
+            return;
+        }
+
+        unauthorizedHandledRef.current = true;
+
+        void (async () => {
+            try {
+                const {
+                    data: { session },
+                    error: sessionError,
+                } = await supabase.auth.getSession();
+
+                if (sessionError || !session) {
+                    clearAuthSession();
+                    window.location.replace(buildAppUrl('login'));
+                }
+            } catch (sessionCheckError) {
+                console.error('No se pudo validar la sesion despues del 401:', sessionCheckError);
+                clearAuthSession();
+                window.location.replace(buildAppUrl('login'));
+            }
+        })();
     }, [error]);
 
     // Cerrar menú al hacer click fuera y resetear modo
@@ -272,11 +301,13 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            {error && (error as any).response?.status !== 401 && (
+            {error && (
                 <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 text-red-600 animate-in fade-in zoom-in-95">
                     <AlertCircle size={20} />
                     <p className="text-sm font-bold">
-                        {(error as Error).message || "Error de conexión. Verifica tu red."}
+                        {(error as any).response?.status === 401
+                            ? 'El dashboard no pudo validar el backend operativo, pero tu sesion sigue activa.'
+                            : (error as Error).message || 'Error de conexión. Verifica tu red.'}
                     </p>
                 </div>
             )}

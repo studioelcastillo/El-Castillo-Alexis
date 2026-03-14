@@ -76,6 +76,8 @@ const AuthService = {
 
   syncStoredSession: () => AuthSupabaseService.syncStoredSession(),
 
+  getSession: () => AuthSupabaseService.getSession(),
+
   checkSession: () => AuthSupabaseService.checkSession(),
 
   getUser: () => AuthSupabaseService.getUser(),
