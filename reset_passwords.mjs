@@ -1,30 +1,19 @@
-import { createClient } from '@supabase/supabase-js';
-import fs from 'fs';
-import path from 'path';
+import { authAdminUpdateUserById, createSupabaseAdminClient } from './scripts/load-supabase-env.mjs';
 
-const envFile = fs.readFileSync('.env', 'utf8');
-let supabaseUrl = '';
-let supabaseKey = '';
+const targetEnv = String(process.env.RESET_PASSWORDS_ENV || process.argv[2] || 'production')
+  .trim()
+  .toLowerCase();
 
-for (let line of envFile.split('\n')) {
-  line = line.trim();
-  if (line.startsWith('VITE_SUPABASE_URL') || line.startsWith('SUPABASE_URL')) {
-    supabaseUrl = line.split('=')[1].trim();
-  }
-  if (line.startsWith('SUPABASE_SERVICE_ROLE_KEY')) {
-    supabaseKey = line.split('=')[1].trim();
-  }
-}
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error("Faltan las credenciales de Supabase en el .env");
+if (!['local', 'staging', 'production'].includes(targetEnv)) {
+  console.error(`Entorno no soportado para reset_passwords.mjs: ${targetEnv}`);
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseTarget = targetEnv === 'local' ? 'staging' : targetEnv;
+const supabase = createSupabaseAdminClient(supabaseTarget);
 
 async function updatePasswords() {
-  console.log("Iniciando actualización masiva de contraseñas...");
+  console.log(`Iniciando actualizacion masiva de contrasenas en ${targetEnv}...`);
   let page = 0;
   const pageSize = 1000;
   let hasMore = true;
@@ -32,7 +21,7 @@ async function updatePasswords() {
   let errorCount = 0;
 
   while (hasMore) {
-    console.log(`Buscando usuarios (página ${page + 1})...`);
+      console.log(`Buscando usuarios (pagina ${page + 1})...`);
     // Obtener usuarios de la tabla 'users' pública que tiene el user_identification
     const { data: users, error } = await supabase
       .from('users')
@@ -42,7 +31,7 @@ async function updatePasswords() {
       .range(page * pageSize, (page + 1) * pageSize - 1);
 
     if (error) {
-      console.error("Error obteniendo usuarios:", error);
+      console.error('Error obteniendo usuarios:', error);
       break;
     }
 
@@ -52,42 +41,36 @@ async function updatePasswords() {
     }
 
     for (const user of users) {
-      const doc = String(user.user_identification).trim();
-      if (doc.length >= 6) {
-        const newPassword = doc.slice(-6);
+      const doc = String(user.user_identification).trim().replace(/\D/g, '');
+      if (doc.length > 0) {
+        let newPassword = doc.length >= 6 ? doc.slice(-6) : doc;
+        if (newPassword.length < 6) {
+          newPassword = newPassword.padStart(6, '0');
+        }
         try {
-          const { error: updateError } = await supabase.auth.admin.updateUserById(
-            user.auth_user_id,
-            { password: newPassword }
-          );
+          await authAdminUpdateUserById(supabaseTarget, user.auth_user_id, { password: newPassword });
+          console.log(`OK contrasena de ${doc} actualizada a ${newPassword}`);
 
-          if (updateError) {
-             console.error(`❌ Error actualizando a ${doc}:`, updateError.message);
-             errorCount++;
-          } else {
-             console.log(`✅ Contraseña de ${doc} actualizada a ${newPassword}`);
+          // Actualizar tambien la tabla users para consistencia con el viejo backend (opcional pero recomendado)
+          await supabase.from('users').update({ user_password: newPassword }).eq('auth_user_id', user.auth_user_id);
 
-             // Actualizar también la tabla users para consistencia con el viejo backend (opcional pero recomendado)
-             await supabase.from('users').update({ user_password: newPassword }).eq('auth_user_id', user.auth_user_id);
-
-             successCount++;
-          }
+          successCount++;
         } catch (e) {
-          console.error(`💥 Excepción actualizando a ${doc}:`, e);
+          console.error(`Excepcion actualizando a ${doc}:`, e);
           errorCount++;
         }
       } else {
-        console.warn(`⚠️ Usuario ignorado: ${doc} (menos de 6 dígitos)`);
+        console.warn(`Usuario ignorado: ${doc} (menos de 6 digitos)`);
       }
     }
     page++;
   }
 
-  console.log("===================================");
-  console.log(`Proceso finalizado.`);
-  console.log(`✅ Usuarios actualizados: ${successCount}`);
-  console.log(`❌ Errores: ${errorCount}`);
-  console.log("===================================");
+  console.log('===================================');
+  console.log('Proceso finalizado.');
+  console.log(`Usuarios actualizados: ${successCount}`);
+  console.log(`Errores: ${errorCount}`);
+  console.log('===================================');
 }
 
 updatePasswords();
