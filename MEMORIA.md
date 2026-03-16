@@ -15,6 +15,27 @@
 - Definir y arrancar la reconstruccion greenfield de `StudioCore ERP` dentro del repo: nuevo producto multiempresa y multisede, con plan maestro, arquitectura objetivo y bootstrap tecnico inicial sin depender del legacy actual.
 
 ### Ultimo avance
+- Se continuo `studiocore-erp/` cerrando otro tramo fuerte del flujo RRHH->nomina: `disciplina` + `exportacion CSV` de payroll. En backend se agregaron entidad/migracion para `hr_disciplinary_actions` (`1710000011000`), endpoints nuevos bajo `apps/api/src/modules/hr/*` para llamados/sanciones, y `apps/api/src/modules/payroll/payroll.service.ts` ahora expone exportacion CSV del snapshot. Las sanciones aprobadas con `payrollImpactAmount` generan o actualizan una `payroll_novelty` tipo `deduction`; si luego se rechazan o pierden impacto, limpian la novedad mientras el periodo no este cerrado. En frontend se sumo `apps/web/src/pages/HrDisciplinaryActionsPage.tsx`, nueva entrada `RRHH > Disciplina`, y `apps/web/src/pages/PayrollPage.tsx` ahora incluye boton de exportacion CSV del periodo. Tambien se ampliaron contratos compartidos y las pruebas de integracion del API para cubrir disciplina + export. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `node --max-old-space-size=4096 ../../node_modules/typescript/bin/tsc --noEmit -p tsconfig.json` en `apps/web`, `npm run test --workspace @studiocore/api` y `set "NODE_OPTIONS=--max-old-space-size=8192" && npm run build` OK.
+- Se continuo `studiocore-erp/` profundizando `payroll` con `items detallados por persona` dentro del snapshot ya calculado. No hizo falta una tabla nueva: se enriquecio `apps/api/src/modules/payroll/payroll.service.ts` para que cada item del `payroll_run` now incluya `components` monetarios (compensacion fija, bonos de metas y novedades aprobadas) y `alerts` operativas (ausencias pendientes, novedades criticas pendientes). En frontend `apps/web/src/pages/PayrollPage.tsx` ahora muestra, debajo del resumen tabular, un desglose por persona con componentes y alertas congeladas del ultimo calculo. Tambien se ampliaron contratos compartidos y las pruebas de integracion para validar la presencia de componentes/alerts dentro del snapshot. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
+- Se continuo `studiocore-erp/` abriendo `hr` base con `incapacities` y `vacations`. En backend se agregaron entidades/migracion para `hr_incapacities` y `hr_vacations` (`1710000010000`), permisos `hr.*`, y modulo nuevo en `apps/api/src/modules/hr/*` con CRUD tenant-aware, validacion de rango/persona/sede y auditoria. Cuando una incapacidad o vacacion queda `approved`, el backend intenta sincronizar/actualizar una `payroll_novelty` del periodo que cubre la fecha; si se desaprueba o cambia fuera de periodo, limpia la novedad enlazada mientras el periodo no este cerrado. En frontend se sumaron `apps/web/src/pages/HrRequestsPage.tsx`, `apps/web/src/pages/HrIncapacitiesPage.tsx` y `apps/web/src/pages/HrVacationsPage.tsx`, mas navegacion `RRHH`; las vistas ya permiten operar incapacidades/vacaciones y ver su sincronizacion base con payroll. Tambien se ampliaron contratos compartidos y las pruebas de integracion del API para cubrir sincronizacion HR->payroll. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
+- Se continuo `studiocore-erp/` profundizando `payroll` con `payroll_novelties`. En backend se agregaron entidad/migracion para `payroll_novelties` (`1710000009000`), permisos `payroll_novelties.*`, y modulo nuevo en `apps/api/src/modules/payroll-novelties/*` con CRUD tenant-aware por periodo/persona, bloqueo de edicion sobre periodos cerrados y auditoria. `apps/api/src/modules/payroll/payroll.service.ts` ahora incorpora novedades aprobadas al snapshot, cuenta novedades criticas pendientes y bloquea el cierre si quedan pendientes. En frontend se sumo `apps/web/src/pages/PayrollNoveltiesPage.tsx`, nueva entrada `Nomina > Novedades`, y `apps/web/src/pages/PayrollPage.tsx` ya muestra el impacto de novedades dentro del snapshot calculado. Tambien se ampliaron contratos compartidos y las pruebas de integracion del API para cubrir CRUD de novedades y su efecto real en cierre/recalculo de payroll. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
+- Se continuo `studiocore-erp/` abriendo el primer enlace transversal con `payroll`. En backend se agregaron entidad/migracion para `payroll_periods` y `payroll_runs` (`1710000008000`), permisos `payroll.*`, y modulo nuevo en `apps/api/src/modules/payroll/*` con CRUD de periodos, `calculate`, `close` y `reopen`. El calculo ya genera un snapshot inicial usando contratos activos + asistencia + ausencias + tiempo en linea + metas cerradas del periodo, bloquea el cierre si quedan ausencias reportadas pendientes y deja auditoria de create/edit/calculate/close/reopen. En frontend se sumo `apps/web/src/pages/PayrollPage.tsx` y la navegacion `Nomina > Periodos`; la vista ya permite crear periodos, correr calculo, cerrar/reabrir y revisar el resumen por persona del ultimo snapshot. Tambien se ampliaron contratos compartidos y las pruebas de integracion del API para cubrir el flujo completo de payroll base. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
+- Se continuo `studiocore-erp/` abriendo el siguiente bloque natural de Fase 2: `online_time`. En backend se agregaron entidad/migracion para `online_sessions` (`1710000007000`), permisos `online_time.*`, y modulo nuevo en `apps/api/src/modules/online-time/*` con CRUD tenant-aware, validacion cruzada sede/persona/turno, duracion derivada de la sesion y auditoria. En frontend se sumo `apps/web/src/pages/OnlineTimePage.tsx`, mas navegacion nueva en la shell para `Tiempo en linea`; la vista ya permite operar sesiones online con plataforma, tokens, monto bruto, apertura/cierre y enlace opcional a turno. Tambien se ampliaron contratos compartidos y las pruebas de integracion del API para cubrir CRUD y restricciones branch-scoped de sesiones online. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
+- Se continuo `studiocore-erp/` abriendo el siguiente bloque util de Fase 2: `absences` y `goals`. En backend se agregaron entidades/migracion para `absence_records` y `goal_records` (`1710000006000`), permisos `absences.*` y `goals.*`, y modulos nuevos en `apps/api/src/modules/absences/*` y `apps/api/src/modules/goals/*` con CRUD tenant-aware, validacion cruzada sede/persona/turno y auditoria. En frontend se sumaron `apps/web/src/pages/AbsencesPage.tsx` y `apps/web/src/pages/GoalsPage.tsx`, mas navegacion nueva en la shell para `Inasistencias` y `Metas`; ambas vistas ya permiten operar ausencias y metas/bonos base por persona, periodo o turno sin salir del greenfield. Tambien se ampliaron contratos compartidos y las pruebas de integracion del API para cubrir CRUD y restricciones branch-scoped de ambos dominios. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
+- Se continuo `studiocore-erp/` abriendo el siguiente bloque natural de Fase 2: `operations` y `attendance`. En backend se agregaron entidades/migracion para `operation_shifts` y `attendance_records` (`1710000005000`), permisos `operations.*` y `attendance.*`, y modulos nuevos en `apps/api/src/modules/operations/*` y `apps/api/src/modules/attendance/*` con list/create/update tenant-aware, auditoria y validacion cruzada de sede/persona/turno. En frontend se sumaron `apps/web/src/pages/OperationsPage.tsx` y `apps/web/src/pages/AttendancePage.tsx`, mas navegacion nueva en la shell para `Turnos` y `Asistencia`; ambas vistas ya permiten CRUD base, agenda por sede/persona y registro manual de asistencia asociado o no a un turno. Tambien se ampliaron los contratos compartidos y las pruebas de integracion del API para cubrir CRUD/scope branch-scoped de turnos y asistencia. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
+- Se continuo `studiocore-erp/` abriendo el siguiente modulo natural de Fase 1: `models` y `staff` especializados encima del nucleo `people`. En backend se agregaron permisos `models.*` y `staff.*`, nuevos wrappers `apps/api/src/modules/models/*` y `apps/api/src/modules/staff/*` sobre `PeopleService`, con endpoints `GET/POST/PATCH /models` y `GET/POST/PATCH /staff` que fuerzan el `personType`, filtran listados y devuelven `404` si se intenta consultar un registro del tipo equivocado. En frontend se sumaron `apps/web/src/pages/TalentPage.tsx`, `apps/web/src/pages/ModelsPage.tsx` y `apps/web/src/pages/StaffPage.tsx`, mas navegacion nueva en la shell; ambas vistas ya permiten listado, detalle y CRUD base reutilizando branches/catalogs/people sin duplicar dominio. Tambien se extendieron las pruebas de integracion del API para cubrir alcance de `models` y `staff`. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
+- Se continuo `studiocore-erp/` cerrando la segunda mitad de `catalogos`: ya no solo existe lectura base, sino tambien persistencia tenant-aware con overrides por empresa. En backend se agregaron `catalog_groups` (entidad + migracion `1710000004000`), nuevos DTOs y CRUD en `apps/api/src/modules/catalogs/*` para listar base + overrides, consultar por key, crear, editar y eliminar personalizaciones auditadas bajo permisos `catalogs.view/create/edit`. En frontend `apps/web/src/pages/CatalogsPage.tsx` paso de vista pasiva a workspace completo de gestion con listado, clonacion de catalogos base, edicion de items/defaults y eliminacion de overrides; `apps/web/src/pages/PeoplePage.tsx` ahora intenta usar `catalogs.view` cuando existe y, si no, degrada al snapshot local sin romper el flujo. Tambien se ampliaron contratos compartidos, el seed/permission catalog y las pruebas de integracion para cubrir override, bloqueo branch-scoped y fallback a la version `system` tras eliminar una personalizacion. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
+- Se continuo `studiocore-erp/` con el faltante mas natural de Sprint 2: `catalogos` base versionados. En backend se abrio `GET /catalogs` y `GET /catalogs/:key` con `apps/api/src/common/constants/base-catalogs.ts` + `apps/api/src/modules/catalogs/*`, exponiendo opciones canonicas reutilizables para tipos de persona, identificacion, RH, contratos, comisiones, ARL, labels legacy y buckets de documentos. En frontend se agrego `apps/web/src/pages/CatalogsPage.tsx` al shell y `apps/web/src/lib/catalogs.ts` como fallback versionado; `apps/web/src/pages/PeoplePage.tsx` dejo de hardcodear esos arrays y ahora consume el catalogo del API con degradacion segura si el backend no responde. Tambien se ampliaron los contratos compartidos y las pruebas de integracion del API para cubrir el nuevo endpoint. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
+- Se intento ejecutar el cierre operativo completo de la nueva fase documental del greenfield (`npm run db:migrate:legacy:documents --workspace @studiocore/api`) pero quedo bloqueado por entorno local no materializado: en esta sesion `DATABASE_URL`, `S3_*`, `LEGACY_DATABASE_URL` y `LEGACY_DOCUMENT_PUBLIC_BASE_URL` estaban sin cargar, los puertos locales `5432`, `6379`, `9000` y `9001` estaban cerrados, y `docker ps` siguio fallando porque Docker Desktop/daemon no esta levantado. Aun asi, la parte de codigo y validacion ya quedo cerrada: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` pasaron despues de la nueva API/UI/script para migrar documentos externos a storage gestionado.
+- Se completo la siguiente fase de la epica documental en `studiocore-erp/`. En backend `apps/api/src/modules/people/people.service.ts` y `apps/api/src/modules/people/people.controller.ts` ahora permiten migrar un documento externo a storage gestionado (`POST /people/:id/documents/:documentId/migrate-storage`), reutilizando un helper nuevo `apps/api/src/modules/people/person-document-storage.ts` para resolver origen, nombre y path del archivo. Tambien se agrego el script operativo `apps/api/src/database/migrate-legacy-person-documents.ts` expuesto como `npm run db:migrate:legacy:documents --workspace @studiocore/api` para mover en lote referencias legacy hacia MinIO/S3 del greenfield. En frontend `apps/web/src/pages/PeoplePage.tsx` ya muestra si cada soporte esta en `Storage gestionado` o sigue como `Referencia externa`, y deja migrarlo desde la ficha sin tocar el legacy. Se ampliaron las pruebas de integracion para cubrir upload, apertura de referencia externa y migracion a storage gestionado, y se revalidaron `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK dentro de `studiocore-erp/`.
+- Se continuo `studiocore-erp/` cerrando una inconsistencia real entre uploads nuevos y documentos importados desde legacy. `apps/api/src/database/import-legacy-people.ts` ya no marca documentos legacy como si estuvieran en el bucket nuevo: ahora quedan como referencias externas (`publicUrl` + `storagePath`, `storageBucket=null`) y `README.md` / `.env.example` se alinearon con esa semantica. En `apps/web/src/pages/PeoplePage.tsx` la edicion de documentos externos ya no rellena automaticamente `el-castillo` cuando el registro no tiene bucket real, evitando contaminar metadata al guardar. Tambien se reforzaron las pruebas de integracion del API con un fake storage en `apps/api/test/support/test-app.cjs` y un caso nuevo en `apps/api/test/integration.test.cjs` que cubre upload real a storage firmado y apertura de referencias externas. Para que `npm run lint --workspace @studiocore/api` volviera a pasar se agrego `@types/pg` al workspace API. Verificaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
+- Se hizo una nueva iteracion fuerte de `people` en `studiocore-erp/`, esta vez alineada explicitamente al modelo real de Supabase/legacy en lugar de campos inventados. La ficha nueva ya replica identidad y banca que hoy viven en `users` (`issuedIn`, `personalEmail`, `address`, `sex`, `bloodType`, `modelCategory`, `photoUrl`, `bank*`, `beneficiary*`), se agrego `person_contracts` para reflejar la capa operativa/laboral que en el sistema actual existe en `studios_models`, y `person_documents` ahora guarda metadata compatible con `documents`/storage legacy (`legacyLabel`, `fileType`, `storageBucket`, `storagePath`, `publicUrl`). En backend se sumaron entidades/migraciones, DTOs y endpoints para contratos y documentos, y `GET /people/:id` ya devuelve `contracts + documents + history`. En frontend `PeoplePage` paso a usar catálogos y labels reales del ecosistema legacy (tipos de identificacion, RH, categoria modelo, tipos de contrato, ARL, labels `IMG_*`, bucket `el-castillo`) y `AppShell` ya muestra nombres reales de empresa/sede. Esta fase se baso en la inspeccion del esquema real de Supabase (`users`, `documents`, `studios_models`, `attendance_*`, `bank_accounts`, `storage`) antes de modelar el greenfield. Verificaciones finales: `npm run lint`, `npm run build` y `npm run test --workspace @studiocore/api` OK dentro de `studiocore-erp/`.
+- Se completo la siguiente expansion funcional de `people` en `studiocore-erp/` y tambien se enriquecio el `AppShell`. En backend se agregaron `person_documents` con entidad + migracion (`apps/api/src/database/entities/person-document.entity.ts`, `apps/api/src/database/migrations/1710000002000-add-person-documents.ts`), nuevos DTOs y endpoints en `apps/api/src/modules/people/*` para que `GET /people/:id` ya devuelva detalle ampliado con `documents` e `history`, y `POST/PATCH /people/:id/documents` permitan gestionar soportes y vigencias reutilizando el scope tenant existente. El historial de la persona ahora se construye desde auditoria (`people` + `people_documents`) y expone eventos de estado/documentos en la ficha. En frontend, `apps/web/src/pages/PeoplePage.tsx` paso de CRUD basico a flujo de detalle real con panel de ficha consolidada, editor/listado de documentos y linea de tiempo auditada; `apps/web/src/components/AppShell.tsx` ya resuelve nombre real de empresa y sede activa en vez de mostrar solo IDs. Tambien se ampliaron contratos compartidos en `packages/contracts/src/index.ts`, se sumo `formatDate()` y las pruebas de integracion del API ahora cubren detalle/documentos/historial y restricciones branch-scoped de `people`. Verificaciones finales: `npm run lint`, `npm run build` y `npm run test --workspace @studiocore/api` OK dentro de `studiocore-erp/`.
+- Se completo el paso siguiente de arquitectura en `studiocore-erp/apps/api`: ya existe un `TenantContextGuard` reusable con metadata declarativa (`common/guards/tenant-context.guard.ts` + `common/decorators/tenant-context.decorator.ts`). Se aplico a los controladores core (`companies`, `branches`, `roles`, `users`, `people`, `permissions`, `audit-logs`) y ya gobierna precondiciones tenant antes de entrar al servicio, especialmente accesos company-wide en mutaciones globales. Con eso se simplificaron checks repetidos en `companies.service.ts`, `branches.service.ts` y `roles.service.ts`, dejando el guard como capa explicita de contexto y los servicios enfocados en reglas de dominio/recurso. Verificaciones posteriores: `npm run lint`, `npm run build` y `npm run test --workspace @studiocore/api` OK dentro de `studiocore-erp/`.
+- Se cerro la siguiente iteracion del greenfield en `studiocore-erp/` sobre el hueco que quedaba en `users` y sobre el cambio de contexto tenant desde la shell. En `apps/api/src/modules/users/users.service.ts` el CRUD y acciones sensibles ya respetan `activeBranchId`: las sesiones branch-scoped solo listan/consultan usuarios exclusivos de su sede, no pueden tocar usuarios globales ni de otras sedes, y al crear/editar quedan forzadas a `defaultBranchId` y `roleAssignments` de la sede activa. Tambien se ajusto auth para soportar cambio explicito entre sede y contexto global usando `branchId: null` en `login/refresh` (`apps/api/src/modules/auth/*`). En `apps/web` se agrego `switchBranch()` en `src/lib/auth.tsx`, el cliente conserva `activeBranchId` o `null` en `src/lib/api.ts`, `src/components/AppShell.tsx` ya muestra selector de sede con cambio en caliente via refresh token, y `src/pages/UsersPage.tsx` adapta formularios/UX a sesiones branch-scoped. Las pruebas de integracion del API ahora cubren refresh a contexto global y enforcement branch-scoped de `users`. Verificaciones finales de esta fase: `npm run lint`, `npm run build` y `npm run test --workspace @studiocore/api` OK dentro de `studiocore-erp/`.
+- Se retomo `studiocore-erp/` y se completo una nueva iteracion de `tenancy` explicita por sede en el greenfield. En `apps/api` se agrego `common/utils/tenant-scope.ts` para centralizar reglas de sede activa, se endurecieron `people`, `branches` y `audit-logs` para filtrar por `activeBranchId` cuando la sesion no tiene alcance global, y `companies` / `branches` / `roles` ahora exigen `hasCompanyWideAccess` para mutaciones sensibles. Tambien se corrigio el flujo auth para que `login` y `refresh` acepten `branchId` numerico y preserven la sede activa pedida. En `apps/web` el cliente ya envia `X-Branch-Id` en requests autenticados, conserva la sede activa en `me` + `refresh`, deja `companies`, `branches` y `roles` en solo lectura cuando la sesion es acotada por sede, y en `people` fija la sede activa en altas/ediciones de sesiones branch-scoped. Se extendieron las pruebas de integracion del API con un usuario branch-scoped y escenarios de refresh/contexto de sede. Verificaciones de esta fase: `npm run lint`, `npm run build` y `npm run test --workspace @studiocore/api` OK dentro de `studiocore-erp/`.
+- Se completo una segunda fase fuerte del greenfield `StudioCore ERP` en `studiocore-erp/`: ya no solo existe shell de lectura, sino tambien administracion operativa real para `companies`, `branches`, `users` y `roles`. En frontend se creo `packages/ui` con primitives reutilizables (`PageHero`, `Panel`, `ActionButton`, `Field`, `CheckboxField`, `StatusBadge`, `EmptyState`, `InlineMessage`, etc.) y `apps/web` paso a usar ese paquete para login, shell, dashboard y modulos CRUD. En backend nuevo tambien se ajustaron `apps/api/src/modules/companies/companies.service.ts` y `apps/api/src/modules/users/users.service.ts` para soportar mejor la fase administrativa: company management global para perfiles con `companies.create/edit`, y serializacion enriquecida de usuarios con `status`, `phone`, `lastLoginAt`, `mustChangePassword`, `mfaEnabled` y `roleAssignments`, ademas del reset de password devolviendo el usuario actualizado. Verificaciones locales de esta fase: `npm install`, `npm run lint --workspace @studiocore/web`, `npm run build --workspace @studiocore/web`, `npm run lint --workspace @studiocore/api`, `npm run lint` y `npm run build` OK dentro de `studiocore-erp/`.
+- Se continuo por fin el bootstrap greenfield de `StudioCore ERP` dentro de `studiocore-erp/`: el monorepo ya no tiene solo `apps/api`, ahora tambien incluye `apps/web` (React/Vite) y `packages/contracts`. El frontend nuevo ya ofrece login real contra `@studiocore/api`, persistencia/refresh de sesion JWT, `AppShell` responsive con navegacion por permisos y vistas operativas de lectura para `dashboard`, `companies`, `branches`, `users`, `roles`, `permissions` y `audit`. Tambien se ampliaron `studiocore-erp/package.json`, `studiocore-erp/.env.example` y `studiocore-erp/README.md` para reflejar el workspace web y la variable `VITE_API_BASE_URL`. Verificaciones locales de esta fase: `npm install`, `npm run lint --workspace @studiocore/web`, `npm run build --workspace @studiocore/web`, `npm run lint` y `npm run build` OK dentro de `studiocore-erp/`.
 - Se cerro tambien la parte CI/CD: tras el commit `4502ba6`, GitHub Actions quedo en verde para `staging` (`Secret Scan` success, `Validate Application` success y `Deploy Staging VPS` success). El VPS quedo sincronizado en `4502ba6` sobre la rama `staging`, `https://pruebas.livstre.com/health` siguio en `200 OK` y la validacion browser posterior confirmo otra vez login + refresh directo a `/dashboard` sin rebote a `/login`.
 - Se corrigieron los dos fallos que seguian rompiendo GitHub Actions en `staging`: `/.github/workflows/ci.yml` ya no usa `php artisan route:list --compact` (esa opcion no existe en esta version de Laravel), y `/.github/workflows/staging-deploy.yml` / `/.github/workflows/production-deploy.yml` quedaron fijados a SSH por puerto `22` para no depender de un secret `VPS_SSH_PORT` desalineado que estaba provocando timeout desde GitHub. Tras esto, el siguiente push debe volver a validar backend y redeployar `staging` sin el bloqueo anterior.
 - Se publico en vivo la mitigacion del refresh de `staging`: se copio `apps/dashboard/App.tsx` al repo del VPS (`/srv/el-castillo`), se ejecuto `bash deploy/vps/publish.sh staging` por SSH con clave y luego se revalido `https://pruebas.livstre.com/health` (`200 OK`). Validacion browser posterior: login OK y hard refresh/direct load a `https://pruebas.livstre.com/dashboard` ya conserva dashboard (`loginInputs=0`, sin rebote a `/login`). `production` no se toco en este redeploy.
@@ -231,6 +252,329 @@
 - `RemoteDesktopService` ahora filtra client-side los registros con `std_id` cuando ese dato existe en la tabla remota, aunque todavia depende de que el backend/esquema remoto exponga ese campo.
 
 ### Archivos tocados recientemente
+- `studiocore-erp/apps/api/src/database/entities/hr-disciplinary-action.entity.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000011000-add-hr-disciplinary-actions.ts`
+- `studiocore-erp/apps/api/src/modules/hr/dto/create-hr-disciplinary-action.dto.ts`
+- `studiocore-erp/apps/api/src/modules/hr/dto/update-hr-disciplinary-action.dto.ts`
+- `studiocore-erp/apps/api/src/modules/hr/hr.service.ts`
+- `studiocore-erp/apps/api/src/modules/hr/hr.controller.ts`
+- `studiocore-erp/apps/api/src/modules/hr/hr.module.ts`
+- `studiocore-erp/apps/api/src/modules/payroll/payroll.controller.ts`
+- `studiocore-erp/apps/api/src/modules/payroll/payroll.service.ts`
+- `studiocore-erp/apps/web/src/pages/HrDisciplinaryActionsPage.tsx`
+- `studiocore-erp/apps/web/src/pages/PayrollPage.tsx`
+- `studiocore-erp/apps/web/src/routes.tsx`
+- `studiocore-erp/apps/web/src/App.tsx`
+- `studiocore-erp/apps/api/src/database/database.config.ts`
+- `studiocore-erp/apps/api/src/common/constants/permission-catalog.ts`
+- `studiocore-erp/apps/api/test/support/test-app.cjs`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/packages/contracts/src/index.ts`
+- `studiocore-erp/README.md`
+- `studiocore-erp/apps/api/src/modules/payroll/payroll.service.ts`
+- `studiocore-erp/apps/web/src/pages/PayrollPage.tsx`
+- `studiocore-erp/apps/web/src/styles.css`
+- `studiocore-erp/packages/contracts/src/index.ts`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/README.md`
+- `studiocore-erp/apps/api/src/database/entities/hr-incapacity.entity.ts`
+- `studiocore-erp/apps/api/src/database/entities/hr-vacation.entity.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000010000-add-hr-base.ts`
+- `studiocore-erp/apps/api/src/modules/hr/dto/hr-requests-query.dto.ts`
+- `studiocore-erp/apps/api/src/modules/hr/dto/create-hr-incapacity.dto.ts`
+- `studiocore-erp/apps/api/src/modules/hr/dto/update-hr-incapacity.dto.ts`
+- `studiocore-erp/apps/api/src/modules/hr/dto/create-hr-vacation.dto.ts`
+- `studiocore-erp/apps/api/src/modules/hr/dto/update-hr-vacation.dto.ts`
+- `studiocore-erp/apps/api/src/modules/hr/hr.service.ts`
+- `studiocore-erp/apps/api/src/modules/hr/hr.controller.ts`
+- `studiocore-erp/apps/api/src/modules/hr/hr.module.ts`
+- `studiocore-erp/apps/web/src/pages/HrRequestsPage.tsx`
+- `studiocore-erp/apps/web/src/pages/HrIncapacitiesPage.tsx`
+- `studiocore-erp/apps/web/src/pages/HrVacationsPage.tsx`
+- `studiocore-erp/apps/web/src/routes.tsx`
+- `studiocore-erp/apps/web/src/App.tsx`
+- `studiocore-erp/apps/api/src/database/database.config.ts`
+- `studiocore-erp/apps/api/src/common/constants/permission-catalog.ts`
+- `studiocore-erp/apps/api/test/support/test-app.cjs`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/packages/contracts/src/index.ts`
+- `studiocore-erp/README.md`
+- `studiocore-erp/apps/api/src/database/entities/payroll-novelty.entity.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000009000-add-payroll-novelties.ts`
+- `studiocore-erp/apps/api/src/modules/payroll-novelties/dto/payroll-novelties-query.dto.ts`
+- `studiocore-erp/apps/api/src/modules/payroll-novelties/dto/create-payroll-novelty.dto.ts`
+- `studiocore-erp/apps/api/src/modules/payroll-novelties/dto/update-payroll-novelty.dto.ts`
+- `studiocore-erp/apps/api/src/modules/payroll-novelties/payroll-novelties.service.ts`
+- `studiocore-erp/apps/api/src/modules/payroll-novelties/payroll-novelties.controller.ts`
+- `studiocore-erp/apps/api/src/modules/payroll-novelties/payroll-novelties.module.ts`
+- `studiocore-erp/apps/api/src/modules/payroll/payroll.service.ts`
+- `studiocore-erp/apps/web/src/pages/PayrollNoveltiesPage.tsx`
+- `studiocore-erp/apps/web/src/pages/PayrollPage.tsx`
+- `studiocore-erp/apps/web/src/routes.tsx`
+- `studiocore-erp/apps/web/src/App.tsx`
+- `studiocore-erp/apps/api/src/database/database.config.ts`
+- `studiocore-erp/apps/api/src/common/constants/permission-catalog.ts`
+- `studiocore-erp/apps/api/test/support/test-app.cjs`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/packages/contracts/src/index.ts`
+- `studiocore-erp/README.md`
+- `studiocore-erp/apps/api/src/database/entities/payroll-period.entity.ts`
+- `studiocore-erp/apps/api/src/database/entities/payroll-run.entity.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000008000-add-payroll.ts`
+- `studiocore-erp/apps/api/src/modules/payroll/dto/payroll-periods-query.dto.ts`
+- `studiocore-erp/apps/api/src/modules/payroll/dto/create-payroll-period.dto.ts`
+- `studiocore-erp/apps/api/src/modules/payroll/dto/update-payroll-period.dto.ts`
+- `studiocore-erp/apps/api/src/modules/payroll/payroll.service.ts`
+- `studiocore-erp/apps/api/src/modules/payroll/payroll.controller.ts`
+- `studiocore-erp/apps/api/src/modules/payroll/payroll.module.ts`
+- `studiocore-erp/apps/web/src/pages/PayrollPage.tsx`
+- `studiocore-erp/apps/web/src/routes.tsx`
+- `studiocore-erp/apps/web/src/App.tsx`
+- `studiocore-erp/apps/api/src/database/database.config.ts`
+- `studiocore-erp/apps/api/src/common/constants/permission-catalog.ts`
+- `studiocore-erp/apps/api/test/support/test-app.cjs`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/packages/contracts/src/index.ts`
+- `studiocore-erp/README.md`
+- `studiocore-erp/apps/api/src/database/entities/online-session.entity.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000007000-add-online-sessions.ts`
+- `studiocore-erp/apps/api/src/modules/online-time/dto/online-time-query.dto.ts`
+- `studiocore-erp/apps/api/src/modules/online-time/dto/create-online-session.dto.ts`
+- `studiocore-erp/apps/api/src/modules/online-time/dto/update-online-session.dto.ts`
+- `studiocore-erp/apps/api/src/modules/online-time/online-time.service.ts`
+- `studiocore-erp/apps/api/src/modules/online-time/online-time.controller.ts`
+- `studiocore-erp/apps/api/src/modules/online-time/online-time.module.ts`
+- `studiocore-erp/apps/web/src/pages/OnlineTimePage.tsx`
+- `studiocore-erp/apps/web/src/routes.tsx`
+- `studiocore-erp/apps/web/src/App.tsx`
+- `studiocore-erp/apps/api/src/database/database.config.ts`
+- `studiocore-erp/apps/api/src/common/constants/permission-catalog.ts`
+- `studiocore-erp/apps/api/test/support/test-app.cjs`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/packages/contracts/src/index.ts`
+- `studiocore-erp/README.md`
+- `studiocore-erp/apps/api/src/database/entities/absence-record.entity.ts`
+- `studiocore-erp/apps/api/src/database/entities/goal-record.entity.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000006000-add-absences-and-goals.ts`
+- `studiocore-erp/apps/api/src/modules/absences/dto/absences-query.dto.ts`
+- `studiocore-erp/apps/api/src/modules/absences/dto/create-absence.dto.ts`
+- `studiocore-erp/apps/api/src/modules/absences/dto/update-absence.dto.ts`
+- `studiocore-erp/apps/api/src/modules/absences/absences.service.ts`
+- `studiocore-erp/apps/api/src/modules/absences/absences.controller.ts`
+- `studiocore-erp/apps/api/src/modules/absences/absences.module.ts`
+- `studiocore-erp/apps/api/src/modules/goals/dto/goals-query.dto.ts`
+- `studiocore-erp/apps/api/src/modules/goals/dto/create-goal.dto.ts`
+- `studiocore-erp/apps/api/src/modules/goals/dto/update-goal.dto.ts`
+- `studiocore-erp/apps/api/src/modules/goals/goals.service.ts`
+- `studiocore-erp/apps/api/src/modules/goals/goals.controller.ts`
+- `studiocore-erp/apps/api/src/modules/goals/goals.module.ts`
+- `studiocore-erp/apps/web/src/pages/AbsencesPage.tsx`
+- `studiocore-erp/apps/web/src/pages/GoalsPage.tsx`
+- `studiocore-erp/apps/web/src/routes.tsx`
+- `studiocore-erp/apps/web/src/App.tsx`
+- `studiocore-erp/apps/api/src/database/database.config.ts`
+- `studiocore-erp/packages/contracts/src/index.ts`
+- `studiocore-erp/README.md`
+- `studiocore-erp/apps/api/src/database/entities/operation-shift.entity.ts`
+- `studiocore-erp/apps/api/src/database/entities/attendance-record.entity.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000005000-add-operations-and-attendance.ts`
+- `studiocore-erp/apps/api/src/modules/operations/dto/operation-shifts-query.dto.ts`
+- `studiocore-erp/apps/api/src/modules/operations/dto/create-operation-shift.dto.ts`
+- `studiocore-erp/apps/api/src/modules/operations/dto/update-operation-shift.dto.ts`
+- `studiocore-erp/apps/api/src/modules/operations/operations.service.ts`
+- `studiocore-erp/apps/api/src/modules/operations/operations.controller.ts`
+- `studiocore-erp/apps/api/src/modules/operations/operations.module.ts`
+- `studiocore-erp/apps/api/src/modules/attendance/dto/attendance-query.dto.ts`
+- `studiocore-erp/apps/api/src/modules/attendance/dto/create-attendance.dto.ts`
+- `studiocore-erp/apps/api/src/modules/attendance/dto/update-attendance.dto.ts`
+- `studiocore-erp/apps/api/src/modules/attendance/attendance.service.ts`
+- `studiocore-erp/apps/api/src/modules/attendance/attendance.controller.ts`
+- `studiocore-erp/apps/api/src/modules/attendance/attendance.module.ts`
+- `studiocore-erp/apps/web/src/pages/OperationsPage.tsx`
+- `studiocore-erp/apps/web/src/pages/AttendancePage.tsx`
+- `studiocore-erp/apps/web/src/routes.tsx`
+- `studiocore-erp/apps/web/src/App.tsx`
+- `studiocore-erp/apps/api/src/database/database.config.ts`
+- `studiocore-erp/packages/contracts/src/index.ts`
+- `studiocore-erp/README.md`
+- `studiocore-erp/apps/api/src/modules/models/models.service.ts`
+- `studiocore-erp/apps/api/src/modules/models/models.controller.ts`
+- `studiocore-erp/apps/api/src/modules/models/models.module.ts`
+- `studiocore-erp/apps/api/src/modules/staff/staff.service.ts`
+- `studiocore-erp/apps/api/src/modules/staff/staff.controller.ts`
+- `studiocore-erp/apps/api/src/modules/staff/staff.module.ts`
+- `studiocore-erp/apps/api/src/common/constants/permission-catalog.ts`
+- `studiocore-erp/apps/api/src/app.module.ts`
+- `studiocore-erp/apps/api/test/support/test-app.cjs`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/apps/web/src/pages/TalentPage.tsx`
+- `studiocore-erp/apps/web/src/pages/ModelsPage.tsx`
+- `studiocore-erp/apps/web/src/pages/StaffPage.tsx`
+- `studiocore-erp/apps/web/src/routes.tsx`
+- `studiocore-erp/apps/web/src/App.tsx`
+- `studiocore-erp/apps/web/src/lib/auth.tsx`
+- `studiocore-erp/apps/web/src/styles.css`
+- `studiocore-erp/README.md`
+- `studiocore-erp/apps/api/src/database/entities/catalog-group.entity.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000004000-add-catalog-groups.ts`
+- `studiocore-erp/apps/api/src/modules/catalogs/dto/catalog-item.dto.ts`
+- `studiocore-erp/apps/api/src/modules/catalogs/dto/create-catalog-group.dto.ts`
+- `studiocore-erp/apps/api/src/modules/catalogs/dto/update-catalog-group.dto.ts`
+- `studiocore-erp/apps/api/src/modules/catalogs/catalogs.service.ts`
+- `studiocore-erp/apps/api/src/modules/catalogs/catalogs.controller.ts`
+- `studiocore-erp/apps/api/src/modules/catalogs/catalogs.module.ts`
+- `studiocore-erp/apps/api/src/common/constants/permission-catalog.ts`
+- `studiocore-erp/apps/api/src/database/database.config.ts`
+- `studiocore-erp/apps/api/src/database/entities/company.entity.ts`
+- `studiocore-erp/apps/api/test/support/test-app.cjs`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/apps/web/src/pages/CatalogsPage.tsx`
+- `studiocore-erp/apps/web/src/lib/catalogs.ts`
+- `studiocore-erp/apps/web/src/lib/auth.tsx`
+- `studiocore-erp/apps/web/src/pages/PeoplePage.tsx`
+- `studiocore-erp/apps/web/src/routes.tsx`
+- `studiocore-erp/apps/web/src/styles.css`
+- `studiocore-erp/packages/contracts/src/index.ts`
+- `studiocore-erp/README.md`
+- `studiocore-erp/apps/api/src/common/constants/base-catalogs.ts`
+- `studiocore-erp/apps/api/src/modules/catalogs/catalogs.module.ts`
+- `studiocore-erp/apps/api/src/modules/catalogs/catalogs.controller.ts`
+- `studiocore-erp/apps/api/src/modules/catalogs/catalogs.service.ts`
+- `studiocore-erp/apps/api/src/app.module.ts`
+- `studiocore-erp/apps/api/test/support/test-app.cjs`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/packages/contracts/src/index.ts`
+- `studiocore-erp/apps/web/src/lib/catalogs.ts`
+- `studiocore-erp/apps/web/src/pages/CatalogsPage.tsx`
+- `studiocore-erp/apps/web/src/pages/PeoplePage.tsx`
+- `studiocore-erp/apps/web/src/routes.tsx`
+- `studiocore-erp/apps/web/src/App.tsx`
+- `studiocore-erp/README.md`
+- `studiocore-erp/apps/api/src/modules/people/person-document-storage.ts`
+- `studiocore-erp/apps/api/src/modules/people/people.service.ts`
+- `studiocore-erp/apps/api/src/modules/people/people.controller.ts`
+- `studiocore-erp/apps/api/src/database/migrate-legacy-person-documents.ts`
+- `studiocore-erp/apps/api/src/database/import-legacy-people.ts`
+- `studiocore-erp/apps/api/test/support/test-app.cjs`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/apps/web/src/pages/PeoplePage.tsx`
+- `studiocore-erp/apps/api/package.json`
+- `studiocore-erp/package-lock.json`
+- `studiocore-erp/README.md`
+- `studiocore-erp/.env.example`
+- `studiocore-erp/apps/api/src/database/entities/person.entity.ts`
+- `studiocore-erp/apps/api/src/database/entities/person-contract.entity.ts`
+- `studiocore-erp/apps/api/src/database/entities/person-document.entity.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000003000-align-people-with-supabase.ts`
+- `studiocore-erp/apps/api/src/database/database.config.ts`
+- `studiocore-erp/apps/api/src/modules/people/dto/create-person.dto.ts`
+- `studiocore-erp/apps/api/src/modules/people/dto/update-person.dto.ts`
+- `studiocore-erp/apps/api/src/modules/people/dto/create-person-contract.dto.ts`
+- `studiocore-erp/apps/api/src/modules/people/dto/update-person-contract.dto.ts`
+- `studiocore-erp/apps/api/src/modules/people/dto/create-person-document.dto.ts`
+- `studiocore-erp/apps/api/src/modules/people/dto/update-person-document.dto.ts`
+- `studiocore-erp/apps/api/src/modules/people/people.service.ts`
+- `studiocore-erp/apps/api/src/modules/people/people.controller.ts`
+- `studiocore-erp/apps/api/src/modules/people/people.module.ts`
+- `studiocore-erp/apps/api/test/support/test-app.cjs`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/apps/web/src/pages/PeoplePage.tsx`
+- `studiocore-erp/packages/contracts/src/index.ts`
+- `studiocore-erp/apps/api/src/database/entities/person-document.entity.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000002000-add-person-documents.ts`
+- `studiocore-erp/apps/api/src/database/database.config.ts`
+- `studiocore-erp/apps/api/src/modules/people/dto/create-person-document.dto.ts`
+- `studiocore-erp/apps/api/src/modules/people/dto/update-person-document.dto.ts`
+- `studiocore-erp/apps/api/src/modules/people/people.module.ts`
+- `studiocore-erp/apps/api/src/modules/people/people.service.ts`
+- `studiocore-erp/apps/api/src/modules/people/people.controller.ts`
+- `studiocore-erp/apps/api/test/support/test-app.cjs`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/apps/web/src/pages/PeoplePage.tsx`
+- `studiocore-erp/apps/web/src/components/AppShell.tsx`
+- `studiocore-erp/apps/web/src/lib/format.ts`
+- `studiocore-erp/packages/contracts/src/index.ts`
+- `studiocore-erp/apps/api/src/common/decorators/tenant-context.decorator.ts`
+- `studiocore-erp/apps/api/src/common/guards/tenant-context.guard.ts`
+- `studiocore-erp/apps/api/src/modules/companies/companies.controller.ts`
+- `studiocore-erp/apps/api/src/modules/branches/branches.controller.ts`
+- `studiocore-erp/apps/api/src/modules/roles/roles.controller.ts`
+- `studiocore-erp/apps/api/src/modules/users/users.controller.ts`
+- `studiocore-erp/apps/api/src/modules/people/people.controller.ts`
+- `studiocore-erp/apps/api/src/modules/permissions/permissions.controller.ts`
+- `studiocore-erp/apps/api/src/modules/audit-logs/audit-logs.controller.ts`
+- `studiocore-erp/apps/api/src/modules/users/users.service.ts`
+- `studiocore-erp/apps/api/src/modules/auth/auth.service.ts`
+- `studiocore-erp/apps/api/src/modules/auth/auth.controller.ts`
+- `studiocore-erp/apps/api/src/modules/auth/dto/login.dto.ts`
+- `studiocore-erp/apps/api/src/modules/auth/dto/refresh-token.dto.ts`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/apps/web/src/components/AppShell.tsx`
+- `studiocore-erp/apps/web/src/pages/UsersPage.tsx`
+- `studiocore-erp/apps/web/src/lib/auth.tsx`
+- `studiocore-erp/apps/web/src/lib/api.ts`
+- `studiocore-erp/apps/web/src/styles.css`
+- `studiocore-erp/apps/api/src/common/utils/tenant-scope.ts`
+- `studiocore-erp/apps/api/src/modules/auth/dto/login.dto.ts`
+- `studiocore-erp/apps/api/src/modules/auth/dto/refresh-token.dto.ts`
+- `studiocore-erp/apps/api/src/modules/auth/auth.controller.ts`
+- `studiocore-erp/apps/api/src/modules/auth/auth.service.ts`
+- `studiocore-erp/apps/api/src/modules/companies/companies.service.ts`
+- `studiocore-erp/apps/api/src/modules/branches/branches.service.ts`
+- `studiocore-erp/apps/api/src/modules/roles/roles.service.ts`
+- `studiocore-erp/apps/api/src/modules/people/people.service.ts`
+- `studiocore-erp/apps/api/src/modules/audit-logs/audit-logs.service.ts`
+- `studiocore-erp/apps/api/test/support/test-app.cjs`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/apps/web/src/lib/api.ts`
+- `studiocore-erp/apps/web/src/lib/auth.tsx`
+- `studiocore-erp/apps/web/src/pages/CompaniesPage.tsx`
+- `studiocore-erp/apps/web/src/pages/BranchesPage.tsx`
+- `studiocore-erp/apps/web/src/pages/RolesPage.tsx`
+- `studiocore-erp/apps/web/src/pages/PeoplePage.tsx`
+- `studiocore-erp/apps/api/src/modules/companies/companies.service.ts`
+- `studiocore-erp/apps/api/src/modules/users/users.service.ts`
+- `studiocore-erp/packages/ui/package.json`
+- `studiocore-erp/packages/ui/src/index.tsx`
+- `studiocore-erp/apps/web/src/components/EntitySelectionList.tsx`
+- `studiocore-erp/apps/web/src/components/PermissionGuard.tsx`
+- `studiocore-erp/apps/web/src/components/AppShell.tsx`
+- `studiocore-erp/apps/web/src/lib/forms.ts`
+- `studiocore-erp/apps/web/src/pages/CompaniesPage.tsx`
+- `studiocore-erp/apps/web/src/pages/BranchesPage.tsx`
+- `studiocore-erp/apps/web/src/pages/UsersPage.tsx`
+- `studiocore-erp/apps/web/src/pages/RolesPage.tsx`
+- `studiocore-erp/apps/web/src/pages/DashboardPage.tsx`
+- `studiocore-erp/apps/web/src/pages/LoginPage.tsx`
+- `studiocore-erp/apps/web/src/pages/PermissionsPage.tsx`
+- `studiocore-erp/apps/web/src/pages/AuditLogsPage.tsx`
+- `studiocore-erp/apps/web/src/styles.css`
+- `studiocore-erp/package.json`
+- `studiocore-erp/package-lock.json`
+- `studiocore-erp/.env.example`
+- `studiocore-erp/README.md`
+- `studiocore-erp/apps/web/package.json`
+- `studiocore-erp/apps/web/tsconfig.json`
+- `studiocore-erp/apps/web/vite.config.ts`
+- `studiocore-erp/apps/web/index.html`
+- `studiocore-erp/apps/web/src/App.tsx`
+- `studiocore-erp/apps/web/src/main.tsx`
+- `studiocore-erp/apps/web/src/styles.css`
+- `studiocore-erp/apps/web/src/lib/api.ts`
+- `studiocore-erp/apps/web/src/lib/auth.tsx`
+- `studiocore-erp/apps/web/src/routes.tsx`
+- `studiocore-erp/apps/web/src/components/AppShell.tsx`
+- `studiocore-erp/apps/web/src/components/ResourcePage.tsx`
+- `studiocore-erp/apps/web/src/pages/LoginPage.tsx`
+- `studiocore-erp/apps/web/src/pages/DashboardPage.tsx`
+- `studiocore-erp/apps/web/src/pages/CompaniesPage.tsx`
+- `studiocore-erp/apps/web/src/pages/BranchesPage.tsx`
+- `studiocore-erp/apps/web/src/pages/UsersPage.tsx`
+- `studiocore-erp/apps/web/src/pages/RolesPage.tsx`
+- `studiocore-erp/apps/web/src/pages/PermissionsPage.tsx`
+- `studiocore-erp/apps/web/src/pages/AuditLogsPage.tsx`
+- `studiocore-erp/packages/contracts/package.json`
+- `studiocore-erp/packages/contracts/src/index.ts`
 - `package.json`
 - `.env`
 - `.env.example`
@@ -408,6 +752,13 @@
 - Estado: los cambios estructurales de despliegue/CI/documentacion de esta fase ya quedaron enviados a `origin/supabase-migration-final-safe`, incluido el redeploy live del frontend con proxy `/api`; el working tree local sigue teniendo archivos ajenos/no relacionados sin commitear.
 
 ### Pendientes
+- Extender el uso del nuevo `TenantContextGuard` a futuros modulos con metadata mas rica cuando entren `people detail`, `catalogs` o `operations` (por ejemplo scopes por accion o branch requerido segun ruta).
+- Endurecer la siguiente iteracion de `tenancy` en el backend nuevo con guards y contexto explicito por empresa/sede antes de abrir epicas de `people`.
+- Ejecutar la migracion real de binarios legacy cuando exista conectividad/utilidad sobre los origenes (`npm run db:migrate:legacy:documents --workspace @studiocore/api`) y validar despues una muestra de documentos ya migrados desde la UI.
+- Decidir si `person_contracts` debe seguir como normalizacion nueva del greenfield o si conviene mantener una ruta de compatibilidad/importacion directa desde `studios_models` cuando llegue la migracion de datos.
+- Extender la ficha de `people` con los siguientes dominios reales del ecosistema actual: contactos de emergencia (tabla nueva), attendance linkage (`emp_code`/`linked_user_id`) y payroll linkage cuando se abra RRHH/nomina.
+- Agregar formularios de detalle/acciones secundarias y pruebas automatizadas para `companies`, `branches`, `users` y `roles`, ahora que el CRUD base ya esta operativo en `apps/web`.
+- Definir la siguiente expansion de `packages/ui` (tablas enterprise, drawers, tabs, toasts y filtros compartidos) para evitar duplicacion cuando entre `people`.
 - Revisar el resto de `.env` operativos/derivados (`.env`, `apps/dashboard/.env`, `backend-legacy/.env`, `server/.env`) para confirmar que sigan reconstruyendose desde `.secure/` sin volver a filtrar credenciales en archivos versionados o docs.
 - Decidir si realmente se deben ejecutar en `production` los scripts mutantes `reset_passwords.mjs` y/o `sync_prod_full.mjs`; ahora ya tienen Auth Admin operativo, pero ambos cambian passwords masivamente y `sync_prod_full.mjs` ademas upserta `terceros`.
 - Si se quiere dejar tambien limpio el checkout remoto del VPS, subir/versionar formalmente el fix de `apps/dashboard/App.tsx` o volver a sincronizar el repo remoto despues de un commit; hoy el contenedor live ya corre con la imagen nueva, pero `/srv/el-castillo` quedo con `M apps/dashboard/App.tsx`.
@@ -435,6 +786,8 @@
 - Diseñar una fase de backend/RLS para tablas que todavia no garantizan aislamiento por esquema, especialmente `remote_*`, `chat_*` y rutas legacy que hoy solo reciben `std_id` desde cliente.
 
 ### Bloqueos
+- `studiocore-erp` no tiene `.env` operativo materializado en esta copia y en la sesion actual faltan `DATABASE_URL`, `S3_*`, `LEGACY_DATABASE_URL` y `LEGACY_DOCUMENT_PUBLIC_BASE_URL`; por eso la migracion real `db:migrate:legacy:documents` no puede conectarse a DB ni object storage.
+- Los puertos locales `5432`, `6379`, `9000` y `9001` estan cerrados, y `docker ps` sigue fallando porque el daemon `dockerDesktopLinuxEngine` no esta disponible; el stack local de PostgreSQL/Redis/MinIO no pudo levantarse desde aqui.
 - Docker CLI existe, pero el daemon local no esta corriendo (`dockerDesktopLinuxEngine` no disponible), por lo que no se pudo validar con `docker build` la imagen final para Easypanel desde esta sesion.
 - El repositorio tiene muchos cambios previos no relacionados; hay que evitar incluirlos en el commit de esta tarea.
 - `run_pg.mjs` completo sigue fallando si se intenta reejecutar `supabase/schema.sql` sobre una base ya inicializada, porque `schema.sql` no es totalmente idempotente en politicas legacy; por ahora la ruta segura es usar `run_pg.mjs` con archivos puntuales.
@@ -455,6 +808,20 @@
 - El checkout del repo en el VPS quedo sucio en `/srv/el-castillo` (`M apps/dashboard/App.tsx`) porque el redeploy de `staging` se hizo copiando el archivo local sin commit remoto; esto no afecta al contenedor live actual, pero conviene limpiarlo cuando el cambio ya quede versionado.
 
 ### Siguiente paso recomendado
+- Aprovechar que el flujo RRHH->nomina ya cubre incapacidades, vacaciones, disciplina, novedades, snapshot y export CSV para abrir `finance` / `reports` o congelar mas el cierre de payroll con persistencia/exportaciones enriquecidas.
+- Aprovechar que payroll ya tiene snapshot + novedades + RRHH + items detallados para abrir `rrhh disciplinario` (sanciones/llamados) o exportaciones/cierre congelado de nomina sin volver a rediseñar el dominio.
+- Aprovechar que ya existe `hr` base enlazado a payroll para abrir `payroll items` detallados o `rrhh disciplinario` (sanciones/llamados), reutilizando periodos, novedades y auditoria ya construidos.
+- Aprovechar la base de `payroll` + `payroll novelties` para abrir `hr` con incapacidades/vacaciones o, si se quiere profundizar nomina primero, agregar items detallados por persona y cierre congelado/exportable sobre el snapshot actual.
+- Aprovechar que ya existe el primer `payroll` conectado a operacion para abrir `payroll novelties` o `hr` (incapacidades/vacaciones), reutilizando el mismo periodo y evitando volver a modelar snapshots o tenancy.
+- Aprovechar que ya existe el bloque operativo `turnos + asistencia + inasistencias + metas + tiempo en linea` para abrir la primera integracion transversal con payroll/RRHH o, si se quiere completar Fase 2 antes, agregar `tiempo en linea` detallado por plataforma y bonos variables calculados.
+- Aprovechar que ya existen `turnos`, `asistencia`, `inasistencias` y `metas` para abrir `tiempo en linea` y luego enlazar estos cuatro dominios con payroll/RRHH, evitando re-modelar personas o tenancy otra vez.
+- Aprovechar que ya existe la base de `Turnos` y `Asistencia` para abrir `inasistencias`, `tiempo en linea` y `metas / bonos base`, o integrar estos modulos con `people_contracts`/payroll antes de entrar a RRHH y nomina.
+- Aprovechar que ya existen `people`, `catalogos`, `models` y `staff` para abrir el siguiente dominio operativo reutilizable (`attendance`/`operations`) o profundizar `models` y `staff` con contratos/documentos inline y acciones mas ricas por vista.
+- Aprovechar que `catalogos` ya quedo con base + override persistido para abrir el siguiente modulo de Fase 1 (`models` o `staff`) consumiendo estas listas desde backend, o cerrar la deuda horizontal agregando delete auditado suave/versionado historico si se quiere mas gobierno de configuracion.
+- Aprovechar que `catalogs` ya existe como fuente de verdad compartida para abrir el siguiente modulo faltante de Fase 1 (`models`/`staff`) o, si se quiere cerrar infraestructura primero, convertir estos catalogos base en CRUD auditado con persistencia tenant-aware.
+- Aprovechar que `people` ya quedo alineado al schema real de Supabase (`users`, `documents`, `studios_models`) para abrir el siguiente paso util: uploads reales a storage y una estrategia de importacion/migracion de datos legacy hacia `studiocore-erp` sin perder tenant isolation.
+- Continuar Sprint 1 del greenfield reforzando `tenancy` en `apps/api` y sumando pruebas de integracion para los CRUD nuevos de `companies`, `branches`, `users` y `roles`.
+- Como `packages/ui` ya existe, el siguiente movimiento natural es ampliarlo con tablas enterprise, drawers y toasts compartidos antes de abrir la epica `people`.
 - Completar el saneamiento de `.env*` versionados y reutilizar `scripts/load-supabase-env.mjs` como punto comun para futuras utilidades Supabase, para no volver a introducir tokens pegados en scripts sueltos.
 - Si se quiere avanzar con los scripts pendientes de Auth Admin en `production`, empezar por una decision explicita sobre `reset_passwords.mjs` / `sync_prod_full.mjs`; tecnicamente ya pueden correr, pero su efecto es operativo y no reversible sin coordinacion.
 - Versionar/commitear formalmente el fix de `apps/dashboard/App.tsx` antes de futuros `git pull` en el VPS, para que el checkout remoto vuelva a quedar limpio sin perder la mitigacion ya desplegada.

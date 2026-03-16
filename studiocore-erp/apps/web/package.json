@@ -1,0 +1,29 @@
+{
+  "name": "@studiocore/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 3001",
+    "build": "node --max-old-space-size=4096 ../../node_modules/vite/bin/vite.js build",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "preview": "vite preview --host 0.0.0.0 --port 3001"
+  },
+  "dependencies": {
+    "@studiocore/contracts": "0.1.0",
+    "@studiocore/ui": "0.1.0",
+    "@tanstack/react-query": "^5.90.21",
+    "lucide-react": "^0.559.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "react-router-dom": "^6.28.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@types/react": "^19.0.12",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.2.0"
+  }
+}

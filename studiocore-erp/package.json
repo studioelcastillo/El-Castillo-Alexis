@@ -1,0 +1,17 @@
+{
+  "name": "studiocore-erp",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/web",
+    "packages/contracts",
+    "packages/ui"
+  ],
+  "scripts": {
+    "dev:api": "npm run start:dev --workspace @studiocore/api",
+    "dev:web": "npm run dev --workspace @studiocore/web",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  }
+}
