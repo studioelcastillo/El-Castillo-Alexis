@@ -15,6 +15,7 @@
 - Definir y arrancar la reconstruccion greenfield de `StudioCore ERP` dentro del repo: nuevo producto multiempresa y multisede, con plan maestro, arquitectura objetivo y bootstrap tecnico inicial sin depender del legacy actual.
 
 ### Ultimo avance
+- Se publico todo el trabajo acumulado del greenfield a GitHub: `origin/supabase-migration-final-safe` quedo en `cd2629d` y tambien se hizo fast-forward de `origin/staging` a ese mismo commit para disparar el flujo de pruebas actual. Verificacion posterior: `https://pruebas.livstre.com/health` y `https://pruebas.livstre.com/api/app/connectivity` siguieron respondiendo OK despues del push. Bloqueo restante: no fue posible aplicar las nuevas tablas del greenfield en Supabase staging desde esta sesion porque el repo solo tiene `SUPABASE_SECRET_KEY` / `SUPABASE_SERVICE_ROLE_KEY` de app, pero no un token valido de Management API ni credenciales directas (`SUPABASE_DB_CONNECTION` / `SUPABASE_DB_PASSWORD`) para ejecutar SQL o correr las migraciones TypeORM contra el proyecto remoto.
 - Se continuo `studiocore-erp/` cerrando otro tramo fuerte del flujo RRHH->nomina: `disciplina` + `exportacion CSV` de payroll. En backend se agregaron entidad/migracion para `hr_disciplinary_actions` (`1710000011000`), endpoints nuevos bajo `apps/api/src/modules/hr/*` para llamados/sanciones, y `apps/api/src/modules/payroll/payroll.service.ts` ahora expone exportacion CSV del snapshot. Las sanciones aprobadas con `payrollImpactAmount` generan o actualizan una `payroll_novelty` tipo `deduction`; si luego se rechazan o pierden impacto, limpian la novedad mientras el periodo no este cerrado. En frontend se sumo `apps/web/src/pages/HrDisciplinaryActionsPage.tsx`, nueva entrada `RRHH > Disciplina`, y `apps/web/src/pages/PayrollPage.tsx` ahora incluye boton de exportacion CSV del periodo. Tambien se ampliaron contratos compartidos y las pruebas de integracion del API para cubrir disciplina + export. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `node --max-old-space-size=4096 ../../node_modules/typescript/bin/tsc --noEmit -p tsconfig.json` en `apps/web`, `npm run test --workspace @studiocore/api` y `set "NODE_OPTIONS=--max-old-space-size=8192" && npm run build` OK.
 - Se continuo `studiocore-erp/` profundizando `payroll` con `items detallados por persona` dentro del snapshot ya calculado. No hizo falta una tabla nueva: se enriquecio `apps/api/src/modules/payroll/payroll.service.ts` para que cada item del `payroll_run` now incluya `components` monetarios (compensacion fija, bonos de metas y novedades aprobadas) y `alerts` operativas (ausencias pendientes, novedades criticas pendientes). En frontend `apps/web/src/pages/PayrollPage.tsx` ahora muestra, debajo del resumen tabular, un desglose por persona con componentes y alertas congeladas del ultimo calculo. Tambien se ampliaron contratos compartidos y las pruebas de integracion para validar la presencia de componentes/alerts dentro del snapshot. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
 - Se continuo `studiocore-erp/` abriendo `hr` base con `incapacities` y `vacations`. En backend se agregaron entidades/migracion para `hr_incapacities` y `hr_vacations` (`1710000010000`), permisos `hr.*`, y modulo nuevo en `apps/api/src/modules/hr/*` con CRUD tenant-aware, validacion de rango/persona/sede y auditoria. Cuando una incapacidad o vacacion queda `approved`, el backend intenta sincronizar/actualizar una `payroll_novelty` del periodo que cubre la fecha; si se desaprueba o cambia fuera de periodo, limpia la novedad enlazada mientras el periodo no este cerrado. En frontend se sumaron `apps/web/src/pages/HrRequestsPage.tsx`, `apps/web/src/pages/HrIncapacitiesPage.tsx` y `apps/web/src/pages/HrVacationsPage.tsx`, mas navegacion `RRHH`; las vistas ya permiten operar incapacidades/vacaciones y ver su sincronizacion base con payroll. Tambien se ampliaron contratos compartidos y las pruebas de integracion del API para cubrir sincronizacion HR->payroll. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
@@ -786,6 +787,7 @@
 - Diseñar una fase de backend/RLS para tablas que todavia no garantizan aislamiento por esquema, especialmente `remote_*`, `chat_*` y rutas legacy que hoy solo reciben `std_id` desde cliente.
 
 ### Bloqueos
+- Para subir las nuevas tablas del greenfield a Supabase staging falta una credencial de infraestructura que aqui no esta disponible: token valido para `https://api.supabase.com/v1/projects/<ref>/database/query` o, alternativamente, `SUPABASE_DB_CONNECTION` + `SUPABASE_DB_PASSWORD` del proyecto remoto para correr `studiocore-erp/apps/api` migrations contra la base real.
 - `studiocore-erp` no tiene `.env` operativo materializado en esta copia y en la sesion actual faltan `DATABASE_URL`, `S3_*`, `LEGACY_DATABASE_URL` y `LEGACY_DOCUMENT_PUBLIC_BASE_URL`; por eso la migracion real `db:migrate:legacy:documents` no puede conectarse a DB ni object storage.
 - Los puertos locales `5432`, `6379`, `9000` y `9001` estan cerrados, y `docker ps` sigue fallando porque el daemon `dockerDesktopLinuxEngine` no esta disponible; el stack local de PostgreSQL/Redis/MinIO no pudo levantarse desde aqui.
 - Docker CLI existe, pero el daemon local no esta corriendo (`dockerDesktopLinuxEngine` no disponible), por lo que no se pudo validar con `docker build` la imagen final para Easypanel desde esta sesion.
@@ -806,6 +808,41 @@
 - La validacion HTTP local sigue parcial porque PostgreSQL local no esta arriba en `127.0.0.1:5432`; por eso endpoints que consultan DB (`api/app/version`, `api/app/proxy` con auth interna valida y cualquier login real) siguen devolviendo `500 connection refused` mientras no exista una base operativa.
 - Los scripts `reset_passwords.mjs` y `sync_prod_full.mjs` ya no estan bloqueados por credencial, pero siguen bloqueados operativamente hasta decidir si se acepta su impacto en `production` (cambio masivo de passwords y escritura adicional en datos).
 - El checkout del repo en el VPS quedo sucio en `/srv/el-castillo` (`M apps/dashboard/App.tsx`) porque el redeploy de `staging` se hizo copiando el archivo local sin commit remoto; esto no afecta al contenedor live actual, pero conviene limpiarlo cuando el cambio ya quede versionado.
+
+### Desarrollo StudioCore ERP - Modulo de Finanzas (Cuentas y Transacciones)
+- Se implemento el modulo de finanzas tanto en backend como en frontend para el control de cuentas bancarias y flujo de caja.
+
+#### Backend (NestJS)
+- **Entidades**: `FinancialAccount` y `FinancialTransaction` creadas con auditoria y soft-delete.
+- **Enums**: `FinancialAccountType` (bank, cash, platform, other) y `FinancialTransactionType` (income, expense, transfer) agregados a `enums.ts`.
+- **Migraciones**: Tabla `financial_accounts` y `financial_transactions` creadas con triggers de tenancy-isolation.
+- **DTOs**: Validaciones para creacion de cuentas, consulta paginada y registro de transacciones.
+- **Servicios**: `FinanceService` maneja la logica de negocio, incluyendo la actualizacion automatica de balances al registrar transacciones (transacciones atomicas vía TypeORM EntityManager).
+- **Controladores**: `FinanceController` expone endpoints protegidos con `JwtAuthGuard`, `PermissionsGuard` y `TenantContextGuard`. Permisos: `finance.view`, `finance.create`.
+- **Auditoria**: Integracion con `AuditLogsService` para registrar creacion de cuentas y movimientos financieros.
+
+#### Frontend (React / Vite)
+- **Contratos Compartidos**: Los tipos y enums financieros se agregaron a `packages/contracts` para consistencia.
+- **Paginas**: 
+  - `FinanceAccountsPage.tsx`: Dashboard de cuentas con lista de seleccion y ficha de detalle/creacion. Soporta busqueda, visualizacion de balances en tiempo real y gestion por tipo.
+  - `FinanceTransactionsPage.tsx`: Historial consolidado de movimientos con filtros y formulario para registro manual de ingresos/egresos con impacto directo en cuentas.
+- **Navegacion**: Se agrego la seccion "Finanzas" en el sidebar (`routes.tsx`) y se registraron las rutas en `App.tsx`.
+- **Utilidades**: Se agrego `formatCurrency` en `format.ts` para despliegue estandarizado de montos en COP/USD.
+
+#### Archivos Modificados/Creados
+- `apps/api/src/database/entities/enums.ts` (Actualizado)
+- `apps/api/src/database/entities/financial-account.entity.ts` (Nuevo)
+- `apps/api/src/database/entities/financial-transaction.entity.ts` (Nuevo)
+- `apps/api/src/database/migrations/1710000012000-add-finance-module.ts` (Nuevo)
+- `apps/api/src/modules/finance/` (Nuevo modulo completo: Service, Controller, DTOs)
+- `apps/api/src/database/database.config.ts` (Actualizado)
+- `apps/api/src/app.module.ts` (Actualizado)
+- `packages/contracts/src/index.ts` (Actualizado)
+- `apps/web/src/lib/format.ts` (Actualizado)
+- `apps/web/src/pages/FinanceAccountsPage.tsx` (Nuevo)
+- `apps/web/src/pages/FinanceTransactionsPage.tsx` (Nuevo)
+- `apps/web/src/routes.tsx` (Actualizado)
+- `apps/web/src/App.tsx` (Actualizado)
 
 ### Siguiente paso recomendado
 - Aprovechar que el flujo RRHH->nomina ya cubre incapacidades, vacaciones, disciplina, novedades, snapshot y export CSV para abrir `finance` / `reports` o congelar mas el cierre de payroll con persistencia/exportaciones enriquecidas.
