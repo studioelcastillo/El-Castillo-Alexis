@@ -1,4 +1,4 @@
-export function formatDateTime(value?: string | Date | null) {
+export function formatDateTime(value?: string | Date | null, options: { dateOnly?: boolean } = {}) {
   if (!value) {
     return '--';
   }
@@ -10,8 +10,20 @@ export function formatDateTime(value?: string | Date | null) {
 
   return new Intl.DateTimeFormat('es-CO', {
     dateStyle: 'medium',
-    timeStyle: 'short',
+    timeStyle: options.dateOnly ? undefined : 'short',
   }).format(date);
+}
+
+export function formatCurrency(value: number | string, currency = 'COP') {
+  const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+  if (Number.isNaN(numericValue)) {
+    return '--';
+  }
+
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency,
+  }).format(numericValue);
 }
 
 export function formatDate(value?: string | Date | null) {

@@ -23,6 +23,8 @@ import { PermissionsPage } from './pages/PermissionsPage';
 import { RolesPage } from './pages/RolesPage';
 import { StaffPage } from './pages/StaffPage';
 import { UsersPage } from './pages/UsersPage';
+import { FinanceAccountsPage } from './pages/FinanceAccountsPage';
+import { FinanceTransactionsPage } from './pages/FinanceTransactionsPage';
 
 function AppSplash() {
   return (
@@ -93,6 +95,8 @@ export function App() {
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/permissions" element={<PermissionsPage />} />
           <Route path="/audit" element={<AuditLogsPage />} />
+          <Route path="/finance/accounts" element={<FinanceAccountsPage />} />
+          <Route path="/finance/transactions" element={<FinanceTransactionsPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
