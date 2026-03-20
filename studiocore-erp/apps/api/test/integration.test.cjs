@@ -1384,6 +1384,183 @@ test('hr vacations sync into payroll novelties and respect paid flag', async () 
   }
 });
 
+test('finance accounts, transactions and transfers keep balances branch-scoped', async () => {
+  const context = await createTestContext();
+
+  try {
+    const cashAccountResponse = await context.request
+      .post('/api/v1/finance/accounts')
+      .set('Authorization', context.authHeader)
+      .send({
+        branchId: context.primaryBranchId,
+        name: 'Caja principal',
+        type: 'cash',
+        currency: 'COP',
+      })
+      .expect(201);
+
+    const bankAccountResponse = await context.request
+      .post('/api/v1/finance/accounts')
+      .set('Authorization', context.authHeader)
+      .send({
+        branchId: context.primaryBranchId,
+        name: 'Banco operativo',
+        type: 'bank',
+        currency: 'COP',
+      })
+      .expect(201);
+
+    const secondaryAccountResponse = await context.request
+      .post('/api/v1/finance/accounts')
+      .set('Authorization', context.authHeader)
+      .send({
+        branchId: context.secondaryBranchId,
+        name: 'Caja sede norte',
+        type: 'cash',
+        currency: 'COP',
+      })
+      .expect(201);
+
+    const usdAccountResponse = await context.request
+      .post('/api/v1/finance/accounts')
+      .set('Authorization', context.authHeader)
+      .send({
+        branchId: context.primaryBranchId,
+        name: 'Caja USD',
+        type: 'cash',
+        currency: 'USD',
+      })
+      .expect(201);
+
+    const accountListResponse = await context.request
+      .get('/api/v1/finance/accounts?page=1&pageSize=20&search=Caja')
+      .set('Authorization', context.authHeader)
+      .expect(200);
+
+    assert.equal(accountListResponse.body.total, 3);
+
+    const incomeResponse = await context.request
+      .post('/api/v1/finance/transactions')
+      .set('Authorization', context.authHeader)
+      .send({
+        accountId: cashAccountResponse.body.data.id,
+        type: 'income',
+        amount: '500000',
+        transactionDate: '2026-08-01',
+        description: 'Apertura de caja',
+      })
+      .expect(201);
+
+    assert.equal(incomeResponse.body.data.type, 'income');
+
+    const expenseResponse = await context.request
+      .post('/api/v1/finance/transactions')
+      .set('Authorization', context.authHeader)
+      .send({
+        accountId: cashAccountResponse.body.data.id,
+        type: 'expense',
+        amount: '120000',
+        transactionDate: '2026-08-02',
+        description: 'Compra de suministros',
+      })
+      .expect(201);
+
+    assert.equal(expenseResponse.body.data.type, 'expense');
+
+    const transferResponse = await context.request
+      .post('/api/v1/finance/transfers')
+      .set('Authorization', context.authHeader)
+      .send({
+        sourceAccountId: cashAccountResponse.body.data.id,
+        destinationAccountId: bankAccountResponse.body.data.id,
+        amount: '200000',
+        transactionDate: '2026-08-03',
+        description: 'Reserva operativa',
+      })
+      .expect(201);
+
+    assert.equal(transferResponse.body.data.expenseTx.type, 'expense');
+    assert.equal(transferResponse.body.data.incomeTx.type, 'income');
+
+    const transactionListResponse = await context.request
+      .get(`/api/v1/finance/transactions?page=1&pageSize=20&accountId=${cashAccountResponse.body.data.id}`)
+      .set('Authorization', context.authHeader)
+      .expect(200);
+
+    assert.equal(transactionListResponse.body.total, 3);
+    assert.equal(transactionListResponse.body.items[0].description, 'Transferencia a Banco operativo: Reserva operativa');
+
+    const cashDetailResponse = await context.request
+      .get(`/api/v1/finance/accounts/${cashAccountResponse.body.data.id}`)
+      .set('Authorization', context.authHeader)
+      .expect(200);
+
+    assert.equal(Number(cashDetailResponse.body.data.balance), 180000);
+
+    const bankDetailResponse = await context.request
+      .get(`/api/v1/finance/accounts/${bankAccountResponse.body.data.id}`)
+      .set('Authorization', context.authHeader)
+      .expect(200);
+
+    assert.equal(Number(bankDetailResponse.body.data.balance), 200000);
+
+    await context.request
+      .post('/api/v1/finance/transactions')
+      .set('Authorization', context.authHeader)
+      .send({
+        accountId: cashAccountResponse.body.data.id,
+        type: 'transfer',
+        amount: '5000',
+        transactionDate: '2026-08-04',
+        description: 'Intento invalido',
+      })
+      .expect(400);
+
+    await context.request
+      .post('/api/v1/finance/transfers')
+      .set('Authorization', context.authHeader)
+      .send({
+        sourceAccountId: cashAccountResponse.body.data.id,
+        destinationAccountId: usdAccountResponse.body.data.id,
+        amount: '1000',
+        transactionDate: '2026-08-05',
+        description: 'Transferencia cruzada',
+      })
+      .expect(400);
+
+    const branchScopedListResponse = await context.request
+      .get('/api/v1/finance/accounts?page=1&pageSize=20')
+      .set('Authorization', context.branchScopedAuthHeader)
+      .expect(200);
+
+    assert.equal(branchScopedListResponse.body.total, 3);
+    assert.ok(branchScopedListResponse.body.items.every((item) => item.branchId === context.primaryBranchId));
+
+    await context.request
+      .get(`/api/v1/finance/accounts/${secondaryAccountResponse.body.data.id}`)
+      .set('Authorization', context.branchScopedAuthHeader)
+      .expect(404);
+
+    await context.request
+      .get(`/api/v1/finance/accounts?page=1&pageSize=20&branchId=${context.secondaryBranchId}`)
+      .set('Authorization', context.branchScopedAuthHeader)
+      .expect(403);
+
+    await context.request
+      .post('/api/v1/finance/accounts')
+      .set('Authorization', context.branchScopedAuthHeader)
+      .send({
+        branchId: context.secondaryBranchId,
+        name: 'Cuenta prohibida',
+        type: 'cash',
+        currency: 'COP',
+      })
+      .expect(403);
+  } finally {
+    await closeTestContext(context);
+  }
+});
+
 test('people CRUD integration flow and audit visibility', async () => {
   const context = await createTestContext();
 

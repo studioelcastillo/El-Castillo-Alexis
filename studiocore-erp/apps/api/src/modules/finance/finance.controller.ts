@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -12,6 +12,8 @@ import { FinanceService } from './finance.service';
 import { CreateFinancialAccountDto } from './dto/create-financial-account.dto';
 import { FinancialAccountsQueryDto } from './dto/financial-accounts-query.dto';
 import { CreateFinancialTransactionDto } from './dto/create-financial-transaction.dto';
+import { FinancialTransactionsQueryDto } from './dto/financial-transactions-query.dto';
+import { CreateFinancialTransferDto } from './dto/create-financial-transfer.dto';
 
 @ApiTags('finance')
 @ApiBearerAuth()
@@ -38,7 +40,7 @@ export class FinanceController {
 
   @Get('accounts/:id')
   @RequirePermissions('finance.view')
-  async findAccount(@CurrentUser() currentUser: CurrentUserContext, @Param('id') id: number) {
+  async findAccount(@CurrentUser() currentUser: CurrentUserContext, @Param('id', ParseIntPipe) id: number) {
     return { data: await this.financeService.findAccountOrFail(currentUser, id) };
   }
 
@@ -47,6 +49,22 @@ export class FinanceController {
   async createTransaction(@CurrentUser() currentUser: CurrentUserContext, @Body() dto: CreateFinancialTransactionDto, @Req() req: Request) {
     const meta = getRequestMeta(req);
     return this.financeService.createTransaction(currentUser, dto, {
+      ipAddress: meta.ipAddress,
+      userAgent: meta.userAgent || undefined,
+    });
+  }
+
+  @Get('transactions')
+  @RequirePermissions('finance.view')
+  async listTransactions(@CurrentUser() currentUser: CurrentUserContext, @Query() query: FinancialTransactionsQueryDto) {
+    return this.financeService.listTransactions(currentUser, query);
+  }
+
+  @Post('transfers')
+  @RequirePermissions('finance.create')
+  async createTransfer(@CurrentUser() currentUser: CurrentUserContext, @Body() dto: CreateFinancialTransferDto, @Req() req: Request) {
+    const meta = getRequestMeta(req);
+    return this.financeService.createTransfer(currentUser, dto, {
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent || undefined,
     });

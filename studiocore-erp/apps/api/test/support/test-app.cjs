@@ -14,6 +14,8 @@ const { Branch } = require('../../dist/database/entities/branch.entity');
 const { CatalogGroup } = require('../../dist/database/entities/catalog-group.entity');
 const { Company } = require('../../dist/database/entities/company.entity');
 const { GoalRecordEntity } = require('../../dist/database/entities/goal-record.entity');
+const { FinancialAccount } = require('../../dist/database/entities/financial-account.entity');
+const { FinancialTransaction } = require('../../dist/database/entities/financial-transaction.entity');
 const { HrDisciplinaryAction } = require('../../dist/database/entities/hr-disciplinary-action.entity');
 const { HrIncapacity } = require('../../dist/database/entities/hr-incapacity.entity');
 const { HrVacation } = require('../../dist/database/entities/hr-vacation.entity');
@@ -41,6 +43,7 @@ const { BranchesModule } = require('../../dist/modules/branches/branches.module'
 const { CatalogsModule } = require('../../dist/modules/catalogs/catalogs.module');
 const { CompaniesModule } = require('../../dist/modules/companies/companies.module');
 const { GoalsModule } = require('../../dist/modules/goals/goals.module');
+const { FinanceModule } = require('../../dist/modules/finance/finance.module');
 const { HrModule } = require('../../dist/modules/hr/hr.module');
 const { ModelsModule } = require('../../dist/modules/models/models.module');
 const { OnlineTimeModule } = require('../../dist/modules/online-time/online-time.module');
@@ -68,6 +71,8 @@ const entities = [
   HrVacation,
   AbsenceRecordEntity,
   GoalRecordEntity,
+  FinancialAccount,
+  FinancialTransaction,
   AttendanceRecordEntity,
   Person,
   PersonContract,
@@ -149,6 +154,7 @@ Module({
     AuthModule,
     CatalogsModule,
     CompaniesModule,
+    FinanceModule,
     GoalsModule,
     HrModule,
     BranchesModule,

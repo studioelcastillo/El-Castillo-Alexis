@@ -14,6 +14,7 @@ export const CORE_PERMISSION_CATALOG = {
   payroll: ['view', 'create', 'edit', 'calculate', 'close', 'reopen', 'export'],
   payroll_novelties: ['view', 'create', 'edit'],
   hr: ['view', 'create', 'edit'],
+  finance: ['view', 'create', 'edit'],
   users: ['view', 'create', 'edit', 'activate', 'deactivate', 'reset_password'],
   roles: ['view', 'create', 'edit', 'manage_permissions'],
   permissions: ['view'],

@@ -2,13 +2,14 @@ import type {
   FinancialAccountRecord,
   FinancialTransactionRecord,
   CreateFinancialTransactionInput,
+  CreateFinancialTransferInput,
   EnvelopeResponse,
   PaginatedResponse,
 } from '@studiocore/contracts';
 import { ActionButton, Field, InlineMessage, PageHero, Panel, SectionHeading, StatusBadge, TextInput, SelectInput } from '@studiocore/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Save, History, TrendingUp, TrendingDown, ArrowLeftRight } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { PermissionGuard } from '../components/PermissionGuard';
 import { useApiClient, useAuth } from '../lib/auth';
 import { toOptionalString } from '../lib/forms';
@@ -21,6 +22,7 @@ type TransactionFormState = {
   transactionDate: string;
   description: string;
   personId: string;
+  destinationAccountId: string;
 };
 
 const emptyForm: TransactionFormState = {
@@ -30,6 +32,7 @@ const emptyForm: TransactionFormState = {
   transactionDate: new Date().toISOString().split('T')[0],
   description: '',
   personId: '',
+  destinationAccountId: '',
 };
 
 export function FinanceTransactionsPage() {
@@ -44,7 +47,7 @@ export function FinanceTransactionsPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const accountsQuery = useQuery({
-    queryKey: ['finance-accounts-list'],
+    queryKey: ['finance-accounts', 'list'],
     queryFn: () => api.get<PaginatedResponse<FinancialAccountRecord>>('/finance/accounts?page=1&pageSize=100'),
   });
 
@@ -56,28 +59,58 @@ export function FinanceTransactionsPage() {
   const allAccounts = accountsQuery.data?.items ?? [];
   const allTransactions = transactionsQuery.data?.items ?? [];
 
+  function resetCreateForm() {
+    setForm(emptyForm);
+  }
+
+  function openCreate() {
+    resetCreateForm();
+    setFeedback(null);
+    setMode('create');
+  }
+
+  function cancelCreate() {
+    resetCreateForm();
+    setFeedback(null);
+    setMode('list');
+  }
+
+  function getAccountById(id: number) {
+    return allAccounts.find((account) => account.id === id) ?? null;
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFeedback(null);
     setIsSaving(true);
 
     try {
-      const payload: CreateFinancialTransactionInput = {
-        accountId: Number(form.accountId),
-        type: form.type as any,
-        amount: form.amount,
-        description: form.description.trim(),
-        transactionDate: form.transactionDate,
-        ...(toOptionalString(form.personId) ? { personId: Number(form.personId) } : {}),
-      };
+      if (form.type === 'transfer') {
+        const payload: CreateFinancialTransferInput = {
+          sourceAccountId: Number(form.accountId),
+          destinationAccountId: Number(form.destinationAccountId),
+          amount: form.amount,
+          description: form.description.trim(),
+          transactionDate: form.transactionDate,
+        };
+        await api.post<EnvelopeResponse<any>>('/finance/transfers', payload);
+      } else {
+        const payload: CreateFinancialTransactionInput = {
+          accountId: Number(form.accountId),
+          type: form.type as any,
+          amount: form.amount,
+          description: form.description.trim(),
+          transactionDate: form.transactionDate,
+          ...(toOptionalString(form.personId) ? { personId: Number(form.personId) } : {}),
+        };
+        await api.post<EnvelopeResponse<FinancialTransactionRecord>>('/finance/transactions', payload);
+      }
 
-      await api.post<EnvelopeResponse<FinancialTransactionRecord>>('/finance/transactions', payload);
       await queryClient.invalidateQueries({ queryKey: ['finance-transactions'] });
       await queryClient.invalidateQueries({ queryKey: ['finance-accounts'] });
       
-      setMode('list');
-      setForm(emptyForm);
-      setFeedback({ tone: 'success', message: 'Transaccion registrada correctamente.' });
+      cancelCreate();
+      setFeedback({ tone: 'success', message: form.type === 'transfer' ? 'Transferencia realizada correctamente.' : 'Transaccion registrada correctamente.' });
     } catch (error) {
       setFeedback({
         tone: 'error',
@@ -89,7 +122,11 @@ export function FinanceTransactionsPage() {
   }
 
   function getAccountName(id: number) {
-    return allAccounts.find(a => a.id === id)?.name ?? `Cuenta #${id}`;
+    return getAccountById(id)?.name ?? `Cuenta #${id}`;
+  }
+
+  function getAccountCurrency(id: number) {
+    return getAccountById(id)?.currency ?? 'COP';
   }
 
   function getTransactionIcon(type: string) {
@@ -110,12 +147,12 @@ export function FinanceTransactionsPage() {
           description="Historial consolidado de movimientos financieros y registro de nuevos ingresos o egresos."
           actions={
             canCreate && mode === 'list' ? (
-              <ActionButton onClick={() => setMode('create')}>
+              <ActionButton onClick={openCreate}>
                 <Plus size={16} />
                 Nuevo movimiento
               </ActionButton>
             ) : mode === 'create' ? (
-              <ActionButton variant="secondary" onClick={() => setMode('list')}>
+              <ActionButton variant="secondary" onClick={cancelCreate}>
                 Volver al listado
               </ActionButton>
             ) : null
@@ -125,89 +162,125 @@ export function FinanceTransactionsPage() {
         {feedback ? <InlineMessage tone={feedback.tone}>{feedback.message}</InlineMessage> : null}
 
         {mode === 'create' ? (
-          <Panel style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
-            <SectionHeading
-              eyebrow="Formulario"
-              title="Registrar movimiento"
-              description="Asegurate de seleccionar la cuenta correcta. El impacto en el balance es inmediato tras guardar."
-            />
+          <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
+            <Panel>
+              <SectionHeading
+                eyebrow="Formulario"
+                title="Registrar movimiento"
+                description="Asegurate de seleccionar la cuenta correcta. El impacto en el balance es inmediato tras guardar."
+              />
 
-            <form className="editor-form" onSubmit={handleSubmit}>
-              <div className="field-grid two-columns">
-                <Field label="Cuenta afectada" htmlFor="tx-account">
-                  <SelectInput
-                    id="tx-account"
-                    value={form.accountId}
-                    onChange={(event) => setForm((current) => ({ ...current, accountId: event.target.value }))}
-                    required
-                  >
-                    <option value="">Selecciona una cuenta...</option>
-                    {allAccounts.map(acc => (
-                      <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(Number(acc.balance), acc.currency)})</option>
-                    ))}
-                  </SelectInput>
-                </Field>
+              <form className="editor-form" onSubmit={handleSubmit}>
+                <div className="field-grid two-columns">
+                  <Field label="Cuenta afectada" htmlFor="tx-account">
+                    <SelectInput
+                      id="tx-account"
+                      value={form.accountId}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          accountId: event.target.value,
+                          destinationAccountId: current.destinationAccountId === event.target.value ? '' : current.destinationAccountId,
+                        }))
+                      }
+                      required
+                    >
+                      <option value="">Selecciona una cuenta...</option>
+                      {allAccounts.map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {account.name} ({formatCurrency(Number(account.balance), account.currency)})
+                        </option>
+                      ))}
+                    </SelectInput>
+                  </Field>
 
-                <Field label="Tipo de movimiento" htmlFor="tx-type">
-                  <SelectInput
-                    id="tx-type"
-                    value={form.type}
-                    onChange={(event) => setForm((current) => ({ ...current, type: event.target.value }))}
-                    required
-                  >
-                    <option value="income">Ingreso (+)</option>
-                    <option value="expense">Egreso (-)</option>
-                    <option value="transfer">Transferencia (N/A)</option>
-                  </SelectInput>
-                </Field>
+                  <Field label="Tipo de movimiento" htmlFor="tx-type">
+                    <SelectInput
+                      id="tx-type"
+                      value={form.type}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          type: event.target.value,
+                          destinationAccountId: event.target.value === 'transfer' ? current.destinationAccountId : '',
+                        }))
+                      }
+                      required
+                    >
+                      <option value="income">Ingreso (+)</option>
+                      <option value="expense">Egreso (-)</option>
+                      <option value="transfer">Transferencia (misma moneda)</option>
+                    </SelectInput>
+                  </Field>
 
-                <Field label="Monto" htmlFor="tx-amount">
-                  <TextInput
-                    id="tx-amount"
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={form.amount}
-                    onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))}
-                    placeholder="0.00"
-                    required
-                  />
-                </Field>
+                  {form.type === 'transfer' ? (
+                    <Field label="Cuenta destino" htmlFor="tx-dest-account">
+                      <SelectInput
+                        id="tx-dest-account"
+                        value={form.destinationAccountId}
+                        onChange={(event) => setForm((current) => ({ ...current, destinationAccountId: event.target.value }))}
+                        required
+                      >
+                        <option value="">Selecciona cuenta destino...</option>
+                        {allAccounts
+                          .filter((account) => account.id !== Number(form.accountId))
+                          .map((account) => (
+                            <option key={account.id} value={account.id}>
+                              {account.name} ({formatCurrency(Number(account.balance), account.currency)})
+                            </option>
+                          ))}
+                      </SelectInput>
+                    </Field>
+                  ) : null}
 
-                <Field label="Fecha de transaccion" htmlFor="tx-date">
-                  <TextInput
-                    id="tx-date"
-                    type="date"
-                    value={form.transactionDate}
-                    onChange={(event) => setForm((current) => ({ ...current, transactionDate: event.target.value }))}
-                    required
-                  />
-                </Field>
-
-                <div className="full-width">
-                  <Field label="Concepto / Descripcion" htmlFor="tx-desc">
+                  <Field label="Monto" htmlFor="tx-amount">
                     <TextInput
-                      id="tx-desc"
-                      value={form.description}
-                      onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-                      placeholder="Ej: Pago de nomina, Compra de suministros..."
+                      id="tx-amount"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={form.amount}
+                      onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))}
+                      placeholder="0.00"
                       required
                     />
                   </Field>
-                </div>
-              </div>
 
-              <div className="form-actions-row">
-                <ActionButton type="submit" disabled={isSaving || !form.accountId}>
-                  <Save size={16} />
-                  {isSaving ? 'Guardando...' : 'Registrar movimiento'}
-                </ActionButton>
-                <ActionButton variant="secondary" onClick={() => setMode('list')}>
-                  Cancelar
-                </ActionButton>
-              </div>
-            </form>
-          </Panel>
+                  <Field label="Fecha de transaccion" htmlFor="tx-date">
+                    <TextInput
+                      id="tx-date"
+                      type="date"
+                      value={form.transactionDate}
+                      onChange={(event) => setForm((current) => ({ ...current, transactionDate: event.target.value }))}
+                      required
+                    />
+                  </Field>
+
+                  <div className="full-width">
+                    <Field label="Concepto / Descripcion" htmlFor="tx-desc">
+                      <TextInput
+                        id="tx-desc"
+                        value={form.description}
+                        onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                        placeholder="Ej: Pago de nomina, Compra de suministros..."
+                        required
+                      />
+                    </Field>
+                  </div>
+                </div>
+
+                <div className="form-actions-row">
+                  <ActionButton type="submit" disabled={isSaving || !form.accountId || (form.type === 'transfer' && !form.destinationAccountId)}>
+                    <Save size={16} />
+                    {isSaving ? 'Guardando...' : form.type === 'transfer' ? 'Realizar transferencia' : 'Registrar movimiento'}
+                  </ActionButton>
+                  <ActionButton variant="secondary" onClick={cancelCreate}>
+                    Cancelar
+                  </ActionButton>
+                </div>
+              </form>
+            </Panel>
+          </div>
         ) : (
           <Panel>
             <div className="table-responsive">
@@ -238,7 +311,8 @@ export function FinanceTransactionsPage() {
                         <td>{tx.description}</td>
                         <td><StatusBadge value={tx.type} /></td>
                         <td className={`text-right ${tx.type === 'expense' ? 'text-error' : 'text-success'}`} style={{ fontWeight: 'bold' }}>
-                          {tx.type === 'expense' ? '-' : '+'}{formatCurrency(Number(tx.amount), 'COP')}
+                          {tx.type === 'expense' ? '-' : '+'}
+                          {formatCurrency(Number(tx.amount), getAccountCurrency(tx.accountId))}
                         </td>
                       </tr>
                     ))

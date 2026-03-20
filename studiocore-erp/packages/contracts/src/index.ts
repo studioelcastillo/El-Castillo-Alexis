@@ -1125,3 +1125,22 @@ export interface CreateFinancialTransactionInput {
   relatedEntityType?: string;
   relatedEntityId?: string;
 }
+
+export interface CreateFinancialTransferInput {
+  sourceAccountId: number;
+  destinationAccountId: number;
+  amount: string;
+  transactionDate?: string;
+  description: string;
+}
+
+export interface FinancialTransactionsQueryInput {
+  page?: number;
+  pageSize?: number;
+  branchId?: number;
+  accountId?: number;
+  type?: FinancialTransactionType;
+  from?: string;
+  to?: string;
+  search?: string;
+}

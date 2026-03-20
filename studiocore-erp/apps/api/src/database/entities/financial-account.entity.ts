@@ -7,13 +7,13 @@ export class FinancialAccount extends BaseSoftDeleteEntity {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ name: 'company_id' })
+  @Column({ name: 'company_id', type: 'int' })
   companyId!: number;
 
-  @Column({ name: 'branch_id', nullable: true })
+  @Column({ name: 'branch_id', type: 'int', nullable: true })
   branchId!: number | null;
 
-  @Column()
+  @Column({ type: 'varchar', length: 180 })
   name!: string;
 
   @Column({
@@ -23,16 +23,16 @@ export class FinancialAccount extends BaseSoftDeleteEntity {
   })
   type!: FinancialAccountType;
 
-  @Column({ default: 'COP' })
+  @Column({ type: 'varchar', length: 10, default: 'COP' })
   currency!: string;
 
   @Column({ type: 'decimal', precision: 15, scale: 2, default: 0 })
   balance!: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'bank_name', type: 'varchar', length: 180, nullable: true })
   bankName!: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'account_number', type: 'varchar', length: 100, nullable: true })
   accountNumber!: string;
 
   @Column({ type: 'text', nullable: true })

@@ -7,13 +7,13 @@ export class FinancialTransaction extends BaseAuditedEntity {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ name: 'company_id' })
+  @Column({ name: 'company_id', type: 'int' })
   companyId!: number;
 
-  @Column({ name: 'branch_id', nullable: true })
+  @Column({ name: 'branch_id', type: 'int', nullable: true })
   branchId!: number | null;
 
-  @Column({ name: 'account_id' })
+  @Column({ name: 'account_id', type: 'int' })
   accountId!: number;
 
   @Column({
@@ -28,18 +28,18 @@ export class FinancialTransaction extends BaseAuditedEntity {
   @Column({ name: 'transaction_date', type: 'timestamptz' })
   transactionDate!: Date;
 
-  @Column()
+  @Column({ type: 'text' })
   description!: string;
 
-  @Column({ name: 'person_id', nullable: true })
+  @Column({ name: 'person_id', type: 'int', nullable: true })
   personId!: number | null;
 
-  @Column({ name: 'related_entity_type', nullable: true })
+  @Column({ name: 'related_entity_type', type: 'varchar', length: 100, nullable: true })
   relatedEntityType!: string | null;
 
-  @Column({ name: 'related_entity_id', nullable: true })
+  @Column({ name: 'related_entity_id', type: 'varchar', length: 100, nullable: true })
   relatedEntityId!: string | null;
 
-  @Column({ name: 'created_by_id' })
+  @Column({ name: 'created_by_id', type: 'int' })
   createdById!: number;
 }
