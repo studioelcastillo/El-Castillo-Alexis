@@ -24,6 +24,9 @@ services:
       S3_SECRET_KEY: ${STUDIOCORE_STAGING_S3_SECRET_KEY:-}
       S3_FORCE_PATH_STYLE: ${STUDIOCORE_STAGING_S3_FORCE_PATH_STYLE:-false}
       S3_PUBLIC_BASE_URL: ${STUDIOCORE_STAGING_S3_PUBLIC_BASE_URL:-}
+    networks:
+      - easypanel
+      - easypanel-elcastillo
     ports:
       - "127.0.0.1:${STUDIOCORE_STAGING_API_PORT:-4202}:4102"
 
@@ -38,5 +41,14 @@ services:
     restart: unless-stopped
     depends_on:
       - studiocore-api-pruebas
+    networks:
+      - easypanel
+      - easypanel-elcastillo
     ports:
       - "127.0.0.1:${STUDIOCORE_STAGING_WEB_PORT:-4301}:80"
+
+networks:
+  easypanel:
+    external: true
+  easypanel-elcastillo:
+    external: true
