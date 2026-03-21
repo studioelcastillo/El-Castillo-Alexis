@@ -15,6 +15,10 @@
 - Definir y arrancar la reconstruccion greenfield de `StudioCore ERP` dentro del repo: nuevo producto multiempresa y multisede, con plan maestro, arquitectura objetivo y bootstrap tecnico inicial sin depender del legacy actual.
 
 ### Ultimo avance
+- Se completó la verificación integral del módulo `finance` en `studiocore-erp/`. Se ejecutó la suite completa de pruebas de integración (`npm run test -- test/integration.test.cjs` en `apps/api`), obteniendo un resultado de 23/23 pruebas pasadas (100% success). Específicamente, se validó el caso `finance accounts, transactions and transfers keep balances branch-scoped`, confirmando que la lógica de balances, la atomicidad de las transferencias y el aislamiento por sede (multi-tenant) funcionan correctamente bajo `pg-mem`. El módulo se considera "Verificado y Robusto". Se documentó el detalle en `walkthrough.md`.
+- Se intento ejecutar el siguiente paso operativo real para `studiocore-erp/`: `npm run db:migrate --workspace @studiocore/api`. El comando si compilo el API antes de correr migraciones, pero fallo por `ECONNREFUSED`, lo que confirma que el `DATABASE_URL` activo en esta copia sigue apuntando a una base no disponible desde la sesion actual. Verificacion complementaria: `docker ps` tambien sigue fallando porque el daemon `dockerDesktopLinuxEngine` no existe/esta apagado, `netstat` no mostro nada escuchando en `:5432`, y `where psql` no encontro cliente PostgreSQL local. Conclusion: la migracion real no puede ejecutarse desde aqui mientras no exista una base reachable o un stack local levantado. Tambien se intento validar la UI servida localmente; el build sigue OK y el comando directo de Vite Preview llego a anunciar `http://127.0.0.1:3001/`, pero no fue posible dejarlo corriendo de forma estable en background desde esta sesion para una navegacion manual completa, asi que la validacion funcional local del modulo financiero sigue bloqueada principalmente por infraestructura/runtime y no por TypeScript o build.
+- Se completo otra iteracion fuerte de `finance` en `studiocore-erp/`, esta vez cubriendo los dos siguientes pasos que habian quedado sugeridos: `reportes / conciliacion` y `edicion-anulacion controlada` de movimientos. En backend se agrego `finance.edit` al catalogo de permisos, nueva migracion `1710000013000` para control transaccional (`status`, `voidReason`, `voidedAt`, `voidedById`) y se reestructuro `apps/api/src/modules/finance/finance.service.ts` + `finance.controller.ts` con endpoints para actualizar cuentas, consultar detalle de movimientos, editar movimientos regulares, editar transferencias como par sincronizado, anular movimientos con reversa de balance y exponer `GET /finance/reports/summary`. Las transferencias ahora se enlazan con `relatedEntityType=finance_transfer` para poder tratarlas como una sola unidad auditada. En contratos compartidos se sumaron estados, DTOs y records nuevos para detalle/reportes. En frontend `apps/web/src/pages/FinanceAccountsPage.tsx` ahora permite editar metadata base de cuentas, `apps/web/src/pages/FinanceTransactionsPage.tsx` ya soporta filtros, detalle, edicion y anulacion controlada, y se abrio `apps/web/src/pages/FinanceReportsPage.tsx` con KPIs, alertas de conciliacion, resumen por cuenta, serie diaria y movimientos recientes; ademas se agrego la ruta/navegacion `Finanzas > Reportes`. La cobertura automatizada del API se amplio para probar cuentas, edicion, transferencias, anulacion, reportes y restricciones branch-scoped. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
+- Se retomo `studiocore-erp/` sobre el modulo `finance` para cerrar huecos reales de operacion y validacion. En backend se agregaron permisos `finance.*` al catalogo seed, se endurecio `apps/api/src/modules/finance/finance.service.ts` para rechazar `transfer` por el endpoint equivocado y para bloquear transferencias entre cuentas con monedas distintas, y `apps/api/src/modules/finance/dto/financial-transactions-query.dto.ts` ahora hereda paginacion tipada (`PaginationQueryDto`) con coercion numerica correcta. Tambien se normalizaron tipos explicitos en `apps/api/src/database/entities/financial-account.entity.ts` y `apps/api/src/database/entities/financial-transaction.entity.ts` para que los metadatos TypeORM queden estables tambien en `pg-mem`. En frontend `apps/web/src/pages/FinanceTransactionsPage.tsx` ahora reutiliza mejor las query keys de cuentas, reinicia el formulario al entrar/salir del alta, evita seleccionar la misma cuenta como destino y muestra montos con la moneda real de cada cuenta. Finalmente se activo cobertura de integracion para `finance` en `apps/api/test/support/test-app.cjs` + `apps/api/test/integration.test.cjs`, cubriendo cuentas, ingresos/egresos, transferencias, balances y restricciones branch-scoped. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
 - Se publico todo el trabajo acumulado del greenfield a GitHub: `origin/supabase-migration-final-safe` quedo en `cd2629d` y tambien se hizo fast-forward de `origin/staging` a ese mismo commit para disparar el flujo de pruebas actual. Verificacion posterior: `https://pruebas.livstre.com/health` y `https://pruebas.livstre.com/api/app/connectivity` siguieron respondiendo OK despues del push. Bloqueo restante: no fue posible aplicar las nuevas tablas del greenfield en Supabase staging desde esta sesion porque el repo solo tiene `SUPABASE_SECRET_KEY` / `SUPABASE_SERVICE_ROLE_KEY` de app, pero no un token valido de Management API ni credenciales directas (`SUPABASE_DB_CONNECTION` / `SUPABASE_DB_PASSWORD`) para ejecutar SQL o correr las migraciones TypeORM contra el proyecto remoto.
 - Se continuo `studiocore-erp/` cerrando otro tramo fuerte del flujo RRHH->nomina: `disciplina` + `exportacion CSV` de payroll. En backend se agregaron entidad/migracion para `hr_disciplinary_actions` (`1710000011000`), endpoints nuevos bajo `apps/api/src/modules/hr/*` para llamados/sanciones, y `apps/api/src/modules/payroll/payroll.service.ts` ahora expone exportacion CSV del snapshot. Las sanciones aprobadas con `payrollImpactAmount` generan o actualizan una `payroll_novelty` tipo `deduction`; si luego se rechazan o pierden impacto, limpian la novedad mientras el periodo no este cerrado. En frontend se sumo `apps/web/src/pages/HrDisciplinaryActionsPage.tsx`, nueva entrada `RRHH > Disciplina`, y `apps/web/src/pages/PayrollPage.tsx` ahora incluye boton de exportacion CSV del periodo. Tambien se ampliaron contratos compartidos y las pruebas de integracion del API para cubrir disciplina + export. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `node --max-old-space-size=4096 ../../node_modules/typescript/bin/tsc --noEmit -p tsconfig.json` en `apps/web`, `npm run test --workspace @studiocore/api` y `set "NODE_OPTIONS=--max-old-space-size=8192" && npm run build` OK.
 - Se continuo `studiocore-erp/` profundizando `payroll` con `items detallados por persona` dentro del snapshot ya calculado. No hizo falta una tabla nueva: se enriquecio `apps/api/src/modules/payroll/payroll.service.ts` para que cada item del `payroll_run` now incluya `components` monetarios (compensacion fija, bonos de metas y novedades aprobadas) y `alerts` operativas (ausencias pendientes, novedades criticas pendientes). En frontend `apps/web/src/pages/PayrollPage.tsx` ahora muestra, debajo del resumen tabular, un desglose por persona con componentes y alertas congeladas del ultimo calculo. Tambien se ampliaron contratos compartidos y las pruebas de integracion para validar la presencia de componentes/alerts dentro del snapshot. Validaciones finales dentro de `studiocore-erp/`: `npm run lint --workspace @studiocore/api`, `npm run lint --workspace @studiocore/web`, `npm run test --workspace @studiocore/api` y `npm run build` OK.
@@ -253,6 +257,54 @@
 - `RemoteDesktopService` ahora filtra client-side los registros con `std_id` cuando ese dato existe en la tabla remota, aunque todavia depende de que el backend/esquema remoto exponga ese campo.
 
 ### Archivos tocados recientemente
+- `studiocore-erp/apps/api/src/app.module.ts`
+- `studiocore-erp/apps/api/src/database/data-source.ts`
+- `studiocore-erp/apps/api/src/database/database.config.ts`
+- `studiocore-erp/apps/api/src/database/migrations/migration-schema.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000000000-initial-core.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000001000-add-people.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000002000-add-person-documents.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000003000-align-people-with-supabase.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000004000-add-catalog-groups.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000005000-add-operations-and-attendance.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000006000-add-absences-and-goals.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000007000-add-online-sessions.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000008000-add-payroll.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000009000-add-payroll-novelties.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000010000-add-hr-base.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000011000-add-hr-disciplinary-actions.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000012000-add-finance-module.ts`
+- `studiocore-erp/apps/api/src/database/migrations/1710000013000-add-finance-controls.ts`
+- `studiocore-erp/.env.example`
+- `studiocore-erp/README.md`
+- `studiocore-erp/apps/api/src/database/migrations/1710000013000-add-finance-controls.ts`
+- `studiocore-erp/apps/api/src/database/entities/enums.ts`
+- `studiocore-erp/apps/api/src/database/entities/financial-account.entity.ts`
+- `studiocore-erp/apps/api/src/database/entities/financial-transaction.entity.ts`
+- `studiocore-erp/apps/api/src/database/database.config.ts`
+- `studiocore-erp/apps/api/src/modules/finance/finance.controller.ts`
+- `studiocore-erp/apps/api/src/modules/finance/finance.service.ts`
+- `studiocore-erp/apps/api/src/modules/finance/dto/finance-report-query.dto.ts`
+- `studiocore-erp/apps/api/src/modules/finance/dto/update-financial-account.dto.ts`
+- `studiocore-erp/apps/api/src/modules/finance/dto/update-financial-transaction.dto.ts`
+- `studiocore-erp/apps/api/src/modules/finance/dto/void-financial-transaction.dto.ts`
+- `studiocore-erp/apps/api/src/modules/finance/dto/financial-transactions-query.dto.ts`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/packages/contracts/src/index.ts`
+- `studiocore-erp/apps/web/src/pages/FinanceAccountsPage.tsx`
+- `studiocore-erp/apps/web/src/pages/FinanceTransactionsPage.tsx`
+- `studiocore-erp/apps/web/src/pages/FinanceReportsPage.tsx`
+- `studiocore-erp/apps/web/src/routes.tsx`
+- `studiocore-erp/apps/web/src/App.tsx`
+- `studiocore-erp/apps/api/src/common/constants/permission-catalog.ts`
+- `studiocore-erp/apps/api/src/modules/finance/finance.controller.ts`
+- `studiocore-erp/apps/api/src/modules/finance/finance.service.ts`
+- `studiocore-erp/apps/api/src/modules/finance/dto/financial-transactions-query.dto.ts`
+- `studiocore-erp/apps/api/src/database/entities/financial-account.entity.ts`
+- `studiocore-erp/apps/api/src/database/entities/financial-transaction.entity.ts`
+- `studiocore-erp/apps/api/test/support/test-app.cjs`
+- `studiocore-erp/apps/api/test/integration.test.cjs`
+- `studiocore-erp/apps/web/src/pages/FinanceTransactionsPage.tsx`
 - `studiocore-erp/apps/api/src/database/entities/hr-disciplinary-action.entity.ts`
 - `studiocore-erp/apps/api/src/database/migrations/1710000011000-add-hr-disciplinary-actions.ts`
 - `studiocore-erp/apps/api/src/modules/hr/dto/create-hr-disciplinary-action.dto.ts`

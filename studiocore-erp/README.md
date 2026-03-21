@@ -63,6 +63,12 @@ studiocore-erp/
 - `studiocore-erp/docker-compose.yml`: PostgreSQL + Redis + MinIO local.
 - `studiocore-erp/.env.example`: variables base del nuevo sistema.
 
+## Esquema dedicado recomendado
+
+- Si el greenfield va a convivir con tablas legacy dentro de la misma base PostgreSQL/Supabase, define `DATABASE_SCHEMA` para aislar las tablas nuevas del ERP.
+- Ejemplo recomendado para staging/produccion compartidos: `DATABASE_SCHEMA=studiocore_erp`.
+- Los scripts `db:migrate`, `db:seed`, el runtime Nest y las migraciones ya respetan ese esquema dedicado cuando la variable existe.
+
 ## Importacion legacy inicial
 
 - `apps/api` incluye `npm run db:import:legacy:people --workspace @studiocore/api` para migrar personas, contratos y metadata documental desde la base legacy hacia el greenfield.

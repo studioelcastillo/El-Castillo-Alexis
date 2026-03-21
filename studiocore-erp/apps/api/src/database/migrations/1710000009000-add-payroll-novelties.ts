@@ -1,9 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { configureMigrationSchema } from './migration-schema';
 
 export class AddPayrollNovelties1710000009000 implements MigrationInterface {
   name = 'AddPayrollNovelties1710000009000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`CREATE TYPE payroll_novelty_type_enum AS ENUM ('bonus', 'deduction', 'allowance', 'incident')`);
     await queryRunner.query(`CREATE TYPE payroll_novelty_status_enum AS ENUM ('pending', 'approved', 'rejected')`);
     await queryRunner.query(`
@@ -32,6 +34,7 @@ export class AddPayrollNovelties1710000009000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`DROP TABLE IF EXISTS payroll_novelties`);
     await queryRunner.query(`DROP TYPE IF EXISTS payroll_novelty_status_enum`);
     await queryRunner.query(`DROP TYPE IF EXISTS payroll_novelty_type_enum`);

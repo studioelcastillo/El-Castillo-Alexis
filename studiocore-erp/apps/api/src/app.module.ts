@@ -1,5 +1,8 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { config as loadEnv } from 'dotenv';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { getDataSourceOptions } from './database/database.config';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
@@ -23,6 +26,13 @@ import { RolesModule } from './modules/roles/roles.module';
 import { StaffModule } from './modules/staff/staff.module';
 import { UsersModule } from './modules/users/users.module';
 import { FinanceModule } from './modules/finance/finance.module';
+
+for (const candidate of [resolve(process.cwd(), '.env'), resolve(__dirname, '../../../.env')]) {
+  if (existsSync(candidate)) {
+    loadEnv({ path: candidate, quiet: true });
+    break;
+  }
+}
 
 @Module({
   imports: [

@@ -1,9 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { configureMigrationSchema } from './migration-schema';
 
 export class AddHrDisciplinaryActions1710000011000 implements MigrationInterface {
   name = 'AddHrDisciplinaryActions1710000011000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`CREATE TYPE hr_disciplinary_action_type_enum AS ENUM ('warning', 'sanction')`);
     await queryRunner.query(`
       CREATE TABLE hr_disciplinary_actions (
@@ -29,6 +31,7 @@ export class AddHrDisciplinaryActions1710000011000 implements MigrationInterface
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`DROP TABLE IF EXISTS hr_disciplinary_actions`);
     await queryRunner.query(`DROP TYPE IF EXISTS hr_disciplinary_action_type_enum`);
   }

@@ -1439,6 +1439,18 @@ test('finance accounts, transactions and transfers keep balances branch-scoped',
 
     assert.equal(accountListResponse.body.total, 3);
 
+    const updatedAccountResponse = await context.request
+      .patch(`/api/v1/finance/accounts/${cashAccountResponse.body.data.id}`)
+      .set('Authorization', context.authHeader)
+      .send({
+        name: 'Caja principal ajustada',
+        bankName: 'Caja operativa',
+      })
+      .expect(200);
+
+    assert.equal(updatedAccountResponse.body.data.name, 'Caja principal ajustada');
+    assert.equal(updatedAccountResponse.body.data.bankName, 'Caja operativa');
+
     const incomeResponse = await context.request
       .post('/api/v1/finance/transactions')
       .set('Authorization', context.authHeader)
@@ -1482,27 +1494,101 @@ test('finance accounts, transactions and transfers keep balances branch-scoped',
     assert.equal(transferResponse.body.data.expenseTx.type, 'expense');
     assert.equal(transferResponse.body.data.incomeTx.type, 'income');
 
+    const transferDetailResponse = await context.request
+      .get(`/api/v1/finance/transactions/${transferResponse.body.data.expenseTx.id}`)
+      .set('Authorization', context.authHeader)
+      .expect(200);
+
+    assert.equal(transferDetailResponse.body.data.isTransfer, true);
+    assert.equal(transferDetailResponse.body.data.sourceAccountName, 'Caja principal ajustada');
+    assert.equal(transferDetailResponse.body.data.destinationAccountName, 'Banco operativo');
+    assert.equal(transferDetailResponse.body.data.baseDescription, 'Reserva operativa');
+
+    const updateIncomeResponse = await context.request
+      .patch(`/api/v1/finance/transactions/${incomeResponse.body.data.id}`)
+      .set('Authorization', context.authHeader)
+      .send({
+        amount: '530000',
+        description: 'Apertura ajustada',
+      })
+      .expect(200);
+
+    assert.equal(Number(updateIncomeResponse.body.data.amount), 530000);
+    assert.equal(updateIncomeResponse.body.data.description, 'Apertura ajustada');
+
+    const updateTransferResponse = await context.request
+      .patch(`/api/v1/finance/transactions/${transferResponse.body.data.expenseTx.id}`)
+      .set('Authorization', context.authHeader)
+      .send({
+        accountId: cashAccountResponse.body.data.id,
+        destinationAccountId: bankAccountResponse.body.data.id,
+        amount: '150000',
+        description: 'Reserva ajustada',
+        transactionDate: '2026-08-03',
+      })
+      .expect(200);
+
+    assert.equal(updateTransferResponse.body.data.isTransfer, true);
+    assert.equal(Number(updateTransferResponse.body.data.amount), 150000);
+    assert.equal(updateTransferResponse.body.data.baseDescription, 'Reserva ajustada');
+
+    const voidExpenseResponse = await context.request
+      .post(`/api/v1/finance/transactions/${expenseResponse.body.data.id}/void`)
+      .set('Authorization', context.authHeader)
+      .send({ reason: 'Gasto duplicado' })
+      .expect(201);
+
+    assert.equal(voidExpenseResponse.body.data.status, 'voided');
+    assert.equal(voidExpenseResponse.body.data.voidReason, 'Gasto duplicado');
+
+    const voidTransferResponse = await context.request
+      .post(`/api/v1/finance/transactions/${transferResponse.body.data.expenseTx.id}/void`)
+      .set('Authorization', context.authHeader)
+      .send({ reason: 'Reserva revertida' })
+      .expect(201);
+
+    assert.equal(voidTransferResponse.body.data.status, 'voided');
+    assert.equal(voidTransferResponse.body.data.voidReason, 'Reserva revertida');
+
     const transactionListResponse = await context.request
       .get(`/api/v1/finance/transactions?page=1&pageSize=20&accountId=${cashAccountResponse.body.data.id}`)
       .set('Authorization', context.authHeader)
       .expect(200);
 
     assert.equal(transactionListResponse.body.total, 3);
-    assert.equal(transactionListResponse.body.items[0].description, 'Transferencia a Banco operativo: Reserva operativa');
+    assert.equal(transactionListResponse.body.items[0].status, 'voided');
+    assert.equal(transactionListResponse.body.items[1].status, 'voided');
+    assert.equal(transactionListResponse.body.items[2].description, 'Apertura ajustada');
+
+    const reportSummaryResponse = await context.request
+      .get(`/api/v1/finance/reports/summary?branchId=${context.primaryBranchId}&from=2026-08-01&to=2026-08-31`)
+      .set('Authorization', context.authHeader)
+      .expect(200);
+
+    assert.equal(reportSummaryResponse.body.data.totals.accountCount, 3);
+    assert.equal(Number(reportSummaryResponse.body.data.totals.totalBalance), 530000);
+    assert.equal(Number(reportSummaryResponse.body.data.totals.operationalIncomeAmount), 530000);
+    assert.equal(Number(reportSummaryResponse.body.data.totals.operationalExpenseAmount), 0);
+    assert.equal(Number(reportSummaryResponse.body.data.totals.netOperationalAmount), 530000);
+    assert.equal(Number(reportSummaryResponse.body.data.totals.transferVolumeAmount), 0);
+    assert.equal(reportSummaryResponse.body.data.totals.postedTransactionCount, 1);
+    assert.equal(reportSummaryResponse.body.data.totals.voidedTransactionCount, 3);
+    assert.equal(reportSummaryResponse.body.data.dailySummaries.length, 1);
+    assert.ok(reportSummaryResponse.body.data.alerts.some((item) => item.includes('anulados')));
 
     const cashDetailResponse = await context.request
       .get(`/api/v1/finance/accounts/${cashAccountResponse.body.data.id}`)
       .set('Authorization', context.authHeader)
       .expect(200);
 
-    assert.equal(Number(cashDetailResponse.body.data.balance), 180000);
+    assert.equal(Number(cashDetailResponse.body.data.balance), 530000);
 
     const bankDetailResponse = await context.request
       .get(`/api/v1/finance/accounts/${bankAccountResponse.body.data.id}`)
       .set('Authorization', context.authHeader)
       .expect(200);
 
-    assert.equal(Number(bankDetailResponse.body.data.balance), 200000);
+    assert.equal(Number(bankDetailResponse.body.data.balance), 0);
 
     await context.request
       .post('/api/v1/finance/transactions')

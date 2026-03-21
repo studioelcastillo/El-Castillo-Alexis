@@ -1,9 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { configureMigrationSchema } from './migration-schema';
 
 export class AddAbsencesAndGoals1710000006000 implements MigrationInterface {
   name = 'AddAbsencesAndGoals1710000006000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`CREATE TYPE absence_status_enum AS ENUM ('reported', 'approved', 'rejected')`);
     await queryRunner.query(`CREATE TYPE goal_status_enum AS ENUM ('draft', 'active', 'closed')`);
 
@@ -54,6 +56,7 @@ export class AddAbsencesAndGoals1710000006000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`DROP TABLE IF EXISTS goal_records`);
     await queryRunner.query(`DROP TABLE IF EXISTS absence_records`);
     await queryRunner.query(`DROP TYPE IF EXISTS goal_status_enum`);

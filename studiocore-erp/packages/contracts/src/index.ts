@@ -14,6 +14,7 @@ export type HrRequestStatus = 'requested' | 'approved' | 'rejected';
 export type HrDisciplinaryActionType = 'warning' | 'sanction';
 export type FinancialAccountType = 'bank' | 'cash' | 'platform' | 'other';
 export type FinancialTransactionType = 'income' | 'expense' | 'transfer';
+export type FinancialTransactionStatus = 'posted' | 'voided';
 
 export interface PaginatedResponse<T> {
   items: T[];
@@ -1098,6 +1099,15 @@ export interface CreateFinancialAccountInput {
   notes?: string;
 }
 
+export interface UpdateFinancialAccountInput {
+  name?: string;
+  type?: FinancialAccountType;
+  currency?: string;
+  bankName?: string | null;
+  accountNumber?: string | null;
+  notes?: string | null;
+}
+
 export interface FinancialTransactionRecord {
   id: number;
   companyId: number;
@@ -1105,14 +1115,29 @@ export interface FinancialTransactionRecord {
   accountId: number;
   type: FinancialTransactionType;
   amount: string;
+  status: FinancialTransactionStatus;
   transactionDate: string;
   description: string;
   personId: number | null;
   relatedEntityType: string | null;
   relatedEntityId: string | null;
   createdById: number;
+  voidReason: string | null;
+  voidedAt: string | null;
+  voidedById: number | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface FinancialTransactionDetailRecord extends FinancialTransactionRecord {
+  accountName: string;
+  accountCurrency: string;
+  isTransfer: boolean;
+  baseDescription: string;
+  sourceAccountId: number | null;
+  sourceAccountName: string | null;
+  destinationAccountId: number | null;
+  destinationAccountName: string | null;
 }
 
 export interface CreateFinancialTransactionInput {
@@ -1134,13 +1159,85 @@ export interface CreateFinancialTransferInput {
   description: string;
 }
 
+export interface UpdateFinancialTransactionInput {
+  accountId?: number;
+  destinationAccountId?: number;
+  type?: FinancialTransactionType;
+  amount?: string;
+  transactionDate?: string;
+  description?: string;
+  personId?: number | null;
+  relatedEntityType?: string | null;
+  relatedEntityId?: string | null;
+}
+
+export interface VoidFinancialTransactionInput {
+  reason: string;
+}
+
 export interface FinancialTransactionsQueryInput {
   page?: number;
   pageSize?: number;
   branchId?: number;
   accountId?: number;
   type?: FinancialTransactionType;
+  status?: FinancialTransactionStatus;
   from?: string;
   to?: string;
   search?: string;
+}
+
+export interface FinanceReportQueryInput {
+  branchId?: number;
+  accountId?: number;
+  from?: string;
+  to?: string;
+}
+
+export interface FinanceReportTotalsRecord {
+  accountCount: number;
+  totalBalance: string;
+  negativeBalanceCount: number;
+  postedTransactionCount: number;
+  voidedTransactionCount: number;
+  operationalIncomeAmount: string;
+  operationalExpenseAmount: string;
+  netOperationalAmount: string;
+  transferVolumeAmount: string;
+}
+
+export interface FinanceReportAccountSummaryRecord {
+  accountId: number;
+  name: string;
+  currency: string;
+  balance: string;
+  operationalIncomeAmount: string;
+  operationalExpenseAmount: string;
+  netOperationalAmount: string;
+  transferInAmount: string;
+  transferOutAmount: string;
+  postedTransactionCount: number;
+  voidedTransactionCount: number;
+}
+
+export interface FinanceReportDailySummaryRecord {
+  date: string;
+  operationalIncomeAmount: string;
+  operationalExpenseAmount: string;
+  netOperationalAmount: string;
+  transferVolumeAmount: string;
+}
+
+export interface FinanceReportSummaryRecord {
+  filters: {
+    branchId: number | null;
+    accountId: number | null;
+    from: string | null;
+    to: string | null;
+  };
+  totals: FinanceReportTotalsRecord;
+  accountSummaries: FinanceReportAccountSummaryRecord[];
+  dailySummaries: FinanceReportDailySummaryRecord[];
+  recentTransactions: FinancialTransactionRecord[];
+  alerts: string[];
 }

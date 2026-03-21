@@ -1,9 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { configureMigrationSchema } from './migration-schema';
 
 export class AddFinanceModule1710000012000 implements MigrationInterface {
   name = 'AddFinanceModule1710000012000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`CREATE TYPE financial_account_type_enum AS ENUM ('bank', 'cash', 'platform', 'other')`);
     await queryRunner.query(`CREATE TYPE financial_transaction_type_enum AS ENUM ('income', 'expense', 'transfer')`);
 
@@ -51,6 +53,7 @@ export class AddFinanceModule1710000012000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`DROP TABLE IF EXISTS financial_transactions`);
     await queryRunner.query(`DROP TABLE IF EXISTS financial_accounts`);
     await queryRunner.query(`DROP TYPE IF EXISTS financial_transaction_type_enum`);

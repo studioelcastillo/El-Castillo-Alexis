@@ -24,6 +24,7 @@ import { RolesPage } from './pages/RolesPage';
 import { StaffPage } from './pages/StaffPage';
 import { UsersPage } from './pages/UsersPage';
 import { FinanceAccountsPage } from './pages/FinanceAccountsPage';
+import { FinanceReportsPage } from './pages/FinanceReportsPage';
 import { FinanceTransactionsPage } from './pages/FinanceTransactionsPage';
 
 function AppSplash() {
@@ -97,6 +98,7 @@ export function App() {
           <Route path="/audit" element={<AuditLogsPage />} />
           <Route path="/finance/accounts" element={<FinanceAccountsPage />} />
           <Route path="/finance/transactions" element={<FinanceTransactionsPage />} />
+          <Route path="/finance/reports" element={<FinanceReportsPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

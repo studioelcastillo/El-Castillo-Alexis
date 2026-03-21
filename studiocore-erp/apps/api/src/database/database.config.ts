@@ -39,10 +39,26 @@ import { AddPayrollNovelties1710000009000 } from './migrations/1710000009000-add
 import { AddHrBase1710000010000 } from './migrations/1710000010000-add-hr-base';
 import { AddHrDisciplinaryActions1710000011000 } from './migrations/1710000011000-add-hr-disciplinary-actions';
 import { AddFinanceModule1710000012000 } from './migrations/1710000012000-add-finance-module';
+import { AddFinanceControls1710000013000 } from './migrations/1710000013000-add-finance-controls';
+
+function resolveDatabaseUrl() {
+  const fallbackUrl = 'postgresql://postgres:postgres@localhost:5432/studiocore';
+  const rawUrl = process.env.DATABASE_URL || fallbackUrl;
+  const schema = process.env.DATABASE_SCHEMA?.trim();
+
+  if (!schema) {
+    return rawUrl;
+  }
+
+  const url = new URL(rawUrl);
+  url.searchParams.set('options', `-csearch_path=${schema}`);
+  return url.toString();
+}
 
 export const getDataSourceOptions = (): DataSourceOptions => ({
   type: 'postgres',
-  url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/studiocore',
+  url: resolveDatabaseUrl(),
+  schema: process.env.DATABASE_SCHEMA || 'public',
   entities: [
     Company,
     Branch,
@@ -86,6 +102,7 @@ export const getDataSourceOptions = (): DataSourceOptions => ({
     AddHrBase1710000010000,
     AddHrDisciplinaryActions1710000011000,
     AddFinanceModule1710000012000,
+    AddFinanceControls1710000013000,
   ],
   synchronize: false,
   logging: false,

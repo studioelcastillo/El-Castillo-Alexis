@@ -1,9 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { configureMigrationSchema } from './migration-schema';
 
 export class AddCatalogGroups1710000004000 implements MigrationInterface {
   name = 'AddCatalogGroups1710000004000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`
       CREATE TABLE catalog_groups (
         id SERIAL PRIMARY KEY,
@@ -23,6 +25,7 @@ export class AddCatalogGroups1710000004000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`DROP TABLE IF EXISTS catalog_groups`);
   }
 }

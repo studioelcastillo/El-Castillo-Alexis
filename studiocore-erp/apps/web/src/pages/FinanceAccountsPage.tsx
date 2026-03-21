@@ -1,6 +1,7 @@
 import type {
   FinancialAccountRecord,
   CreateFinancialAccountInput,
+  UpdateFinancialAccountInput,
   EnvelopeResponse,
   PaginatedResponse,
 } from '@studiocore/contracts';
@@ -52,7 +53,7 @@ export function FinanceAccountsPage() {
   const queryClient = useQueryClient();
   const { hasPermission } = useAuth();
   const canCreate = hasPermission('finance.create');
-  // const canEdit = hasPermission('finance.edit'); // Not yet implemented for simplicity, assuming view/create
+  const canEdit = hasPermission('finance.edit');
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [mode, setMode] = useState<'create' | 'edit'>('edit');
@@ -123,8 +124,23 @@ export function FinanceAccountsPage() {
         setSelectedId(response.data.id);
         setForm(toFormState(response.data));
         setFeedback({ tone: 'success', message: `Cuenta #${response.data.id} creada correctamente.` });
+      } else if (selectedAccount && canEdit) {
+        const payload: UpdateFinancialAccountInput = {
+          name: form.name.trim(),
+          type: form.type as any,
+          currency: form.currency,
+          bankName: toOptionalString(form.bankName) ?? null,
+          accountNumber: toOptionalString(form.accountNumber) ?? null,
+          notes: toOptionalString(form.notes) ?? null,
+        };
+        const response = await api.patch<EnvelopeResponse<FinancialAccountRecord>>(`/finance/accounts/${selectedAccount.id}`, payload);
+        await queryClient.invalidateQueries({ queryKey: ['finance-accounts'] });
+        await queryClient.invalidateQueries({ queryKey: ['finance-report-summary'] });
+        setMode('edit');
+        setSelectedId(response.data.id);
+        setForm(toFormState(response.data));
+        setFeedback({ tone: 'success', message: `Cuenta #${response.data.id} actualizada correctamente.` });
       }
-      // Edit omitted as per backend Controller having only create/view for now.
     } catch (error) {
       setFeedback({
         tone: 'error',
@@ -231,7 +247,7 @@ export function FinanceAccountsPage() {
                     id="acc-name"
                     value={form.name}
                     onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                    disabled={mode === 'edit'}
+                    disabled={mode === 'edit' && !canEdit}
                     required
                   />
                 </Field>
@@ -241,7 +257,7 @@ export function FinanceAccountsPage() {
                     id="acc-type"
                     value={form.type}
                     onChange={(event) => setForm((current) => ({ ...current, type: event.target.value }))}
-                    disabled={mode === 'edit'}
+                    disabled={mode === 'edit' && !canEdit}
                     required
                   >
                     <option value="bank">Banco</option>
@@ -256,7 +272,7 @@ export function FinanceAccountsPage() {
                     id="acc-currency"
                     value={form.currency}
                     onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value }))}
-                    disabled={mode === 'edit'}
+                    disabled={mode === 'edit' && !canEdit}
                     required
                   >
                     <option value="COP">Peso Colombiano (COP)</option>
@@ -269,7 +285,7 @@ export function FinanceAccountsPage() {
                     id="acc-bank"
                     value={form.bankName}
                     onChange={(event) => setForm((current) => ({ ...current, bankName: event.target.value }))}
-                    disabled={mode === 'edit'}
+                    disabled={mode === 'edit' && !canEdit}
                   />
                 </Field>
 
@@ -278,7 +294,7 @@ export function FinanceAccountsPage() {
                     id="acc-number"
                     value={form.accountNumber}
                     onChange={(event) => setForm((current) => ({ ...current, accountNumber: event.target.value }))}
-                    disabled={mode === 'edit'}
+                    disabled={mode === 'edit' && !canEdit}
                   />
                 </Field>
 
@@ -300,7 +316,7 @@ export function FinanceAccountsPage() {
                       id="acc-notes"
                       value={form.notes}
                       onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-                      disabled={mode === 'edit'}
+                      disabled={mode === 'edit' && !canEdit}
                     />
                   </Field>
                 </div>
@@ -327,10 +343,25 @@ export function FinanceAccountsPage() {
                     </ActionButton>
                   ) : null}
                 </div>
+              ) : mode === 'edit' && canEdit && selectedAccount ? (
+                <div className="form-actions-row">
+                  <ActionButton type="submit" disabled={isSaving}>
+                    <Save size={16} />
+                    {isSaving ? 'Guardando...' : 'Guardar cambios'}
+                  </ActionButton>
+                  <ActionButton
+                    variant="secondary"
+                    onClick={() => {
+                      setForm(toFormState(selectedAccount));
+                      setFeedback(null);
+                    }}
+                  >
+                    Restaurar
+                  </ActionButton>
+                </div>
               ) : mode === 'edit' ? (
                 <InlineMessage tone="info">
-                  Para editar una cuenta o sus condiciones base, contacta al administrador del sistema. 
-                  El balance se actualiza automaticamente mediante transacciones.
+                  Tu sesion puede consultar esta cuenta, pero no editar sus condiciones base. El balance se actualiza automaticamente mediante transacciones.
                 </InlineMessage>
               ) : null}
             </form>

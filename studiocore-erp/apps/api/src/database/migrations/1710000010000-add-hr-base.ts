@@ -1,9 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { configureMigrationSchema } from './migration-schema';
 
 export class AddHrBase1710000010000 implements MigrationInterface {
   name = 'AddHrBase1710000010000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`CREATE TYPE hr_request_status_enum AS ENUM ('requested', 'approved', 'rejected')`);
     await queryRunner.query(`
       CREATE TABLE hr_incapacities (
@@ -48,6 +50,7 @@ export class AddHrBase1710000010000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`DROP TABLE IF EXISTS hr_vacations`);
     await queryRunner.query(`DROP TABLE IF EXISTS hr_incapacities`);
     await queryRunner.query(`DROP TYPE IF EXISTS hr_request_status_enum`);

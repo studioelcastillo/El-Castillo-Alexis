@@ -30,10 +30,10 @@ export class FinancialAccount extends BaseSoftDeleteEntity {
   balance!: string;
 
   @Column({ name: 'bank_name', type: 'varchar', length: 180, nullable: true })
-  bankName!: string;
+  bankName!: string | null;
 
   @Column({ name: 'account_number', type: 'varchar', length: 100, nullable: true })
-  accountNumber!: string;
+  accountNumber!: string | null;
 
   @Column({ type: 'text', nullable: true })
   notes!: string | null;

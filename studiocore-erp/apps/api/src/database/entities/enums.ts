@@ -89,3 +89,8 @@ export enum FinancialTransactionType {
   EXPENSE = 'expense',
   TRANSFER = 'transfer',
 }
+
+export enum FinancialTransactionStatus {
+  POSTED = 'posted',
+  VOIDED = 'voided',
+}

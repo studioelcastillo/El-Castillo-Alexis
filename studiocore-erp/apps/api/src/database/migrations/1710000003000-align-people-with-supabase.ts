@@ -1,9 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { configureMigrationSchema } from './migration-schema';
 
 export class AlignPeopleWithSupabase1710000003000 implements MigrationInterface {
   name = 'AlignPeopleWithSupabase1710000003000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`ALTER TABLE people ADD COLUMN IF NOT EXISTS issued_in VARCHAR(120)`);
     await queryRunner.query(`ALTER TABLE people ADD COLUMN IF NOT EXISTS personal_email VARCHAR(150)`);
     await queryRunner.query(`ALTER TABLE people ADD COLUMN IF NOT EXISTS address VARCHAR(220)`);
@@ -61,6 +63,7 @@ export class AlignPeopleWithSupabase1710000003000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`DROP TABLE IF EXISTS person_contracts`);
     await queryRunner.query(`ALTER TABLE person_documents DROP COLUMN IF EXISTS public_url`);
     await queryRunner.query(`ALTER TABLE person_documents DROP COLUMN IF EXISTS storage_path`);

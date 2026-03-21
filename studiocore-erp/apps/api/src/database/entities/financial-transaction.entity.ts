@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseAuditedEntity } from './base.entity';
-import { FinancialTransactionType } from './enums';
+import { FinancialTransactionStatus, FinancialTransactionType } from './enums';
 
 @Entity('financial_transactions')
 export class FinancialTransaction extends BaseAuditedEntity {
@@ -25,6 +25,13 @@ export class FinancialTransaction extends BaseAuditedEntity {
   @Column({ type: 'decimal', precision: 15, scale: 2 })
   amount!: string;
 
+  @Column({
+    type: 'enum',
+    enum: FinancialTransactionStatus,
+    default: FinancialTransactionStatus.POSTED,
+  })
+  status!: FinancialTransactionStatus;
+
   @Column({ name: 'transaction_date', type: 'timestamptz' })
   transactionDate!: Date;
 
@@ -42,4 +49,13 @@ export class FinancialTransaction extends BaseAuditedEntity {
 
   @Column({ name: 'created_by_id', type: 'int' })
   createdById!: number;
+
+  @Column({ name: 'void_reason', type: 'text', nullable: true })
+  voidReason!: string | null;
+
+  @Column({ name: 'voided_at', type: 'timestamptz', nullable: true })
+  voidedAt!: Date | null;
+
+  @Column({ name: 'voided_by_id', type: 'int', nullable: true })
+  voidedById!: number | null;
 }

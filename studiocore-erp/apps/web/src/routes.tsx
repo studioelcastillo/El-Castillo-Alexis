@@ -225,6 +225,13 @@ export const navSections: Array<{ title: string; items: NavItem[] }> = [
         icon: Banknote,
         permission: 'finance.view',
       },
+      {
+        label: 'Reportes',
+        to: '/finance/reports',
+        description: 'Conciliacion operativa, balances y flujo consolidado por rango.',
+        icon: FileText,
+        permission: 'finance.view',
+      },
     ],
   },
 ];

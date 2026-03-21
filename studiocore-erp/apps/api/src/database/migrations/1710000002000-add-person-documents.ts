@@ -1,9 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { configureMigrationSchema } from './migration-schema';
 
 export class AddPersonDocuments1710000002000 implements MigrationInterface {
   name = 'AddPersonDocuments1710000002000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`
       CREATE TABLE person_documents (
         id SERIAL PRIMARY KEY,
@@ -29,6 +31,7 @@ export class AddPersonDocuments1710000002000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`DROP TABLE IF EXISTS person_documents`);
   }
 }

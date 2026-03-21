@@ -1,7 +1,7 @@
 import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
-import { FinancialTransactionType } from '../../../database/entities/enums';
+import { FinancialTransactionStatus, FinancialTransactionType } from '../../../database/entities/enums';
 
 export class FinancialTransactionsQueryDto extends PaginationQueryDto {
   @IsOptional()
@@ -18,6 +18,10 @@ export class FinancialTransactionsQueryDto extends PaginationQueryDto {
   @IsOptional()
   type?: FinancialTransactionType;
 
+  @IsEnum(FinancialTransactionStatus)
+  @IsOptional()
+  status?: FinancialTransactionStatus;
+
   @IsString()
   @IsOptional()
   from?: string;
@@ -25,5 +29,4 @@ export class FinancialTransactionsQueryDto extends PaginationQueryDto {
   @IsString()
   @IsOptional()
   to?: string;
-
 }

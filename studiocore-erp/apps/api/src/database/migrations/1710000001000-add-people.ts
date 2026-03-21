@@ -1,9 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { configureMigrationSchema } from './migration-schema';
 
 export class AddPeople1710000001000 implements MigrationInterface {
   name = 'AddPeople1710000001000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`CREATE TYPE person_type_enum AS ENUM ('model', 'staff', 'contractor', 'other')`);
 
     await queryRunner.query(`
@@ -33,6 +35,7 @@ export class AddPeople1710000001000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`DROP TABLE IF EXISTS people`);
     await queryRunner.query(`DROP TYPE IF EXISTS person_type_enum`);
   }

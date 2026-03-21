@@ -1,9 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { configureMigrationSchema } from './migration-schema';
 
 export class InitialCore1710000000000 implements MigrationInterface {
   name = 'InitialCore1710000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`CREATE TYPE record_status_enum AS ENUM ('active', 'inactive')`);
     await queryRunner.query(`CREATE TYPE user_status_enum AS ENUM ('active', 'inactive', 'blocked')`);
 
@@ -155,6 +157,7 @@ export class InitialCore1710000000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`DROP TABLE IF EXISTS password_reset_tokens`);
     await queryRunner.query(`DROP TABLE IF EXISTS refresh_tokens`);
     await queryRunner.query(`DROP TABLE IF EXISTS audit_logs`);

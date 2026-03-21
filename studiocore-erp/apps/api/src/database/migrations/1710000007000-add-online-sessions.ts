@@ -1,9 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { configureMigrationSchema } from './migration-schema';
 
 export class AddOnlineSessions1710000007000 implements MigrationInterface {
   name = 'AddOnlineSessions1710000007000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`CREATE TYPE online_session_status_enum AS ENUM ('open', 'closed', 'cancelled')`);
     await queryRunner.query(`
       CREATE TABLE online_sessions (
@@ -32,6 +34,7 @@ export class AddOnlineSessions1710000007000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await configureMigrationSchema(queryRunner);
     await queryRunner.query(`DROP TABLE IF EXISTS online_sessions`);
     await queryRunner.query(`DROP TYPE IF EXISTS online_session_status_enum`);
   }
