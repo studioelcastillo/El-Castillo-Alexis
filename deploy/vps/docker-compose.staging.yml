@@ -11,6 +11,8 @@ services:
         VITE_API_URL: ${PRUEBAS_VITE_API_URL:-/api}
         API_URL: ${PRUEBAS_API_URL:-/api}
         NGINX_API_UPSTREAM: ${PRUEBAS_NGINX_API_UPSTREAM:-}
+        NGINX_STUDIOCORE_WEB_UPSTREAM: ${PRUEBAS_NGINX_STUDIOCORE_WEB_UPSTREAM:-}
+        NGINX_STUDIOCORE_API_UPSTREAM: ${PRUEBAS_NGINX_STUDIOCORE_API_UPSTREAM:-}
     container_name: elcastillo_castilloprueba
     restart: unless-stopped
     networks:

@@ -11,6 +11,8 @@ services:
         VITE_API_URL: ${TERMINADO_VITE_API_URL:-/api}
         API_URL: ${TERMINADO_API_URL:-/api}
         NGINX_API_UPSTREAM: ${TERMINADO_NGINX_API_UPSTREAM:-}
+        NGINX_STUDIOCORE_WEB_UPSTREAM: ${TERMINADO_NGINX_STUDIOCORE_WEB_UPSTREAM:-}
+        NGINX_STUDIOCORE_API_UPSTREAM: ${TERMINADO_NGINX_STUDIOCORE_API_UPSTREAM:-}
     container_name: elcastillo_castilloterminado
     restart: unless-stopped
     networks:

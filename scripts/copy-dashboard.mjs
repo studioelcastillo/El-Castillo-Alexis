@@ -20,6 +20,10 @@ const base = normalizeBase(process.env.VITE_DASHBOARD_BASE || process.env.DASHBO
 const basePath = base === '/' ? '' : base.replace(/^\/+|\/+$/g, '');
 const rawApiUpstream = String(process.env.NGINX_API_UPSTREAM || '').trim();
 const apiUpstream = rawApiUpstream.replace(/\/$/, '');
+const rawStudioCoreWebUpstream = String(process.env.NGINX_STUDIOCORE_WEB_UPSTREAM || '').trim();
+const studiocoreWebUpstream = rawStudioCoreWebUpstream.replace(/\/$/, '');
+const rawStudioCoreApiUpstream = String(process.env.NGINX_STUDIOCORE_API_UPSTREAM || '').trim();
+const studiocoreApiUpstream = rawStudioCoreApiUpstream.replace(/\/$/, '');
 const apiProxyBlock = apiUpstream
   ? `location = /api {
         return 301 /api/;
@@ -35,6 +39,34 @@ const apiProxyBlock = apiUpstream
         proxy_ssl_server_name on;
     }
 `
+  : '';
+const studiocoreProxyBlock = studiocoreWebUpstream || studiocoreApiUpstream
+  ? `${studiocoreWebUpstream ? `location = /erp {
+        return 301 /erp/;
+    }
+
+    location ^~ /erp/ {
+        proxy_pass ${studiocoreWebUpstream}/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+` : ''}
+    ${studiocoreApiUpstream ? `location = /erp-api {
+        return 301 /erp-api/;
+    }
+
+    location ^~ /erp-api/ {
+        proxy_pass ${studiocoreApiUpstream}/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+` : ''}`
   : '';
 const dest = basePath ? path.join(distRoot, basePath) : distRoot;
 const compatibilityDest = basePath ? null : path.join(distRoot, 'dashboard-app');
@@ -99,6 +131,8 @@ const nginxConfig = `server {
     }
 
     ${apiProxyBlock}
+
+    ${studiocoreProxyBlock}
 
     ${!basePath ? `location = /dashboard-app {
         return 301 /;
