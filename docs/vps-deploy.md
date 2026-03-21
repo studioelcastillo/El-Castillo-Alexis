@@ -112,6 +112,7 @@ La utilidad `deploy/vps/remote-exec.mjs` se uso para inspeccionar Hostinger, rec
   - `.secure/vps.terminado.env.local`
   - `.secure/backend-legacy.pruebas.env.local`
   - `.secure/backend-legacy.terminado.env.local`
+- Si tambien se va a publicar `studiocore-erp`, los archivos `vps.*.env.local` deben incluir ademas las variables `STUDIOCORE_*_ENABLED`, `STUDIOCORE_*_DATABASE_URL`, `STUDIOCORE_*_DATABASE_SCHEMA`, `STUDIOCORE_*_JWT_ACCESS_SECRET`, `STUDIOCORE_*_JWT_REFRESH_SECRET`, y opcionalmente `STUDIOCORE_*_VITE_API_BASE_URL`, `STUDIOCORE_*_VITE_BASE_PATH`, `STUDIOCORE_*_S3_*`.
 
 ## Estado operativo aplicado en Hostinger
 
@@ -122,6 +123,7 @@ La utilidad `deploy/vps/remote-exec.mjs` se uso para inspeccionar Hostinger, rec
 - Traefik sigue resolviendo los hosts desde `/etc/easypanel/traefik/config/main.yaml`, pero ya apunta a esos contenedores standalone y no a servicios Swarm desplegados por Easypanel.
 - `/dashboard-app/` queda redirigido a `/` para compatibilidad con enlaces antiguos.
 - `deploy/vps/nginx-pruebas.conf` y `deploy/vps/nginx-terminado.conf` ya incluyen `/health`, redireccion de `/dashboard-app/` a `/` y proxy `/api/` consistente hacia Laravel.
+- `deploy/vps/publish.sh` tambien puede publicar `studiocore-erp` cuando `STUDIOCORE_STAGING_ENABLED=true` o `STUDIOCORE_PRODUCTION_ENABLED=true`, exponiendo el frontend nuevo en `/erp/` y el API en `/erp-api/`.
 - El `nginx.conf` generado dentro de la imagen frontend tambien soporta `/health` y puede publicar `/api` por proxy si `NGINX_API_UPSTREAM` llega en build.
 - Estado live actual: los dos frontends del VPS ya estan reconstruidos con `NGINX_API_UPSTREAM=https://el-castillo-api.bygeckode.com`, asi que `/api` responde por el mismo dominio aunque el backend legacy todavia no viva fisicamente en ese VPS.
 
@@ -133,6 +135,7 @@ La utilidad `deploy/vps/remote-exec.mjs` se uso para inspeccionar Hostinger, rec
 - `https://terminado.livstre.com/api/...` debe responder desde el backend del mismo dominio cuando se conecte formalmente el backend legacy fuera de Easypanel.
 - `https://pruebas.livstre.com/dashboard-app/` redirige a `/`.
 - `https://terminado.livstre.com/dashboard-app/` redirige a `/`.
+- Si `studiocore-erp` esta habilitado, `https://pruebas.livstre.com/erp/` debe cargar el frontend nuevo y `https://pruebas.livstre.com/erp-api/api/v1/health` debe responder OK.
 
 ## Notas operativas
 

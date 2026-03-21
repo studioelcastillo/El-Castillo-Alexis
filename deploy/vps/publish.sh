@@ -23,6 +23,10 @@ publish_staging() {
   source_env_file ".secure/vps.pruebas.env.local"
   docker rm -f castillo-frontend-pruebas elcastillo_castilloprueba >/dev/null 2>&1 || true
   docker compose -f deploy/vps/docker-compose.staging.yml up -d --build --force-recreate
+  if [[ "${STUDIOCORE_STAGING_ENABLED:-false}" == "true" ]]; then
+    docker rm -f studiocore-web-pruebas studiocore-api-pruebas >/dev/null 2>&1 || true
+    docker compose -f deploy/vps/docker-compose.studiocore.staging.yml up -d --build --force-recreate
+  fi
   if command -v nginx >/dev/null 2>&1 && [[ -d /etc/nginx/sites-available ]]; then
     install -D -m 0644 deploy/vps/nginx-pruebas.conf /etc/nginx/sites-available/pruebas.livstre.com.conf
     if [[ -d /etc/nginx/sites-enabled ]]; then
@@ -35,6 +39,10 @@ publish_production() {
   source_env_file ".secure/vps.terminado.env.local"
   docker rm -f castillo-frontend-terminado elcastillo_castilloterminado >/dev/null 2>&1 || true
   docker compose -f deploy/vps/docker-compose.production.yml up -d --build --force-recreate
+  if [[ "${STUDIOCORE_PRODUCTION_ENABLED:-false}" == "true" ]]; then
+    docker rm -f studiocore-web-produccion studiocore-api-produccion >/dev/null 2>&1 || true
+    docker compose -f deploy/vps/docker-compose.studiocore.production.yml up -d --build --force-recreate
+  fi
   if command -v nginx >/dev/null 2>&1 && [[ -d /etc/nginx/sites-available ]]; then
     install -D -m 0644 deploy/vps/nginx-terminado.conf /etc/nginx/sites-available/terminado.livstre.com.conf
     if [[ -d /etc/nginx/sites-enabled ]]; then

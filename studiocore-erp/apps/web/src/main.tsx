@@ -15,10 +15,16 @@ const queryClient = new QueryClient({
   },
 });
 
+const routerBase = (() => {
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  const normalized = baseUrl.endsWith('/') && baseUrl !== '/' ? baseUrl.slice(0, -1) : baseUrl;
+  return normalized === '/' ? undefined : normalized;
+})();
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter basename={routerBase}>
         <AuthProvider>
           <App />
         </AuthProvider>

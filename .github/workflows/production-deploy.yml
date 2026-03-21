@@ -49,6 +49,26 @@ jobs:
         working-directory: backend-legacy
         run: composer install --no-interaction --prefer-dist
 
+      - name: Install StudioCore dependencies
+        working-directory: studiocore-erp
+        run: npm ci
+
+      - name: StudioCore API lint
+        working-directory: studiocore-erp
+        run: npm run lint --workspace @studiocore/api
+
+      - name: StudioCore web lint
+        working-directory: studiocore-erp
+        run: npm run lint --workspace @studiocore/web
+
+      - name: StudioCore API tests
+        working-directory: studiocore-erp
+        run: npm run test --workspace @studiocore/api
+
+      - name: StudioCore build
+        working-directory: studiocore-erp
+        run: npm run build
+
       - name: Prepare backend env
         working-directory: backend-legacy
         run: |
