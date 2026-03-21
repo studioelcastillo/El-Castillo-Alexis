@@ -257,6 +257,23 @@
 - `RemoteDesktopService` ahora filtra client-side los registros con `std_id` cuando ese dato existe en la tabla remota, aunque todavia depende de que el backend/esquema remoto exponga ese campo.
 
 ### Archivos tocados recientemente
+- `Dockerfile`
+- `scripts/copy-dashboard.mjs`
+- `.github/workflows/staging-deploy.yml`
+- `.github/workflows/production-deploy.yml`
+- `deploy/vps/docker-compose.staging.yml`
+- `deploy/vps/docker-compose.production.yml`
+- `deploy/vps/docker-compose.studiocore.staging.yml`
+- `deploy/vps/docker-compose.studiocore.production.yml`
+- `deploy/vps/publish.sh`
+- `deploy/vps/nginx-pruebas.conf`
+- `deploy/vps/nginx-terminado.conf`
+- `docs/vps-deploy.md`
+- `studiocore-erp/apps/api/Dockerfile`
+- `studiocore-erp/apps/web/Dockerfile`
+- `studiocore-erp/apps/web/nginx.conf`
+- `studiocore-erp/apps/web/vite.config.ts`
+- `studiocore-erp/apps/web/src/main.tsx`
 - `studiocore-erp/apps/api/src/app.module.ts`
 - `studiocore-erp/apps/api/src/database/data-source.ts`
 - `studiocore-erp/apps/api/src/database/database.config.ts`
@@ -910,23 +927,60 @@
 - Aprovechar que `catalogs` ya existe como fuente de verdad compartida para abrir el siguiente modulo faltante de Fase 1 (`models`/`staff`) o, si se quiere cerrar infraestructura primero, convertir estos catalogos base en CRUD auditado con persistencia tenant-aware.
 - Aprovechar que `people` ya quedo alineado al schema real de Supabase (`users`, `documents`, `studios_models`) para abrir el siguiente paso util: uploads reales a storage y una estrategia de importacion/migracion de datos legacy hacia `studiocore-erp` sin perder tenant isolation.
 - Continuar Sprint 1 del greenfield reforzando `tenancy` en `apps/api` y sumando pruebas de integracion para los CRUD nuevos de `companies`, `branches`, `users` y `roles`.
-- Como `packages/ui` ya existe, el siguiente movimiento natural es ampliarlo con tablas enterprise, drawers y toasts compartidos antes de abrir la epica `people`.
-- Completar el saneamiento de `.env*` versionados y reutilizar `scripts/load-supabase-env.mjs` como punto comun para futuras utilidades Supabase, para no volver a introducir tokens pegados en scripts sueltos.
-- Si se quiere avanzar con los scripts pendientes de Auth Admin en `production`, empezar por una decision explicita sobre `reset_passwords.mjs` / `sync_prod_full.mjs`; tecnicamente ya pueden correr, pero su efecto es operativo y no reversible sin coordinacion.
-- Versionar/commitear formalmente el fix de `apps/dashboard/App.tsx` antes de futuros `git pull` en el VPS, para que el checkout remoto vuelva a quedar limpio sin perder la mitigacion ya desplegada.
-- Si en algun momento se decide retirar por completo Easypanel del proyecto, eliminar tambien `scripts/deploy.mjs`, los secrets `EASYPANEL_*` y los workflows fallback para simplificar el repositorio.
-- Publicar en el VPS los nuevos archivos `.secure/vps.*.env.local`, ejecutar `deploy/vps/publish.sh` y validar `https://pruebas.livstre.com/health`, `https://terminado.livstre.com/health`, `https://pruebas.livstre.com/api/...` y `https://terminado.livstre.com/api/...`.
-- Tratar la exposicion de secretos y las passwords `cedula-last5` como prioridad de seguridad inmediata antes de seguir ampliando funcionalidades.
-- Aplicar el inventario y la politica de secretos nuevos para que ninguna credencial vuelva a quedar en `MEMORIA.md`, docs o archivos versionables.
-- Mantener el workflow `secret-scan` activo en cambios hacia `staging` y `main` para bloquear exposiciones accidentales antes del despliegue.
-- Hacer validacion funcional en navegador sobre `staging` y `production` con usuarios de sedes diferentes para confirmar que el RLS nuevo no mezcla datos ni bloquea modulos legitimos.
-- Si tambien se quiere sacar `/api` de Easypanel, repetir la misma estrategia de contenedor directo para el backend legacy y validar `https://pruebas.livstre.com/api` y `https://terminado.livstre.com/api` ya fuera del circuito actual.
-- Decidir si el reseteo de passwords `temporary-strong` aplicado en `staging` debe replicarse o no en otros entornos; en `production` no se ha ejecutado.
-- Levantar PostgreSQL local o usar credenciales operativas de `staging` para validar con datos reales los endpoints legacy reforzados con `resolveTenant` antes de conectarlo formalmente al frontend desplegado.
-- Con PHP ya disponible, priorizar pruebas manuales de `banks_accounts`, `studios_accounts`, `payments_files` y `setup_commissions`, porque fueron endurecidos primero con validacion estatica y ahora ya admiten validacion HTTP/local adicional.
-- Como `backend-legacy/` ya compila y lista rutas, el siguiente cuello real ahora es conseguir la URL frontend correcta de `staging`/`production` para completar la validacion browser end-to-end.
-- Si aparece una fuente confiable adicional de asignacion por sede para usuarios staff/monitor/modelo sin `std_id`, ejecutar un segundo backfill controlado para reducir aun mas los `NULL` remanentes sin mezclar sedes.
-- Priorizar revisiones reales de `chat`, `remote desktop`, `nomina`, `monetizacion`, `streams`, `contratos`, `transacciones` y `settings` por sede para detectar cualquier endpoint legacy que todavia no respete el tenant desde backend.
-- Usar una muestra real de usuarios en `production` para validar dashboard, consultas, reportes y permisos despues de la importacion completa.
-- Priorizar una validacion funcional cruzada por sedes y, despues, una fase server-side para convertir el aislamiento multi-tenant en garantia de backend y no solo de cliente.
-- Revisar si conviene desactivar tambien las rutas/documentacion de desarrollo de Laravel (`_ignition`, `documentation`, `docs`) en entornos no locales, porque `route:list` las sigue mostrando y no formaron parte de esta fase.
+- Como `packages/ui` ya existe, el siguiente movimiento natural es ampliarlo con tablas enterprise, drawers y toasts compartidos antes de ---
+
+### Sesión: 20/03/2026 - Auditoría y Saneamiento de Usuarios y Roles
+
+**Objetivo Actual**: Auditoría funcional y de seguridad de la gestión de usuarios, roles y aislamiento de inquilinos (tenant isolation).
+
+**Último Progreso**:
+- **Auditoría de Inconsistencias**: Se identificaron ~1000 usuarios con `std_id` nulo en `staging`. Se determinó que la mayoría son modelos inactivos, pero se detectaron 15 usuarios de staff (Dueños, Administradores, Monitores) con el mismo problema.
+- **Saneamiento de Datos (Staging)**:
+    - Se ejecutó `scripts/fix_user_std_id.mjs` para reparar el `std_id` de los usuarios staff basándose en propiedad de estudios o historial.
+    - Se resolvió el caso del usuario multi-sede (ID 1885).
+- **Hardening de Contraseñas**:
+    - Se validó el token de la Management API (`sbp_...`) para `staging`.
+    - Se agregó la columna `must_change_password` a `public.users` en `staging`.
+    - Se ejecutó `scripts/apply_password_hardening.mjs` para marcar todas las cuentas con contraseñas inseguras (patrón `cedula-last6`) con la bandera `must_change_password: true`, tanto en la base de datos pública como en los metadatos de Auth.
+- **Hallazgos**: Los modelos inactivos permanecen con `std_id` nulo por diseño, garantizando que el RLS los bloquee preventivamente.
+
+**Archivos Tocados**:
+- `scripts/audit_users.mjs` [NEW]
+- `scripts/analyze_null_std.mjs` [NEW]
+- `scripts/analyze_staff_multi.mjs` [NEW]
+- `scripts/fix_user_std_id.mjs` [NEW]
+- `scripts/apply_password_hardening.mjs` [NEW]
+- `scripts/inspect_users_extra.mjs` [NEW]
+- `scripts/test_token.mjs` [NEW]
+
+**Tareas Pendientes**:
+- [ ] Aplicar el saneamiento de `std_id` y password hardening en `production` previa confirmación final.
+- [ ] Actualizar el frontend del Dashboard para reaccionar ante la bandera `must_change_password: true`.
+- [ ] Rotar el token de la Management API si se considera comprometido por su exposición en scripts antiguos.
+
+**Bloqueadores**: 
+- Inestabilidad ocasional en la terminal local para scripts de larga duración.
+- Pendiente validar si el script de `production` requiere un token de Management API distinto.
+
+**Próximos Pasos Recomendados**:
+1. Ejecutar el saneamiento en `production`.
+2. Verificar en el Dashboard que los usuarios reparados tengan acceso correcto.
+
+---
+aron parte de esta fase.
+
+### Fase: Saneamiento de Producción y Hardening de Seguridad (2026-03-21)
+- **Acciones Realizadas**:
+  - Se ejecutó un script unificado de SQL (scripts/apply_hardening_production.mjs) vía Management API para sanear la base de datos de producción.
+  - Se repararon 4172 usuarios en public.users que tenían contraseñas inseguras (coincidentes con los últimos 6 dígitos de su identificación).
+  - Se activó la bandera must_change_password = true tanto en public.users como en el metadata de uth.users.
+  - Se corrigieron los campos std_id nulos para Roles de Dueños, SuperAdmin y Staff basándose en asociaciones históricas.
+  - Se actualizó el Dashboard (Vite/React) para forzar la redirección a /change-password si el usuario tiene la bandera activa.
+  - Se ajustó el tooltip de cambio de contraseña para reflejar el nuevo estándar de 6 dígitos.
+- **Resultados de Verificación**:
+  - public.users: 4172 usuarios marcados correctamente.
+  - uth.users: 4172 usuarios con metadata actualizado.
+  - Conexión a producción validada mediante Management API Token (sbp_...2ab84e15022).
+- **Notas de Seguridad**:
+  - El Management API Token sigue expuesto en scripts antiguos; se recomienda su rotación inmediata.
+  - La SUPABASE_SECRET_KEY de producción en los archivos .env sigue siendo inválida para Auth Admin; se debe actualizar con una Service Role Key (JWT) válida.
