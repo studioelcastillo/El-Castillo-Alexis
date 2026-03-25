@@ -79,8 +79,8 @@ class UserController extends Controller
             }
 
             // user login = identification
-            $request['user_email'] = isset($request['user_identification']) ? $request['user_identification'] : null ;
-            $data['user_email'] = isset($data['user_identification']) ? $data['user_identification'] : null ;
+            $request['user_email'] = isset($request['user_identification']) ? $request['user_identification'] : null;
+            $data['user_email'] = isset($data['user_identification']) ? $data['user_identification'] : null;
 
             // Validar unicidad
             $userExists = User::where('user_email', $data['user_email'])->first();
@@ -126,8 +126,8 @@ class UserController extends Controller
                 if ($uAuth->prof_id == Profile::ESTUDIO || $uAuth->prof_id == Profile::GESTOR) {
                     $studio_model_controller = new StudioModelController();
                     $studio_model_arr = $studio_model_data;
-                    $studio_model_arr['user_id_model'] = $user->user_id;//agregar el usuario recien creado
-                    $studio_model_request = new Request($studio_model_arr);// crear peticion con datos
+                    $studio_model_arr['user_id_model'] = $user->user_id; //agregar el usuario recien creado
+                    $studio_model_request = new Request($studio_model_arr); // crear peticion con datos
                     // Copiar el usuario autenticado de la request original
                     $studio_model_request->setUserResolver(function () use ($request) {
                         return $request->user();
@@ -186,7 +186,7 @@ class UserController extends Controller
                         'skpcoin_type' => 'INSERT'
                     ]);
                     $coincidence_insert = [];
-                    foreach($users_coincidences as $user_coincidences) {
+                    foreach ($users_coincidences as $user_coincidences) {
                         $coincidence_insert[] = array(
                             'skpcoin_id' => $skipped_coincidence->skpcoin_id,
                             'coin_entity' => json_encode($user_coincidences),
@@ -198,11 +198,13 @@ class UserController extends Controller
                 }
                 DB::commit();
                 return response()->json(['status' => 'success', 'data' => $user], 201);
-            } else {
+            }
+            else {
                 DB::rollBack();
                 return response()->json(['status' => 'fail']);
             }
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             DB::rollBack();
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
@@ -217,6 +219,31 @@ class UserController extends Controller
     public function show(Request $request)
     {
         try {
+            // Mock response for local development
+            if (env('APP_ENV') === 'local' && $request->user() && $request->user()->user_id === 4243) {
+                return response()->json([
+                    'status' => 'success',
+                    'data' => [
+                        [
+                            'user_id' => 1,
+                            'user_name' => 'Demo User 1',
+                            'user_identification' => '12345',
+                            'user_active' => true,
+                            'profile' => ['prof_name' => 'Admin'],
+                            'city' => ['city_name' => 'Localhost']
+                        ],
+                        [
+                            'user_id' => 2,
+                            'user_name' => 'Demo User 2',
+                            'user_identification' => '67890',
+                            'user_active' => true,
+                            'profile' => ['prof_name' => 'Model'],
+                            'city' => ['city_name' => 'Localhost']
+                        ]
+                    ]
+                ], 200);
+            }
+
             $data = $this->helper::generateConditions($request);
             $user = User::with(['profile', 'studio', 'city.department.country', 'additional_models.latest_documents', 'latest_documents'])
                 ->where($data['where'])
@@ -227,8 +254,8 @@ class UserController extends Controller
 
             if ($request->user()->prof_id == Profile::ESTUDIO) {
                 $user = $user->join('studios_models AS sm', 'sm.user_id_model', 'users.user_id')
-                ->join('studios AS s', 'sm.std_id', 's.std_id')
-                ->where('s.user_id_owner', $request->user()->user_id);
+                    ->join('studios AS s', 'sm.std_id', 's.std_id')
+                    ->where('s.user_id_owner', $request->user()->user_id);
             }
             if ($request->user()->prof_id != Profile::ADMIN) {
                 $user = $user->where('users.prof_id', '!=', 1);
@@ -236,7 +263,8 @@ class UserController extends Controller
 
             $user = $this->applyTenantScope($user, $request, 'users.std_id')->get();
             return response()->json(['status' => 'success', 'data' => $user], 200);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             dd($e->getMessage());
             // $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
@@ -250,7 +278,8 @@ class UserController extends Controller
             $stdmods = StudioModel::with('studio')->where('user_id_model', $id);
             $stdmods = $this->applyTenantScope($stdmods, $request, 'std_id')->get();
             return response()->json(['status' => 'success', 'data' => $stdmods], 200);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             dd($e->getMessage());
             // $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
@@ -260,12 +289,25 @@ class UserController extends Controller
     public function getUserWithPermissions(Request $request)
     {
         try {
+            // Mock response for local development
+            if (env('APP_ENV') === 'local' && $request->user() && $request->user()->user_id === 4243) {
+                return response()->json([
+                    'status' => 'success',
+                    'data' => [
+                        'user_id' => 4243,
+                        'user_name' => 'Mock User',
+                        'permissions' => []
+                    ]
+                ], 200);
+            }
+
             $user = User::with('permissions')->where('user_id', $request->input('user_id'))->first();
             return response()->json(['status' => 'success', 'data' => $user], 200);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             dd($e->getMessage());
-            // $response = $this->helper::errorArray($e);
-            //return response()->json($response['data'], $response['code']);
+        // $response = $this->helper::errorArray($e);
+        //return response()->json($response['data'], $response['code']);
         }
     }
 
@@ -277,6 +319,43 @@ class UserController extends Controller
     public function showDatatable(Request $request)
     {
         try {
+            // Mock response for local development
+            if (env('APP_ENV') === 'local' && $request->user() && $request->user()->user_id === 4243) {
+                $mockUsers = [
+                    [
+                        'user_id' => 1,
+                        'user_name' => 'Demo User 1',
+                        'user_surname' => 'Lastname',
+                        'user_identification' => '12345',
+                        'user_active' => true,
+                        'toggleActive' => true,
+                        'profile' => ['prof_name' => 'Admin'],
+                        'studios' => 'Main Studio',
+                        'user_age' => 25,
+                        'created_at' => now()->toISOString()
+                    ],
+                    [
+                        'user_id' => 2,
+                        'user_name' => 'Demo User 2',
+                        'user_surname' => 'Lastname',
+                        'user_identification' => '67890',
+                        'user_active' => true,
+                        'toggleActive' => true,
+                        'profile' => ['prof_name' => 'Model'],
+                        'studios' => 'Satellite Studio',
+                        'user_age' => 30,
+                        'created_at' => now()->toISOString()
+                    ]
+                ];
+
+                return response()->json([
+                    'status' => 'success',
+                    'data' => $mockUsers,
+                    'recordsTotal' => 2,
+                    'recordsFiltered' => 2
+                ], 200);
+            }
+
             //dd($record);
             $skip = $request['start'];
             $take = $request['length'];
@@ -289,7 +368,9 @@ class UserController extends Controller
             $profiles = $request['profiles'];
             $studios = (isset($studios) && $studios != '') ? explode(",", $studios) : null;
             $profiles = (isset($profiles) && $profiles != '') ? explode(",", $profiles) : null;
-            $bool_active_users = $request['activeusers'];
+            $bool_active_users = filter_var($request->input('activeusers', true), FILTER_VALIDATE_BOOLEAN);
+
+            Log::info("UserController@showDatatable - Filter activeusers: " . ($bool_active_users ? 'true' : 'false'));
 
             $user_prof_id = $request->user()->prof_id;
             $user_ids = [];
@@ -322,29 +403,30 @@ class UserController extends Controller
             }
             // poner estudios del usuario desde el select separado por commmas o algun caracter
             $users = User::with(['profile', 'city.department.country', 'additional_models.latest_documents', 'latest_documents', 'studioModel.modelsAccounts', 'profile_picture_document'])
-            //->leftJoin('studios_models AS sm', 'users.user_id', 'sm.user_id_model')
-            ->leftJoin('studios_models AS sm', function($join) {
+                //->leftJoin('studios_models AS sm', 'users.user_id', 'sm.user_id_model')
+                ->leftJoin('studios_models AS sm', function ($join) {
                 $join->on('users.user_id', 'sm.user_id_model')->whereNull('sm.deleted_at');
             })
-            ->leftJoin('models_accounts AS ma', 'sm.stdmod_id', 'ma.stdmod_id')
-            ->leftJoin('studios AS s', 'sm.std_id', 's.std_id')
-            ->select('users.*', 'users.user_active AS toggleActive', DB::raw("STRING_AGG(DISTINCT s.std_name, ';' ORDER BY s.std_name) studios"), DB::raw("EXTRACT(YEAR FROM AGE(users.user_birthdate)) AS user_age"))
-            ->where(function ($query) use ($columns, $filter) {
-                for ($i=0; $i < count($columns); $i++) {
+                ->leftJoin('models_accounts AS ma', 'sm.stdmod_id', 'ma.stdmod_id')
+                ->leftJoin('studios AS s', 'sm.std_id', 's.std_id')
+                ->select('users.*', 'users.user_active AS toggleActive', DB::raw("STRING_AGG(DISTINCT s.std_name, ';' ORDER BY s.std_name) studios"), DB::raw("EXTRACT(YEAR FROM AGE(users.user_birthdate)) AS user_age"))
+                ->where(function ($query) use ($columns, $filter) {
+                for ($i = 0; $i < count($columns); $i++) {
                     if ($i === 0) {
-                        $query->where(DB::raw("UPPER(CAST(".$columns[$i]." as VARCHAR))"), 'like', "%".strtoupper($filter)."%");
-                    } else {
-                        $query->orWhere(DB::raw("UPPER(CAST(".$columns[$i]." as VARCHAR))"), 'like', "%".strtoupper($filter)."%");
+                        $query->where(DB::raw("UPPER(CAST(" . $columns[$i] . " as VARCHAR))"), 'like', "%" . strtoupper($filter) . "%");
+                    }
+                    else {
+                        $query->orWhere(DB::raw("UPPER(CAST(" . $columns[$i] . " as VARCHAR))"), 'like', "%" . strtoupper($filter) . "%");
                     }
                 }
-                $query->orWhere(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_name2, '') || ' ' || COALESCE(users.user_surname, '')  || ' ' || COALESCE(users.user_surname2, ''))"), 'like', '%'.strtoupper($filter).'%');
-                $query->orWhere(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_surname, ''))"), 'like', '%'.strtoupper($filter).'%');
-                $query->orWhere(DB::raw("UPPER(COALESCE(users.user_name2, '') || ' ' || COALESCE(users.user_surname, ''))"), 'like', '%'.strtoupper($filter).'%');
-                $query->orWhere(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_name2, ''))"), 'like', '%'.strtoupper($filter).'%');
-                $query->orWhere(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_name2, '') || ' ' || COALESCE(users.user_surname, ''))"), 'like', '%'.strtoupper($filter).'%');
-                $query->orWhere(DB::raw("UPPER(COALESCE(users.user_surname, '') || ' ' || COALESCE(users.user_surname2, ''))"), 'like', '%'.strtoupper($filter).'%');
+                $query->orWhere(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_name2, '') || ' ' || COALESCE(users.user_surname, '')  || ' ' || COALESCE(users.user_surname2, ''))"), 'like', '%' . strtoupper($filter) . '%');
+                $query->orWhere(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_surname, ''))"), 'like', '%' . strtoupper($filter) . '%');
+                $query->orWhere(DB::raw("UPPER(COALESCE(users.user_name2, '') || ' ' || COALESCE(users.user_surname, ''))"), 'like', '%' . strtoupper($filter) . '%');
+                $query->orWhere(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_name2, ''))"), 'like', '%' . strtoupper($filter) . '%');
+                $query->orWhere(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_name2, '') || ' ' || COALESCE(users.user_surname, ''))"), 'like', '%' . strtoupper($filter) . '%');
+                $query->orWhere(DB::raw("UPPER(COALESCE(users.user_surname, '') || ' ' || COALESCE(users.user_surname2, ''))"), 'like', '%' . strtoupper($filter) . '%');
             })
-            ->where(function ($query) use ($studios, $profiles) {
+                ->where(function ($query) use ($studios, $profiles) {
                 if (isset($studios)) {
                     $query->whereIn('s.std_id', $studios);
                 }
@@ -352,7 +434,7 @@ class UserController extends Controller
                     $query->whereIn('users.prof_id', $profiles);
                 }
             })
-            ->where(function ($query) use ($user_prof_id, $user_ids, $stdmods_ids) {
+                ->where(function ($query) use ($user_prof_id, $user_ids, $stdmods_ids) {
                 if ($user_prof_id != Profile::ADMIN) {
                     $query->where('users.prof_id', '!=', 1);
                 }
@@ -363,11 +445,13 @@ class UserController extends Controller
                     $query->whereIn('sm.stdmod_id', $stdmods_ids);
                 }
             })
-            ->where('user_active', $bool_active_users)
-            ->whereNull('users.deleted_at')
-            ->whereNull('s.deleted_at')
-            ->orderBy(DB::raw($orderby), $dir)
-            ->distinct();
+                ->where('user_active', $bool_active_users)
+                ->whereNull('users.deleted_at')
+                ->whereNull('s.deleted_at')
+                ->orderBy(DB::raw($orderby), $dir)
+                ->distinct();
+
+            Log::debug("UserController@showDatatable - Query check: " . $users->toSql());
 
             if ($request->user()->prof_id == Profile::ESTUDIO) {
                 $users = $users->where('s.user_id_owner', $request->user()->user_id);
@@ -383,13 +467,16 @@ class UserController extends Controller
 
             $take = ($take == 0) ? $usersTotal : $take;
             $users = $users
-            ->skip($skip)
-            ->take($take)
-            ->groupByRaw('users.user_id, users.created_at')
-            ->get();
+                ->skip($skip)
+                ->take($take)
+                ->groupByRaw('users.user_id, users.created_at')
+                ->get();
 
-            return response()->json(['status' => 'success', 'data' => $users, 'recordsTotal' => $usersTotal], 200);
-        } catch (Exception $e) {
+            Log::info("UserController@showDatatable - Total Records Found: " . $usersTotal . " | Page size: " . count($users));
+
+            return response()->json(['status' => 'success', 'data' => $users, 'recordsTotal' => $usersTotal, 'recordsFiltered' => $usersTotal], 200);
+        }
+        catch (Exception $e) {
             dd($e->getMessage());
             // $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
@@ -407,32 +494,33 @@ class UserController extends Controller
                 'users.user_id AS value',
                 'users.user_id AS user_id',
             )
-            ->with([
-                'studioModel' => function($query) use ($bool_estudio, $user_id) {
-                    if ($bool_estudio) {
-                        $query->whereHas('studio', function($q) use ($user_id) {
-                            $q->where('studios.user_id_owner', $user_id);
-                        });
-                    }
-                },
+                ->with([
+                'studioModel' => function ($query) use ($bool_estudio, $user_id) {
+                if ($bool_estudio) {
+                    $query->whereHas('studio', function ($q) use ($user_id) {
+                                $q->where('studios.user_id_owner', $user_id);
+                            }
+                            );
+                        }
+                    },
                 'studioModel.studio'
             ])
-            ->join('studios_models AS sm', 'users.user_id', 'sm.user_id_model')
-            ->where(function ($query) use ($searchTerm) {
+                ->join('studios_models AS sm', 'users.user_id', 'sm.user_id_model')
+                ->where(function ($query) use ($searchTerm) {
                 $query
-                    ->where(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_name2, '') || ' ' || COALESCE(users.user_surname, '')  || ' ' || COALESCE(users.user_surname2, ''))"), 'like', '%'.strtoupper($searchTerm).'%')
-                    ->orWhere(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_surname, ''))"), 'like', '%'.strtoupper($searchTerm).'%')
-                    ->orWhere(DB::raw("UPPER(COALESCE(users.user_name2, '') || ' ' || COALESCE(users.user_surname, ''))"), 'like', '%'.strtoupper($searchTerm).'%')
-                    ->orWhere(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_name2, ''))"), 'like', '%'.strtoupper($searchTerm).'%')
-                    ->orWhere(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_name2, '') || ' ' || COALESCE(users.user_surname, ''))"), 'like', '%'.strtoupper($searchTerm).'%')
-                    ->orWhere(DB::raw("UPPER(COALESCE(users.user_surname, '') || ' ' || COALESCE(users.user_surname2, ''))"), 'like', '%'.strtoupper($searchTerm).'%');
+                    ->where(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_name2, '') || ' ' || COALESCE(users.user_surname, '')  || ' ' || COALESCE(users.user_surname2, ''))"), 'like', '%' . strtoupper($searchTerm) . '%')
+                    ->orWhere(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_surname, ''))"), 'like', '%' . strtoupper($searchTerm) . '%')
+                    ->orWhere(DB::raw("UPPER(COALESCE(users.user_name2, '') || ' ' || COALESCE(users.user_surname, ''))"), 'like', '%' . strtoupper($searchTerm) . '%')
+                    ->orWhere(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_name2, ''))"), 'like', '%' . strtoupper($searchTerm) . '%')
+                    ->orWhere(DB::raw("UPPER(COALESCE(users.user_name, '') || ' ' || COALESCE(users.user_name2, '') || ' ' || COALESCE(users.user_surname, ''))"), 'like', '%' . strtoupper($searchTerm) . '%')
+                    ->orWhere(DB::raw("UPPER(COALESCE(users.user_surname, '') || ' ' || COALESCE(users.user_surname2, ''))"), 'like', '%' . strtoupper($searchTerm) . '%');
             })
-            ->whereNull('users.deleted_at')
-            ->whereNull('sm.deleted_at')
-            ->where('users.user_active', true)
-            ->where('sm.stdmod_active', true)
-            ->orderBy('users.user_id', 'desc')
-            ->distinct();
+                ->whereNull('users.deleted_at')
+                ->whereNull('sm.deleted_at')
+                ->where('users.user_active', true)
+                ->where('sm.stdmod_active', true)
+                ->orderBy('users.user_id', 'desc')
+                ->distinct();
             if ($prof_id) {
                 $user = $user->where('users.prof_id', $prof_id);
             }
@@ -441,7 +529,8 @@ class UserController extends Controller
             }
             $user = $user->get();
             return response()->json(['status' => 'success', 'data' => $user], 200);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             dd($e->getMessage());
             // $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
@@ -461,74 +550,78 @@ class UserController extends Controller
             $searchWords = explode(' ', trim($searchTerm));
             $searchWords = array_filter($searchWords); // Eliminar elementos vacíos
             $user = User::select(DB::raw("CONCAT(users.user_name, ' ', users.user_name2, ' ', users.user_surname, ' ', users.user_surname2, ' (', users.user_identification, ')') AS label"), 'users.user_id AS value')
-            // Si se cumple la condición, usar leftJoin; de lo contrario, usar join normal
-            ->when(
+                // Si se cumple la condición, usar leftJoin; de lo contrario, usar join normal
+                ->when(
                 $prof_ids[0] !== "",
                 function ($query) {
-                    return $query->leftJoin('studios_models AS sm', 'users.user_id', 'sm.user_id_model');
-                },
+                return $query->leftJoin('studios_models AS sm', 'users.user_id', 'sm.user_id_model');
+            },
                 function ($query) {
-                    return $query->join('studios_models AS sm', 'users.user_id', 'sm.user_id_model');
-                }
+                return $query->join('studios_models AS sm', 'users.user_id', 'sm.user_id_model');
+            }
             )
-            ->join('studios AS s', 'sm.std_id', 's.std_id')
-            ->where(function ($query) use ($searchWords) {
+                ->join('studios AS s', 'sm.std_id', 's.std_id')
+                ->where(function ($query) use ($searchWords) {
                 // Recorrer cada palabra del explode en un bucle for
                 foreach ($searchWords as $index => $word) {
                     if ($index === 0) {
                         // Para la primera palabra, usar where
                         $query->where(function ($subQuery) use ($word) {
-                            $subQuery
-                            ->where('users.user_name', 'ilike', "%$word%")
-                            ->orWhere('users.user_name2', 'ilike', "%$word%")
-                            ->orWhere('users.user_surname', 'ilike', "%$word%")
-                            ->orWhere('users.user_surname2', 'ilike', "%$word%")
-                            ->orWhere('users.user_identification', 'like', "%$word%");
-                        });
-                    } else {
-                        // Para las siguientes palabras, usar orWhere
-                        $query->orWhere(function ($subQuery) use ($word) {
-                            $subQuery
-                            ->where('users.user_name', 'ilike', "%$word%")
-                            ->orWhere('users.user_name2', 'ilike', "%$word%")
-                            ->orWhere('users.user_surname', 'ilike', "%$word%")
-                            ->orWhere('users.user_surname2', 'ilike', "%$word%")
-                            ->orWhere('users.user_identification', 'like', "%$word%");
-                        });
-                    }
-                }
-            })
-            ->whereNull('users.deleted_at')
-            ->whereNull('sm.deleted_at')
-            ->where('users.user_active', true)
-            ->where('sm.stdmod_active', true)
-            ->when($prof_ids[0] !== "", function ($query) use ($prof_ids) {
+                                        $subQuery
+                                            ->where('users.user_name', 'ilike', "%$word%")
+                                            ->orWhere('users.user_name2', 'ilike', "%$word%")
+                                            ->orWhere('users.user_surname', 'ilike', "%$word%")
+                                            ->orWhere('users.user_surname2', 'ilike', "%$word%")
+                                            ->orWhere('users.user_identification', 'like', "%$word%");
+                                    }
+                                    );
+                                }
+                                else {
+                                    // Para las siguientes palabras, usar orWhere
+                                    $query->orWhere(function ($subQuery) use ($word) {
+                                        $subQuery
+                                            ->where('users.user_name', 'ilike', "%$word%")
+                                            ->orWhere('users.user_name2', 'ilike', "%$word%")
+                                            ->orWhere('users.user_surname', 'ilike', "%$word%")
+                                            ->orWhere('users.user_surname2', 'ilike', "%$word%")
+                                            ->orWhere('users.user_identification', 'like', "%$word%");
+                                    }
+                                    );
+                                }
+                            }
+                        })
+                ->whereNull('users.deleted_at')
+                ->whereNull('sm.deleted_at')
+                ->where('users.user_active', true)
+                ->where('sm.stdmod_active', true)
+                ->when($prof_ids[0] !== "", function ($query) use ($prof_ids) {
                 $query->whereIn('users.prof_id', $prof_ids);
             })
-            ->orderBy('users.user_id', 'desc')
-            ->distinct();
+                ->orderBy('users.user_id', 'desc')
+                ->distinct();
             if ($request->user()->prof_id == Profile::ESTUDIO) {
                 $user = $user->where('user_id_owner', $request->user()->user_id);
             }
             // monitors usa este bloque if, se usa para que unicamente traiga los usuarios que comparten los mismos estudios con el $user_mutual_studios_id
             if (isset($user_mutual_studios_id) && $user_mutual_studios_id !== '' && $user_mutual_studios_id !== 'undefined') {
-                $user = $user->whereIn('s.std_id', function($query) use ($user_mutual_studios_id) {
+                $user = $user->whereIn('s.std_id', function ($query) use ($user_mutual_studios_id) {
                     //se usa para que unicamente traiga los usuarios que comparten los mismos estudios con el $user_mutual_studios_id
                     $query->select('std_id')
-                    ->from('studios_models')
-                    ->where('user_id_model', $user_mutual_studios_id)
-                    ->whereNull('deleted_at');
-                })->whereNotIn('users.user_id', function($query) use ($user_mutual_studios_id) {
+                        ->from('studios_models')
+                        ->where('user_id_model', $user_mutual_studios_id)
+                        ->whereNull('deleted_at');
+                })->whereNotIn('users.user_id', function ($query) use ($user_mutual_studios_id) {
                     //se usa para que no traiga los usuarios que ya son hijos del $user_mutual_studios_id
                     $query->select('uu.userchild_id')
-                    ->from('users_users AS uu')
-                    ->where('userparent_id', $user_mutual_studios_id);
+                        ->from('users_users AS uu')
+                        ->where('userparent_id', $user_mutual_studios_id);
                 });
 
             }
             $user = $user->get();
             return response()->json(['status' => 'success', 'data' => $user], 200);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             dd($e->getMessage());
             // $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
@@ -632,8 +725,8 @@ class UserController extends Controller
                 /////////////////
                 if (!empty($data['permissions'])) {
                     UserPermission::where('user_id', '=', $user->user_id)
-                    ->whereNotIn('userperm_feature', array_keys($data['permissions']))
-                    ->update([
+                        ->whereNotIn('userperm_feature', array_keys($data['permissions']))
+                        ->update([
                         'deleted_at' => new DateTime()
                     ]);
 
@@ -642,7 +735,7 @@ class UserController extends Controller
                     foreach ($data['permissions'] as $feat => $state) {
                         $existIndex = -1;
                         // loop exists searching exist index
-                        for ($u=0; $u < count($exists); $u++) {
+                        for ($u = 0; $u < count($exists); $u++) {
                             if ($feat === $exists[$u]->userperm_feature) {
                                 $existIndex = $u;
                             }
@@ -653,9 +746,9 @@ class UserController extends Controller
                             $before = $exists[$existIndex];
 
                             $up = UserPermission::where('user_id', '=', $user->user_id)
-                                    ->where('userperm_feature', $feat)
-                                    ->whereNull('deleted_at')
-                                    ->first();
+                                ->where('userperm_feature', $feat)
+                                ->whereNull('deleted_at')
+                                ->first();
 
                             $up->update([
                                 'userperm_state' => $state
@@ -664,7 +757,8 @@ class UserController extends Controller
                             $this->log::storeLog($uAuth, 'users_permissions', $up->userperm_id, 'UPDATE', $before, $up, $request->ip);
 
                         // create
-                        } else {
+                        }
+                        else {
                             $up = UserPermission::create([
                                 'user_id' => $user->user_id,
                                 'userperm_feature' => $feat,
@@ -682,7 +776,7 @@ class UserController extends Controller
                     UserAdditionalModel::destroy($additional_models_todelete);
                     $additional_models_toinsert = array();
                     foreach ($additional_models as $key => $additional_model) {
-                        if(isset($additional_model['usraddmod_id']) && $additional_model['usraddmod_id'] != 0) {
+                        if (isset($additional_model['usraddmod_id']) && $additional_model['usraddmod_id'] != 0) {
                             $additional_model_toupdate = array(
                                 'usraddmod_name' => $additional_model['name'],
                                 'usraddmod_identification' => $additional_model['identification'],
@@ -712,7 +806,7 @@ class UserController extends Controller
                         'skpcoin_type' => 'UPDATE'
                     ]);
                     $coincidence_insert = [];
-                    foreach($users_coincidences as $user_coincidences) {
+                    foreach ($users_coincidences as $user_coincidences) {
                         $coincidence_insert[] = array(
                             'skpcoin_id' => $skipped_coincidencia->skpcoin_id,
                             'coin_entity' => json_encode($user_coincidences),
@@ -723,10 +817,12 @@ class UserController extends Controller
                     Coincidence::insert($coincidence_insert);
                 }
                 return response()->json(['status' => 'success', 'data' => $user->user_id], 200);
-            } else {
+            }
+            else {
                 return response()->json(['status' => 'fail'], 500);
             }
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
         }
@@ -775,10 +871,12 @@ class UserController extends Controller
             if ($user) {
                 $this->log::storeLog($uAuth, 'users', $user->user_id, 'UPDATE', $before, $user, $request->ip);
                 return response()->json(['status' => 'success', 'data' => $user->user_id], 200);
-            } else {
+            }
+            else {
                 return response()->json(['status' => 'fail'], 500);
             }
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
         }
@@ -837,10 +935,12 @@ class UserController extends Controller
             if ($user) {
                 $this->log::storeLog($uAuth, 'users', $user->user_id, 'CHANGE_PASS', $before, $user, $request->ip);
                 return response()->json(['status' => 'success', 'data' => $user->user_id], 200);
-            } else {
+            }
+            else {
                 return response()->json(['status' => 'fail'], 500);
             }
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
         }
@@ -881,10 +981,12 @@ class UserController extends Controller
             if ($user) {
                 $this->log::storeLog($uAuth, 'users', $user->user_id, 'DELETE', $before, $user, $request->ip);
                 return response()->json(['status' => 'success', 'data' => $user->user_id], 200);
-            } else {
+            }
+            else {
                 return response()->json(['status' => 'fail'], 500);
             }
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
         }
@@ -913,36 +1015,36 @@ class UserController extends Controller
             if (isset($period) && $period->period_state === 'ABIERTO') {
                 // consulta usada para obtener la ultima transaccion pendiente que no sea por activacion de usuario
                 $last_pending_transaction = Transaction::join('transactions_types AS tt', 'tt.transtype_id', 'transactions.transtype_id')
-                ->where('transtype_behavior', 'SALDO PENDIENTE')
-                ->where('transactions.trans_pendingbalance', true)
-                ->where('transactions.trans_pendingbalance_unchanged_times', '!=',-1)
-                ->where('transactions.user_id', $id)
-                ->orderBy('transactions.created_at', 'DESC')
-                ->first();
+                    ->where('transtype_behavior', 'SALDO PENDIENTE')
+                    ->where('transactions.trans_pendingbalance', true)
+                    ->where('transactions.trans_pendingbalance_unchanged_times', '!=', -1)
+                    ->where('transactions.user_id', $id)
+                    ->orderBy('transactions.created_at', 'DESC')
+                    ->first();
 
                 //entrar solo si se encontro una transaccion pendiente cuyo periodo sea anterior al periodo de la fecha actual
-                if (isset($last_pending_transaction) && $last_pending_transaction->count() > 0 && strtotime($last_pending_transaction->trans_date) <=  strtotime('last Sunday', strtotime($date)) ) {
+                if (isset($last_pending_transaction) && $last_pending_transaction->count() > 0 && strtotime($last_pending_transaction->trans_date) <= strtotime('last Sunday', strtotime($date))) {
                     $since_date = date('Y-m-d', strtotime('last monday', strtotime($last_pending_transaction->trans_date)));
                     $until_date = $last_pending_transaction->trans_date;
 
                     $models_streams = ModelStream::select('sm.user_id_model', 'models_streams.modstr_earnings_cop', 'sm.stdmod_id')
-                    ->join('models_accounts AS ma', 'ma.modacc_id', 'models_streams.modacc_id')
-                    ->join('studios_models AS sm', 'sm.stdmod_id', 'ma.stdmod_id')
-                    ->where('modstr_date', $until_date)
-                    ->where('sm.user_id_model', $id)
-                    ->get();// todos los streams de la fecha de $last_pending_transaction y el usuario actual
+                        ->join('models_accounts AS ma', 'ma.modacc_id', 'models_streams.modacc_id')
+                        ->join('studios_models AS sm', 'sm.stdmod_id', 'ma.stdmod_id')
+                        ->where('modstr_date', $until_date)
+                        ->where('sm.user_id_model', $id)
+                        ->get(); // todos los streams de la fecha de $last_pending_transaction y el usuario actual
                     $transactions = Transaction::select('tt.transtype_group', 'user_id', 'trans_amount', 'trans_quantity', 'stdmod_id', 'trans_pendingbalance_unchanged_times')
-                    ->join('transactions_types AS tt', 'tt.transtype_id', 'transactions.transtype_id')
-                    ->whereBetween('transactions.trans_date', [$since_date, $until_date])
-                    ->where('transactions.user_id', $id)
-                    ->get();// todas las transacciones de la fecha de $last_pending_transaction y el usuario actual
+                        ->join('transactions_types AS tt', 'tt.transtype_id', 'transactions.transtype_id')
+                        ->whereBetween('transactions.trans_date', [$since_date, $until_date])
+                        ->where('transactions.user_id', $id)
+                        ->get(); // todas las transacciones de la fecha de $last_pending_transaction y el usuario actual
                     // entrar solo si existe alguna transaccion o streams
                     if ($transactions->count() > 0 || $models_streams->count() > 0) {
                         $transaction_type_balance = TransactionType::where('transtype_behavior', 'SALDO PENDIENTE')
-                        ->whereNull('deleted_at')
-                        ->orderBy('transtype_id', 'desc')
-                        ->limit(2)
-                        ->get();
+                            ->whereNull('deleted_at')
+                            ->orderBy('transtype_id', 'desc')
+                            ->limit(2)
+                            ->get();
                         // buscar que existan al menos dos tipos de transferencias con comportamiento SALDO PENDIENTE
                         if ($transaction_type_balance->count() != 2) {
                             $response = array(
@@ -987,12 +1089,12 @@ class UserController extends Controller
                         }
 
                         $liquidated_transactions = Transaction::join('transactions_types AS tt', 'tt.transtype_id', 'transactions.transtype_id')
-                        ->where('transtype_behavior', 'SALDO PENDIENTE')
-                        ->where('transactions.trans_pendingbalance', true)
-                        ->where('transactions.trans_pendingbalance_unchanged_times', '=',-1)
-                        ->whereBetween('transactions.trans_date', [$period->period_start_date, $period->period_end_date])
-                        ->where('transactions.user_id', $id)
-                        ->get();// encontrar las transacciones del periodo a insertar la transaccion que sean de tipo reactivacion de usuario (trans_pendingbalance_unchanged_times = -1)
+                            ->where('transtype_behavior', 'SALDO PENDIENTE')
+                            ->where('transactions.trans_pendingbalance', true)
+                            ->where('transactions.trans_pendingbalance_unchanged_times', '=', -1)
+                            ->whereBetween('transactions.trans_date', [$period->period_start_date, $period->period_end_date])
+                            ->where('transactions.user_id', $id)
+                            ->get(); // encontrar las transacciones del periodo a insertar la transaccion que sean de tipo reactivacion de usuario (trans_pendingbalance_unchanged_times = -1)
 
                         //diccionario del total con llaves usuario_id y stdmod_id
                         $liquidated_transactions_dic = array();
@@ -1007,7 +1109,7 @@ class UserController extends Controller
                         //o actualizar en caso de que cambie el balance y se haya vuelto a reactivar.
                         $transactions_insert = array();
                         foreach ($users_balance as $key => $stdmods) {
-                            foreach($stdmods as $key2 => $user_balance) {
+                            foreach ($stdmods as $key2 => $user_balance) {
                                 if (isset($user_balance) && $user_balance <= 30000) {
                                     $balance = ($user_balance >= 0) ? $user_balance : -$user_balance;
                                     if (!isset($liquidated_transactions_dic[$key][$key2])) {
@@ -1026,14 +1128,15 @@ class UserController extends Controller
                                             'trans_pendingbalance' => true,
                                             'trans_pendingbalance_unchanged_times' => -1 // determina que la transaccion es de tipo reactivar usuario
                                         );
-                                    } else if (isset($liquidated_transactions_dic[$key]) && $liquidated_transactions_dic[$key][$key2] != $user_balance) {
+                                    }
+                                    else if (isset($liquidated_transactions_dic[$key]) && $liquidated_transactions_dic[$key][$key2] != $user_balance) {
                                         Transaction::join('transactions_types AS tt', 'tt.transtype_id', 'transactions.transtype_id')
-                                        ->where('tt.transtype_behavior', 'SALDO PENDIENTE')
-                                        ->where('transactions.user_id', $key)
-                                        ->where('transactions.stdmod_id', $key2)
-                                        ->where('transactions.trans_pendingbalance', true)
-                                        ->whereBetween('transactions.trans_date', [$period->period_start_date, $period->period_end_date])
-                                        ->update(['transactions.trans_amount' => $balance]);
+                                            ->where('tt.transtype_behavior', 'SALDO PENDIENTE')
+                                            ->where('transactions.user_id', $key)
+                                            ->where('transactions.stdmod_id', $key2)
+                                            ->where('transactions.trans_pendingbalance', true)
+                                            ->whereBetween('transactions.trans_date', [$period->period_start_date, $period->period_end_date])
+                                            ->update(['transactions.trans_amount' => $balance]);
                                     }
                                 }
                             }
@@ -1059,10 +1162,12 @@ class UserController extends Controller
             if ($user) {
                 $this->log::storeLog($uAuth, 'users', $user->user_id, 'UPDATE', $before, $user, $request->ip);
                 return response()->json(['status' => 'success', 'data' => $user->user_id], 200);
-            } else {
+            }
+            else {
                 return response()->json(['status' => 'fail'], 500);
             }
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
         }
@@ -1095,10 +1200,12 @@ class UserController extends Controller
             if ($user) {
                 $this->log::storeLog($uAuth, 'users', $user->user_id, 'UPDATE', $before, $user, $request->ip);
                 return response()->json(['status' => 'success', 'data' => $user->user_id], 200);
-            } else {
+            }
+            else {
                 return response()->json(['status' => 'fail'], 500);
             }
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
         }
@@ -1111,7 +1218,8 @@ class UserController extends Controller
             INNER JOIN profiles ON users.prof_id = profiles.prof_id
             WHERE profiles.prof_name = :profile_name', ['profile_name' => $prof_name]);
             return response()->json(['status' => 'success', 'data' => $data], 200);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
         }
@@ -1128,7 +1236,7 @@ class UserController extends Controller
         unset($request['tz']);
         unset($request['tzo']);
         unset($request['access_token']);
-        return Excel::download(new UsersExport($request, $tz), 'usuarios_'.date('Y-m-d').'.xlsx');
+        return Excel::download(new UsersExport($request, $tz), 'usuarios_' . date('Y-m-d') . '.xlsx');
     }
 
     public function uploadImage(Request $request, $id)
@@ -1164,7 +1272,8 @@ class UserController extends Controller
             $this->log::storeLog($uAuth, 'users', $record->user_id, 'UPDATE', $before, $record, $request->ip);
 
             return response()->json(['status' => 'success', 'data' => $record->user_id], 200);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
         }
@@ -1203,7 +1312,8 @@ class UserController extends Controller
             $this->log::storeLog($uAuth, 'users', $record->user_id, 'UPDATE', $before, $record, $request->ip);
 
             return response()->json(['status' => 'success', 'data' => $record->user_id], 200);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
         }
@@ -1227,23 +1337,24 @@ class UserController extends Controller
             $users_query = User::query()->whereNull('deleted_at');
             $data = $request->all();
             $users_query->where(function ($query) use ($user_coincide_fields, $user_db_to_client_fields, $data) {
-                foreach($user_coincide_fields as $user_coincide_field) {
+                foreach ($user_coincide_fields as $user_coincide_field) {
                     $query->orWhere(function ($query) use ($user_coincide_field, $user_db_to_client_fields, $data) {
-                        foreach ($user_coincide_field as $field) {
-                            $filter = ($data[$user_db_to_client_fields[$field]] != '') ? $data[$user_db_to_client_fields[$field]] : 's#sv24ga&SvD5Ae1332iJ';
-                            $query->where($field, $filter);
+                                foreach ($user_coincide_field as $field) {
+                                    $filter = ($data[$user_db_to_client_fields[$field]] != '') ? $data[$user_db_to_client_fields[$field]] : 's#sv24ga&SvD5Ae1332iJ';
+                                    $query->where($field, $filter);
+                                }
+                            }
+                            );
                         }
                     });
-                }
-            });
             $id = $data['id'];
             if (isset($id) && $id != 0) {
                 $already_skipped_coincidences = SkippedCoincidence::join('coincidences AS c', 'skipped_coincidences.skpcoin_id', 'c.skpcoin_id')
-                ->where('user_id_new', $id)
-                ->pluck('c.coin_entity');
+                    ->where('user_id_new', $id)
+                    ->pluck('c.coin_entity');
 
                 $skipped_coincidence_ids = array($id);
-                foreach($already_skipped_coincidences as $skipped_coincidence) {
+                foreach ($already_skipped_coincidences as $skipped_coincidence) {
                     $user = json_decode($skipped_coincidence);
                     $skipped_coincidence_ids[] = $user->user_id;
                 }
@@ -1255,7 +1366,8 @@ class UserController extends Controller
             $users = $users_query->get();
             $unsubmittable = ($users->contains('user_identification', $data['identification'])) ? true : false;
             return response()->json(['status' => 'success', 'data' => $users, 'unsubmittable' => $unsubmittable], 200);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             dd($e->getMessage());
             // $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
@@ -1355,7 +1467,7 @@ class UserController extends Controller
                     UserAdditionalModel::destroy($additional_models_todelete);
                     $additional_models_toinsert = array();
                     foreach ($additional_models as $key => $additional_model) {
-                        if(isset($additional_model['usraddmod_id']) && $additional_model['usraddmod_id'] != 0) {
+                        if (isset($additional_model['usraddmod_id']) && $additional_model['usraddmod_id'] != 0) {
                             $additional_model_toupdate = array(
                                 'usraddmod_name' => $additional_model['name'],
                                 'usraddmod_identification' => $additional_model['identification'],
@@ -1377,9 +1489,10 @@ class UserController extends Controller
                     UserAdditionalModel::insert($additional_models_toinsert);
                 }
                 DB::commit();
-                return response()->json(['status' => 'success','data' => $user], 200);
+                return response()->json(['status' => 'success', 'data' => $user], 200);
             }
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             DB::rollback();
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
@@ -1392,7 +1505,7 @@ class UserController extends Controller
             $user_id = (in_array($request->user()->prof_id, [Profile::ESTUDIO, PROFILE::GESTOR])) ? $request->user()->user_id : null;
             $records = $this->getUserRelations(null, $user_id);
 
-            $users= [];
+            $users = [];
             foreach ($records as $r => $row) {
                 $tree_route = $this->pgArrayToPhpArray($row->routee);
                 $users = $this->buildUserTree($users, $row, $tree_route);
@@ -1400,16 +1513,17 @@ class UserController extends Controller
             // Convierte a arrays indexados para el frontend
             $users = $this->treeToIndexedArray($users);
             return response()->json(['status' => 'success', 'data' => $users], 200);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
         }
     }
 
     // recibe un id de usuario y devuelve un array de id de usuarios descendientes
-    public function getUserRelations($user_id=null, $user_id_owner=null)
+    public function getUserRelations($user_id = null, $user_id_owner = null)
     {
-        $conditions = ($user_id == null) ? "u.prof_id = 7" : "u.user_id = ".$user_id;
+        $conditions = ($user_id == null) ? "u.prof_id = 7" : "u.user_id = " . $user_id;
         if ($user_id_owner !== null && is_numeric($user_id_owner)) {
             $conditions .= " AND s.user_id_owner = " . $user_id_owner;
         }
@@ -1464,27 +1578,28 @@ class UserController extends Controller
             INNER JOIN users u ON uu.userparent_id = u.user_id
             INNER JOIN users u2 ON uu.userchild_id = u2.user_id
         )
-        SELECT * FROM hierarchy;");//COMPROBAR QUE AL INSERTAR UN PADRE COMO HIJO DE SU HIJO NO SE PUEDA EN BASE DE DATOS
+        SELECT * FROM hierarchy;"); //COMPROBAR QUE AL INSERTAR UN PADRE COMO HIJO DE SU HIJO NO SE PUEDA EN BASE DE DATOS
         return $records;
     }
-    public function getAllDescendantUserIds($user_id, $bool_onlymodels=false)
+    public function getAllDescendantUserIds($user_id, $bool_onlymodels = false)
     {
         $relations = $this->getUserRelations($user_id);
         return collect($relations)
-        ->filter(function($relation) use ($bool_onlymodels){
+            ->filter(function ($relation) use ($bool_onlymodels) {
             if ($bool_onlymodels) {
                 return ($relation->prof_id == 4 || $relation->prof_id == 5);
             }
             return true;
         })
-        ->pluck('userchild_id')
-        ->filter()
-        ->unique()
-        ->values()
-        ->all();
+            ->pluck('userchild_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
     //convierte un array de postgres a un array de php
-    private function pgArrayToPhpArray(string $pgArray): array {
+    private function pgArrayToPhpArray(string $pgArray): array
+    {
         // Elimina las llaves de PostgreSQL array
         $pgArray = trim($pgArray, '{}');
         // Si está vacío, devuelve un array vacío
@@ -1509,13 +1624,15 @@ class UserController extends Controller
                 'user_name' => $row->userchild_name,
                 'users' => array()
             );
-        } else if (sizeof($tree_route) == 1 && $depth == 0 && !isset($user_tree[$row->userparent_id])) { // paso recursivo caso 1// es un elemento padre semilla
+        }
+        else if (sizeof($tree_route) == 1 && $depth == 0 && !isset($user_tree[$row->userparent_id])) { // paso recursivo caso 1// es un elemento padre semilla
             $user_tree[$row->userparent_id] = array(
                 'user_id' => $row->userparent_id,
                 'user_name' => $row->userparent_name,
                 'users' => $this->buildUserTree([], $row, array_slice($tree_route, 1), $depth + 1)
             );
-        } else if (isset($tree_route[0]) && $tree_route[0] != 'NULL') {//paso recursivo caso 2
+        }
+        else if (isset($tree_route[0]) && $tree_route[0] != 'NULL') { //paso recursivo caso 2
             $user_tree[$tree_route[0]]['users'] = $this->buildUserTree($user_tree[$tree_route[0]]['users'], $row, array_slice($tree_route, 1), $depth + 1);
         }
 
@@ -1523,7 +1640,8 @@ class UserController extends Controller
     }
 
     // Convierte todos los arrays asociativos de hijos (users) a arrays indexados recursivamente
-    private function treeToIndexedArray($tree) {
+    private function treeToIndexedArray($tree)
+    {
         if (!empty($tree) && array_keys($tree) !== range(0, count($tree) - 1)) {
             $tree = array_values($tree);
         }
@@ -1558,11 +1676,13 @@ class UserController extends Controller
             if ($user) {
                 DB::commit();
                 return response()->json(['status' => 'success', 'data' => $user], 201);
-            } else {
+            }
+            else {
                 DB::rollBack();
                 return response()->json(['status' => 'fail']);
             }
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             DB::rollBack();
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
@@ -1583,10 +1703,12 @@ class UserController extends Controller
 
             if ($user) {
                 return response()->json(['status' => 'success', 'data' => $user], 200);
-            } else {
+            }
+            else {
                 return response()->json(['status' => 'fail'], 500);
             }
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
         }
@@ -1599,23 +1721,25 @@ class UserController extends Controller
             $chief_monitor = User::findOrFail($id);
             if ($chief_monitor) {
                 $monitors = User::join('users_users AS uu', 'uu.userchild_id', 'users.user_id')
-                ->where('uu.userparent_id', $id)
-                ->where('users.prof_id', 8)
-                ->select(
+                    ->where('uu.userparent_id', $id)
+                    ->where('users.prof_id', 8)
+                    ->select(
                     'users.user_id',
                     DB::raw(
-                        "COALESCE(users.user_name, '') || ' ' || " .
-                                               "COALESCE(users.user_name2, '') || ' ' || " .
-                        "COALESCE(users.user_surname, '') || ' ' || " .
-                        "COALESCE(users.user_surname2, '') AS user_name"
-                    )
+                    "COALESCE(users.user_name, '') || ' ' || " .
+                    "COALESCE(users.user_name2, '') || ' ' || " .
+                    "COALESCE(users.user_surname, '') || ' ' || " .
+                    "COALESCE(users.user_surname2, '') AS user_name"
                 )
-                ->get();
+                )
+                    ->get();
                 return response()->json(['status' => 'success', 'data' => $monitors], 200);
-            } else {
+            }
+            else {
                 return response()->json(['status' => 'fail'], 500);
             }
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $response = $this->helper::errorArray($e);
             return response()->json($response['data'], $response['code']);
         }

@@ -12,6 +12,11 @@ class ResolveTenantContext
     {
         $user = $request->user();
 
+        // Skip DB check for mock user in local development
+        if (env('APP_ENV') === 'local' && $user && $user->user_id === 4243) {
+            return $next($request);
+        }
+
         if (!$user || TenantContext::isPrivileged($user)) {
             return $next($request);
         }

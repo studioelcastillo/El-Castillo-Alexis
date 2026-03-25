@@ -102,8 +102,20 @@ function App() {
       navigate('/login', { replace: true });
     }
     if (isAuthenticated && location.pathname.startsWith('/login')) {
-      navigate(PAGE_TO_PATH.inicio, { replace: true });
+      if (currentUser?.must_change_password) {
+        navigate(PAGE_TO_PATH.change_password, { replace: true });
+      } else {
+        navigate(PAGE_TO_PATH.inicio, { replace: true });
+      }
     }
+
+    // Force password change if flag is set and not on the change-password page
+    if (isAuthenticated && currentUser?.must_change_password && location.pathname !== PAGE_TO_PATH.change_password) {
+      if (!isPublicRoute) {
+        navigate(PAGE_TO_PATH.change_password, { replace: true });
+      }
+    }
+
     const aliasTarget = PATH_ALIASES[location.pathname as keyof typeof PATH_ALIASES];
     if (aliasTarget && location.pathname !== aliasTarget) {
       navigate(aliasTarget, { replace: true });
@@ -187,10 +199,16 @@ function App() {
   };
 
   const handleLogin = () => {
+      const user = getStoredUser();
       setIsAuthReady(true);
       setIsAuthenticated(true);
       setIsOnboarded(true);
-      navigate(PAGE_TO_PATH.inicio, { replace: true });
+
+      if (user?.must_change_password) {
+        navigate(PAGE_TO_PATH.change_password, { replace: true });
+      } else {
+        navigate(PAGE_TO_PATH.inicio, { replace: true });
+      }
   };
 
   const handleLogoutConfirm = async () => {

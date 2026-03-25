@@ -62,6 +62,7 @@ export interface User {
       };
     };
   };
+  must_change_password?: boolean;
 }
 
 export interface UserProfileData {

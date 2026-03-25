@@ -20,6 +20,12 @@ class IsActive
     public function handle(Request $request, Closure $next)
     {
         $uAuth = $request->user();
+        
+        // Skip DB check for mock user in local development
+        if (env('APP_ENV') === 'local' && $uAuth && $uAuth->user_id === 4243) {
+            return $next($request);
+        }
+
         $u = User::where('user_id', $uAuth->user_id)->first();
 
         if (!$u->user_active) {

@@ -15,6 +15,12 @@ La copia subida no incluye el `.env` real del backend. Por eso esta reconstrucci
 - credenciales reales de correo, pusher, twilio, mercadopago y otros servicios
 - cualquier secreto operativo que no viva dentro de la base de datos
 
+Ademas, el zip original trae mas piezas que este repo no integra automaticamente:
+
+- `server/` -> hoy vive aqui como `backend-legacy/`
+- `ms-wscrap/` -> microservicio opcional de scraping programado; el backend actual ya tiene acoples por `MS_WSCRAP_URL`, pero no se despliega desde este repo
+- `ms-sso/` -> microservicio legacy de SSO/cookies de terceros; se mantiene fuera del entorno actual por seguridad y porque el dashboard vigente no lo consume
+
 ## Preparacion
 
 1. Copiar `.secure/backend-rebuild.env.example` a `.secure/backend-rebuild.env.local`.

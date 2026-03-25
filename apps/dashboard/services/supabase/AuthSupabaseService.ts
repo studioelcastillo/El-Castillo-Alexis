@@ -228,7 +228,21 @@ const AuthSupabaseService = {
     });
     if (reAuthError) throw new Error('La contraseña actual es incorrecta.');
 
-    return supabase.auth.updateUser({ password });
+    await supabase.auth.updateUser({ password });
+    
+    // Clear must_change_password flag in public.users
+    const { data: { user: updatedUser } } = await supabase.auth.getUser();
+    if (updatedUser) {
+        await supabase.from('users').update({ must_change_password: false }).eq('auth_user_id', updatedUser.id);
+        
+        // Update local session
+        const currentStored = getStoredUser();
+        if (currentStored) {
+            setStoredUser({ ...currentStored, must_change_password: false });
+        }
+    }
+    
+    return { success: true };
   },
 };
 
