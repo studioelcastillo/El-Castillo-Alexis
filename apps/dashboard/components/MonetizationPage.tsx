@@ -11,6 +11,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
+import { X } from 'lucide-react';
 import MonetizationService from '../MonetizationService';
 import { getStoredUser } from '../session';
 import { Liquidation, MonetizationBeneficiary, MonetizationPlatform, LiquidationItem, LiquidationDiscount, LiquidationRetention } from '../types';
@@ -192,6 +193,10 @@ const MonetizationPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [tokenValue, setTokenValue] = useState<number | null>(null);
 
+  // Modal states
+  const [isBeneficiaryModalOpen, setIsBeneficiaryModalOpen] = useState(false);
+  const [selectedBeneficiaryForEdit, setSelectedBeneficiaryForEdit] = useState<MonetizationBeneficiary | null>(null);
+
   // User Role Mock (Superadmin check)
   const currentUser = getStoredUser();
   const isSuperAdmin = currentUser?.profile?.prof_name === 'ADMINISTRADOR';
@@ -222,23 +227,21 @@ const MonetizationPage: React.FC = () => {
       alert("Liquidación guardada correctamente.");
   };
 
-  const handleCreateBeneficiary = async () => {
-      const name = prompt("Nombre del Beneficiario:");
-      if (!name) return;
-      const type = prompt("Tipo (PERSONA / EMPRESA):", "PERSONA");
-      const id = prompt("Identificación:");
+  const handleCreateBeneficiary = () => {
+      setSelectedBeneficiaryForEdit(null);
+      setIsBeneficiaryModalOpen(true);
+  };
 
-      if (name && type && id) {
-          await MonetizationService.saveBeneficiary({
-              name,
-              type: type as 'PERSONA' | 'EMPRESA',
-              identification: id,
-              active: true,
-              retentions_enabled: false
-          });
-          loadData();
-          alert("Beneficiario creado.");
-      }
+  const handleEditBeneficiary = (b: MonetizationBeneficiary) => {
+      setSelectedBeneficiaryForEdit(b);
+      setIsBeneficiaryModalOpen(true);
+  };
+
+  const handleSaveBeneficiary = async (b: Partial<MonetizationBeneficiary>) => {
+      await MonetizationService.saveBeneficiary(b);
+      loadData();
+      setIsBeneficiaryModalOpen(false);
+      alert(b.id ? "Tercero actualizado." : "Tercero creado.");
   };
 
   const handleCreatePlatform = async () => {
@@ -310,13 +313,172 @@ const MonetizationPage: React.FC = () => {
               />
             )}
             {activeTab === 'HISTORY' && <LiquidationHistory liquidations={liquidations} />}
-            {activeTab === 'BENEFICIARIES' && <BeneficiariesList data={beneficiaries} onCreate={handleCreateBeneficiary} />}
+            {activeTab === 'BENEFICIARIES' && <BeneficiariesList data={beneficiaries} onCreate={handleCreateBeneficiary} onEdit={handleEditBeneficiary} />}
             {activeTab === 'PLATFORMS' && <PlatformsList data={platforms} onCreate={handleCreatePlatform} />}
             {activeTab === 'PRIVATE' && isSuperAdmin && <PrivateSpreadDashboard liquidations={liquidations} />}
             {activeTab === 'DASHBOARD' && <MonetizationDashboard />}
         </div>
+
+        {isBeneficiaryModalOpen && (
+            <BeneficiaryModal
+                beneficiary={selectedBeneficiaryForEdit}
+                onClose={() => setIsBeneficiaryModalOpen(false)}
+                onSave={handleSaveBeneficiary}
+            />
+        )}
     </div>
   );
+};
+
+// --- MODALS ---
+
+const BeneficiaryModal: React.FC<{
+    beneficiary: MonetizationBeneficiary | null;
+    onClose: () => void;
+    onSave: (data: Partial<MonetizationBeneficiary>) => void;
+}> = ({ beneficiary, onClose, onSave }) => {
+    const [formData, setFormData] = useState<Partial<MonetizationBeneficiary>>(
+        beneficiary || {
+            name: '',
+            type: 'PERSONA',
+            identification: '',
+            legal_note: '',
+            active: true,
+            retentions_enabled: false,
+            default_retention_pct: 0,
+            default_commission_pct: 10,
+            bank_info: { bank: '', type: 'AHORROS', number: '' }
+        }
+    );
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave(formData);
+    };
+
+    const retentionOptions = [0, 4, 6, 7, 11];
+    const [isCustomRetention, setIsCustomRetention] = useState(!retentionOptions.includes(formData.default_retention_pct || 0));
+
+    const handleRetentionChange = (val: string) => {
+        if (val === 'custom') {
+            setIsCustomRetention(true);
+        } else {
+            setIsCustomRetention(false);
+            setFormData({...formData, default_retention_pct: Number(val)});
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-center p-8 border-b border-slate-50 bg-slate-50/50">
+                    <div>
+                        <h2 className="text-xl font-black text-slate-900">{beneficiary ? 'Editar Tercero' : 'Nuevo Tercero'}</h2>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Configuración de beneficiario y pagos</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors"><X size={20}/></button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="md:col-span-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Nombre / Razón Social</label>
+                            <input
+                                required
+                                type="text"
+                                value={formData.name}
+                                onChange={e => setFormData({...formData, name: e.target.value})}
+                                className="w-full p-3 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none ring-2 ring-transparent focus:ring-emerald-500/10 transition-all"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Tipo de Persona</label>
+                            <div className="flex bg-slate-50 p-1 rounded-2xl gap-1">
+                                {['PERSONA', 'EMPRESA'].map(t => (
+                                    <button
+                                        key={t}
+                                        type="button"
+                                        onClick={() => setFormData({...formData, type: t as any})}
+                                        className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${formData.type === t ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                    >
+                                        {t}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Identificación (NIT/CC)</label>
+                            <input
+                                required
+                                type="text"
+                                value={formData.identification}
+                                onChange={e => setFormData({...formData, identification: e.target.value})}
+                                className="w-full p-3 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none ring-2 ring-transparent focus:ring-emerald-500/10 transition-all"
+                            />
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between mb-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Retención (%)</label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.retentions_enabled}
+                                        onChange={e => setFormData({...formData, retentions_enabled: e.target.checked})}
+                                        className="rounded text-emerald-500"
+                                    />
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase">Aplica</span>
+                                </label>
+                            </div>
+                            <select
+                                disabled={!formData.retentions_enabled}
+                                value={isCustomRetention ? 'custom' : formData.default_retention_pct}
+                                onChange={e => handleRetentionChange(e.target.value)}
+                                className="w-full p-3 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none disabled:opacity-50"
+                            >
+                                {retentionOptions.map(opt => <option key={opt} value={opt}>{opt}%</option>)}
+                                <option value="custom">Otro (Personalizado)</option>
+                            </select>
+                            {isCustomRetention && formData.retentions_enabled && (
+                                <div className="mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <input
+                                        type="number"
+                                        placeholder="Ingrese %"
+                                        value={formData.default_retention_pct}
+                                        onChange={e => setFormData({...formData, default_retention_pct: Number(e.target.value)})}
+                                        className="w-full p-3 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none ring-2 ring-emerald-500/20"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Comisión Default %</label>
+                            <input
+                                type="number"
+                                value={formData.default_commission_pct}
+                                onChange={e => setFormData({...formData, default_commission_pct: Number(e.target.value)})}
+                                className="w-full p-3 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="p-6 bg-slate-50 rounded-[32px] border border-slate-100 italic text-[10px] text-slate-500">
+                        * Toda liquidación asociada a este tercero tomará estos valores por defecto, pero podrán ser ajustados individualmente en cada flujo.
+                    </div>
+
+                    <div className="flex gap-4 pt-4">
+                        <button type="button" onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold uppercase tracking-widest text-[10px] hover:text-slate-600 transition-colors">Cancelar</button>
+                        <button type="submit" className="flex-1 py-4 bg-slate-900 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-slate-900/20 hover:scale-[1.02] active:scale-95 transition-all">
+                            {beneficiary ? 'Guardar Cambios' : 'Crear Tercero'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
 };
 
 // --- 1. NEW LIQUIDATION VIEW ---
@@ -396,7 +558,7 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
     }, [items, trmPago, commissionPct, discounts, retentionEnabled, retentionPct, trmReal, tokenSnapshot]);
 
     const addItem = () => {
-        setItems([...items, { id: `new_${Date.now()}`, type: 'USD', amount_usd: 0, tokens: 0 }]);
+        setItems([...items, { id: `new_${Date.now()}`, type: 'USD', amount_usd: 0, tokens: 0, commission_percentage: 10 }]);
     };
 
     const updateItem = (index: number, field: string, val: any) => {
@@ -408,6 +570,10 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
             const p = platforms.find(pl => pl.id === val);
             newItems[index].platform_name = p?.name || '';
             newItems[index].type = p?.type === 'TOKENS' ? 'TOKENS' : 'USD';
+            // Auto-update this line's commission if platform has a default
+            if (p?.default_commission_pct) {
+                newItems[index].commission_percentage = p.default_commission_pct;
+            }
         }
         setItems(newItems);
         // Clear error if exists
@@ -423,8 +589,14 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
         setItems(items.filter((_, i) => i !== index));
     };
 
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
     const handlePreview = () => {
-        alert(JSON.stringify(liquidationData, null, 2));
+        setIsPreviewOpen(true);
+    };
+
+    const formatPoints = (val: number) => {
+        return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(Math.round(val));
     };
 
     const validateAndSave = () => {
@@ -579,6 +751,16 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
                                         {errors[`item_${idx}_amount`] && <p className="text-[8px] text-red-500 font-bold mt-1 uppercase">Requerido</p>}
                                     </div>
                                 )}
+                                <div className="w-24">
+                                    <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Comisión %</label>
+                                    <select
+                                        value={item.commission_percentage || 10}
+                                        onChange={e => updateItem(idx, 'commission_percentage', Number(e.target.value))}
+                                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl text-xs font-bold outline-none"
+                                    >
+                                        {[5, 7, 8, 10, 12, 15, 20].map(opt => <option key={opt} value={opt}>{opt}%</option>)}
+                                    </select>
+                                </div>
                                 <button onClick={() => removeItem(idx)} className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-100"><Trash2 size={16} /></button>
                             </div>
                         ))}
@@ -587,28 +769,38 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
                 </div>
 
                 {/* SECTION C & D & F: Rules */}
-                <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">TRM Pago (COP)</label>
                         <input type="number" value={trmPago} onChange={e => setTrmPago(Number(e.target.value))} className="w-full p-3 bg-slate-50 border-none rounded-xl text-lg font-black text-slate-900 outline-none" />
                     </div>
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Comisión Estudio %</label>
-                        <input type="number" value={commissionPct} onChange={e => setCommissionPct(Number(e.target.value))} className="w-full p-3 bg-slate-50 border-none rounded-xl text-lg font-black text-slate-900 outline-none" />
-                    </div>
-                    <div>
                         <div className="flex justify-between mb-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Retención</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Retención Total</label>
                             <input type="checkbox" checked={retentionEnabled} onChange={e => setRetentionEnabled(e.target.checked)} className="rounded text-emerald-500 focus:ring-emerald-500" />
                         </div>
-                        <input
-                            type="number"
-                            disabled={!retentionEnabled}
-                            value={retentionPct}
-                            onChange={e => setRetentionPct(Number(e.target.value))}
-                            className="w-full p-3 bg-slate-50 border-none rounded-xl text-lg font-black text-slate-900 outline-none disabled:opacity-50"
-                            placeholder="% Ret"
-                        />
+                        <div className="flex gap-2">
+                            <select
+                                disabled={!retentionEnabled}
+                                value={[0, 4, 6, 7, 11].includes(retentionPct) ? retentionPct : 'custom'}
+                                onChange={e => {
+                                    if (e.target.value === 'custom') return; // Handled by input if needed, but easier to just use 'custom' state
+                                    setRetentionPct(Number(e.target.value));
+                                }}
+                                className="flex-1 p-3 bg-slate-50 border-none rounded-xl text-lg font-black text-slate-900 outline-none disabled:opacity-50"
+                            >
+                                {[0, 4, 6, 7, 11].map(opt => <option key={opt} value={opt}>{opt}%</option>)}
+                                <option value="custom">Otro</option>
+                            </select>
+                            {(![0, 4, 6, 7, 11].includes(retentionPct) || retentionPct === 0) && retentionEnabled && (
+                                <input
+                                    type="number"
+                                    value={retentionPct}
+                                    onChange={e => setRetentionPct(Number(e.target.value))}
+                                    className="w-20 p-3 bg-slate-50 border-none rounded-xl text-lg font-black text-slate-900 outline-none"
+                                />
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -649,30 +841,30 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
                     <div className="flex justify-between items-start mb-6 border-b border-white/10 pb-6">
                         <div>
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Ingresos USD</p>
-                            <p className="text-3xl font-black text-emerald-400 tracking-tighter">${liquidationData.total_usd.toLocaleString()}</p>
+                            <p className="text-3xl font-black text-emerald-400 tracking-tighter">${formatPoints(liquidationData.total_usd)}</p>
                         </div>
                         <div className="text-right">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">COP Bruto</p>
-                            <p className="text-xl font-bold opacity-80">${liquidationData.total_cop_bruto.toLocaleString()}</p>
+                            <p className="text-xl font-bold opacity-80">${formatPoints(liquidationData.total_cop_bruto)}</p>
                         </div>
                     </div>
 
                     <div className="space-y-3 mb-8 text-sm">
                         <div className="flex justify-between text-slate-400">
-                            <span>Comisión ({commissionPct}%)</span>
-                            <span className="text-white font-bold">-${liquidationData.commission_cop.toLocaleString()}</span>
+                            <span>Comisión Acumulada</span>
+                            <span className="text-white font-bold">-${formatPoints(liquidationData.commission_cop)}</span>
                         </div>
                         <div className="flex justify-between text-slate-400">
                             <span>Retenciones</span>
-                            <span className="text-white font-bold">-${liquidationData.total_retentions_cop.toLocaleString()}</span>
+                            <span className="text-white font-bold">-${formatPoints(liquidationData.total_retentions_cop)}</span>
                         </div>
                         <div className="flex justify-between text-slate-400">
                             <span>Descuentos</span>
-                            <span className="text-white font-bold">-${liquidationData.total_discounts_cop.toLocaleString()}</span>
+                            <span className="text-white font-bold">-${formatPoints(liquidationData.total_discounts_cop)}</span>
                         </div>
                         <div className="border-t border-white/10 pt-3 flex justify-between items-center">
                             <span className="font-black text-lg">A PAGAR</span>
-                            <span className="font-black text-2xl tracking-tighter text-amber-400">${liquidationData.total_payable_cop.toLocaleString()}</span>
+                            <span className="font-black text-2xl tracking-tighter text-amber-400">${formatPoints(liquidationData.total_payable_cop)}</span>
                         </div>
                     </div>
 
@@ -690,6 +882,123 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
                             <Printer size={16} /> Vista Previa
                         </button>
                     </div>
+                </div>
+            </div>
+
+            {isPreviewOpen && (
+                <InvoicePreviewModal
+                    data={{...liquidationData, beneficiary_name: selectedBeneficiary?.name, beneficiary_doc: selectedBeneficiary?.identification}}
+                    onClose={() => setIsPreviewOpen(false)}
+                />
+            )}
+        </div>
+    );
+};
+
+const InvoicePreviewModal: React.FC<{ data: any, onClose: () => void }> = ({ data, onClose }) => {
+    const formatPoints = (val: number) => {
+        return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(Math.round(val));
+    };
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                <div className="flex justify-between items-center p-6 border-b border-slate-50 bg-slate-50/50">
+                    <h2 className="text-lg font-black text-slate-900">Vista Previa de Factura</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors"><X size={20}/></button>
+                </div>
+
+                <div className="p-10 overflow-y-auto flex-1 bg-slate-50/30">
+                    <div className="bg-white p-12 shadow-sm border border-slate-100 rounded-[40px] space-y-10 max-w-3xl mx-auto">
+                        {/* Header Invoice */}
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <div className="p-3 bg-slate-900 text-emerald-400 rounded-2xl inline-block mb-4 shadow-lg shadow-slate-900/20"><Banknote size={32} /></div>
+                                <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Liquidación Monetización</h1>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Documento Electrónico de Soporte</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fecha Emisión</p>
+                                <p className="text-sm font-black text-slate-900">{new Date().toLocaleDateString()}</p>
+                            </div>
+                        </div>
+
+                        {/* Parties */}
+                        <div className="grid grid-cols-2 gap-12 pt-10 border-t border-slate-50">
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Beneficiario / Tercero</p>
+                                <p className="text-lg font-black text-slate-900">{data.beneficiary_name || 'N/A'}</p>
+                                <p className="text-xs font-bold text-slate-500">{data.beneficiary_doc || 'N/A'}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Tasa de Cambio (TRM)</p>
+                                <p className="text-2xl font-black text-emerald-600 tracking-tighter">${formatPoints(data.trm_pago)} COP</p>
+                                <p className="text-[10px] text-slate-400 font-medium">USD / COP</p>
+                            </div>
+                        </div>
+
+                        {/* Items Table */}
+                        <div className="pt-10">
+                            <table className="w-full text-left">
+                                <thead className="border-b-2 border-slate-900">
+                                    <tr>
+                                        <th className="py-4 text-[10px] font-black text-slate-900 uppercase tracking-widest">Plataforma</th>
+                                        <th className="py-4 text-[10px] font-black text-slate-900 uppercase tracking-widest text-right">Cantidad</th>
+                                        <th className="py-4 text-[10px] font-black text-slate-900 uppercase tracking-widest text-right">Subtotal USD</th>
+                                        <th className="py-4 text-[10px] font-black text-slate-900 uppercase tracking-widest text-right">Subtotal COP</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-sm">
+                                    {data.items?.map((item: any, idx: number) => (
+                                        <tr key={idx}>
+                                            <td className="py-5 font-bold text-slate-700">{item.platform_name}</td>
+                                            <td className="py-5 text-right font-mono text-xs">{item.type === 'TOKENS' ? `${formatPoints(item.tokens)} tkns` : `$${item.amount_usd} usd`}</td>
+                                            <td className="py-5 text-right font-black text-slate-900">${formatPoints(item.calculated_usd)}</td>
+                                            <td className="py-5 text-right font-black text-slate-900">${formatPoints(item.calculated_usd * data.trm_pago)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Totals Summary */}
+                        <div className="pt-10 border-t-2 border-slate-900 flex justify-end">
+                            <div className="w-80 space-y-4">
+                                <div className="flex justify-between text-xs font-bold text-slate-500 uppercase tracking-widest">
+                                    <span>Subtotal Bruto COP</span>
+                                    <span>${formatPoints(data.total_cop_bruto)}</span>
+                                </div>
+                                <div className="flex justify-between text-xs font-bold text-slate-500 uppercase tracking-widest">
+                                    <span>Comisión Estudio ({data.commission_percentage}%)</span>
+                                    <span>-${formatPoints(data.commission_cop)}</span>
+                                </div>
+                                <div className="flex justify-between text-xs font-bold text-slate-500 uppercase tracking-widest text-red-500">
+                                    <span>Total Descuentos</span>
+                                    <span>-${formatPoints(data.total_discounts_cop)}</span>
+                                </div>
+                                <div className="flex justify-between text-xs font-bold text-slate-500 uppercase tracking-widest text-red-500 pb-4 border-b border-slate-100">
+                                    <span>Total Retenciones</span>
+                                    <span>-${formatPoints(data.total_retentions_cop)}</span>
+                                </div>
+                                <div className="flex justify-between items-center pt-2">
+                                    <span className="text-sm font-black text-slate-900 uppercase tracking-tighter">TOTAL NETO A PAGAR</span>
+                                    <span className="text-3xl font-black text-slate-900 tracking-tighter">${formatPoints(data.total_payable_cop)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Disclaimer */}
+                        <div className="pt-20 text-center">
+                            <p className="text-[9px] text-slate-300 font-bold uppercase tracking-[0.3em]">StudioCore ERP Cloud Infrastructure • El Castillo App</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-8 border-t border-slate-50 flex justify-between bg-white">
+                    <button onClick={onClose} className="px-8 py-3 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-600">Cerrar</button>
+                    <button onClick={() => window.print()} className="px-10 py-4 bg-emerald-500 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 transform transition-all active:scale-95 flex items-center gap-2">
+                        <Printer size={16} /> Imprimir Factura
+                    </button>
                 </div>
             </div>
         </div>
@@ -822,16 +1131,24 @@ const PrivateSpreadDashboard: React.FC<{ liquidations: Liquidation[] }> = ({ liq
 };
 
 // --- HELPERS (Beneficiaries/Platforms Simple Lists) ---
-const BeneficiariesList: React.FC<{data: MonetizationBeneficiary[], onCreate: () => void}> = ({data, onCreate}) => (
+const BeneficiariesList: React.FC<{data: MonetizationBeneficiary[], onCreate: () => void, onEdit: (b: MonetizationBeneficiary) => void}> = ({data, onCreate, onEdit}) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {data.map(b => (
-            <div key={b.id} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-md transition-all">
+            <div key={b.id} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-md transition-all group relative">
                 <div className="flex justify-between items-start mb-4">
                     <div>
                         <h4 className="font-black text-slate-900 text-sm">{b.name}</h4>
                         <p className="text-[10px] text-slate-400 font-bold uppercase">{b.type}</p>
                     </div>
-                    <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase ${b.active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>{b.active ? 'Activo' : 'Inactivo'}</span>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => onEdit(b)}
+                            className="p-2 bg-slate-50 text-slate-400 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-indigo-50 hover:text-indigo-600"
+                        >
+                            <Settings size={14} />
+                        </button>
+                        <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase ${b.active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>{b.active ? 'Activo' : 'Inactivo'}</span>
+                    </div>
                 </div>
                 <div className="space-y-2 text-xs text-slate-600">
                     <p><strong>ID:</strong> {b.identification}</p>

@@ -1184,6 +1184,7 @@ export interface LiquidationItem {
   tokens?: number;
   token_value_snapshot: number;
   calculated_usd?: number;
+  commission_percentage?: number;
 }
 
 export interface LiquidationDiscount {

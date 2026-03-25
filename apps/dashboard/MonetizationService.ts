@@ -325,32 +325,39 @@ const MonetizationService = {
 
   calculateLiquidation(data: Partial<Liquidation>): Partial<Liquidation> {
     let totalUSD = 0;
+    let totalCommissionCOP = 0;
+    const trm = data.trm_pago || 0;
+
     const processedItems = data.items?.map((item) => {
       let lineUSD = 0;
       if (item.type === 'USD') lineUSD = item.amount_usd || 0;
       if (item.type === 'TOKENS') lineUSD = (item.tokens || 0) * item.token_value_snapshot;
+      
+      const lineCOP = lineUSD * trm;
+      const lineCommPct = item.commission_percentage ?? data.commission_percentage ?? 0;
+      const lineCommCOP = lineCOP * (lineCommPct / 100);
+      
       totalUSD += lineUSD;
+      totalCommissionCOP += lineCommCOP;
+      
       return { ...item, calculated_usd: lineUSD } as LiquidationItem;
     }) || [];
 
-    const trm = data.trm_pago || 0;
     const copBruto = totalUSD * trm;
-    const commPct = data.commission_percentage || 0;
-    const commissionCOP = copBruto * (commPct / 100);
-    const basePayable = copBruto - commissionCOP;
+    const basePayable = copBruto - totalCommissionCOP;
     const totalRetentions = data.retentions?.reduce((acc, r) => acc + (r.calculated_amount_cop || 0), 0) || 0;
     const totalDiscounts = data.discounts?.reduce((acc, d) => acc + (d.amount_cop || 0), 0) || 0;
     const totalPayable = basePayable - totalRetentions - totalDiscounts;
     const trmReal = data.trm_real || trm;
     const spreadProfit = (trmReal - trm) * totalUSD;
-    const totalRealProfit = commissionCOP + spreadProfit;
+    const totalRealProfit = totalCommissionCOP + spreadProfit;
 
     return {
       ...data,
       items: processedItems,
       total_usd: totalUSD,
       total_cop_bruto: copBruto,
-      commission_cop: commissionCOP,
+      commission_cop: totalCommissionCOP,
       base_payable_cop: basePayable,
       total_retentions_cop: totalRetentions,
       total_discounts_cop: totalDiscounts,
