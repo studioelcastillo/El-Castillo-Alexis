@@ -244,6 +244,30 @@ const MonetizationPage: React.FC = () => {
       alert(b.id ? "Tercero actualizado." : "Tercero creado.");
   };
 
+  const handleDeleteBeneficiary = async (id: string) => {
+      if (!confirm("¿Está seguro de eliminar este tercero? Esta acción no se puede deshacer.")) return;
+      try {
+          await MonetizationService.deleteBeneficiary(id);
+          loadData();
+          alert("Tercero eliminado.");
+      } catch (e) {
+          console.error(e);
+          alert("Error al eliminar el tercero. Verifique si tiene liquidaciones asociadas.");
+      }
+  };
+
+  const handleDeleteLiquidation = async (id: string) => {
+      if (!confirm("¿Está seguro de eliminar esta liquidación? Esta acción no se puede deshacer.")) return;
+      try {
+          await MonetizationService.deleteLiquidation(id);
+          loadData();
+          alert("Liquidación eliminada.");
+      } catch (e) {
+          console.error(e);
+          alert("Error al eliminar la liquidación.");
+      }
+  };
+
   const handleCreatePlatform = async () => {
       const name = prompt("Nombre de la Plataforma:");
       if (!name) return;
@@ -312,8 +336,8 @@ const MonetizationPage: React.FC = () => {
                 tokenValue={tokenValue}
               />
             )}
-            {activeTab === 'HISTORY' && <LiquidationHistory liquidations={liquidations} />}
-            {activeTab === 'BENEFICIARIES' && <BeneficiariesList data={beneficiaries} onCreate={handleCreateBeneficiary} onEdit={handleEditBeneficiary} />}
+            {activeTab === 'HISTORY' && <LiquidationHistory liquidations={liquidations} onDelete={handleDeleteLiquidation} />}
+            {activeTab === 'BENEFICIARIES' && <BeneficiariesList data={beneficiaries} onCreate={handleCreateBeneficiary} onEdit={handleEditBeneficiary} onDelete={handleDeleteBeneficiary} />}
             {activeTab === 'PLATFORMS' && <PlatformsList data={platforms} onCreate={handleCreatePlatform} />}
             {activeTab === 'PRIVATE' && isSuperAdmin && <PrivateSpreadDashboard liquidations={liquidations} />}
             {activeTab === 'DASHBOARD' && <MonetizationDashboard />}
@@ -441,10 +465,11 @@ const BeneficiaryModal: React.FC<{
                                 {retentionOptions.map(opt => <option key={opt} value={opt}>{opt}%</option>)}
                                 <option value="custom">Otro (Personalizado)</option>
                             </select>
-                            {isCustomRetention && formData.retentions_enabled && (
+                            {(isCustomRetention || ![0, 4, 6, 7, 11].includes(formData.default_retention_pct || 0)) && formData.retentions_enabled && (
                                 <div className="mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
                                     <input
                                         type="number"
+                                        step="0.01"
                                         placeholder="Ingrese %"
                                         value={formData.default_retention_pct}
                                         onChange={e => setFormData({...formData, default_retention_pct: Number(e.target.value)})}
@@ -493,6 +518,7 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
     const [discounts, setDiscounts] = useState<LiquidationDiscount[]>([]);
     const [retentionEnabled, setRetentionEnabled] = useState(false);
     const [retentionPct, setRetentionPct] = useState(0);
+    const [isCustomRetention, setIsCustomRetention] = useState(false);
     const [errors, setErrors] = useState<{[key: string]: boolean}>({});
     const tokenSnapshot = tokenValue ?? 0;
     const tokenValueMissing = tokenValue === null;
@@ -511,7 +537,10 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
         if (selectedBeneficiary) {
             if (selectedBeneficiary.default_commission_pct) setCommissionPct(selectedBeneficiary.default_commission_pct);
             setRetentionEnabled(selectedBeneficiary.retentions_enabled);
-            if (selectedBeneficiary.default_retention_pct) setRetentionPct(selectedBeneficiary.default_retention_pct);
+            
+            const defPct = selectedBeneficiary.default_retention_pct || 0;
+            setRetentionPct(defPct);
+            setIsCustomRetention(![0, 4, 6, 7, 11].includes(defPct));
         }
     }, [selectedBeneficiary]);
 
@@ -782,22 +811,28 @@ const NewLiquidationView: React.FC<{ beneficiaries: MonetizationBeneficiary[], p
                         <div className="flex gap-2">
                             <select
                                 disabled={!retentionEnabled}
-                                value={[0, 4, 6, 7, 11].includes(retentionPct) ? retentionPct : 'custom'}
+                                value={isCustomRetention ? 'custom' : ([0, 4, 6, 7, 11].includes(retentionPct) ? retentionPct : 'custom')}
                                 onChange={e => {
-                                    if (e.target.value === 'custom') return; // Handled by input if needed, but easier to just use 'custom' state
-                                    setRetentionPct(Number(e.target.value));
+                                    if (e.target.value === 'custom') {
+                                        setIsCustomRetention(true);
+                                    } else {
+                                        setIsCustomRetention(false);
+                                        setRetentionPct(Number(e.target.value));
+                                    }
                                 }}
                                 className="flex-1 p-3 bg-slate-50 border-none rounded-xl text-lg font-black text-slate-900 outline-none disabled:opacity-50"
                             >
                                 {[0, 4, 6, 7, 11].map(opt => <option key={opt} value={opt}>{opt}%</option>)}
                                 <option value="custom">Otro</option>
                             </select>
-                            {(![0, 4, 6, 7, 11].includes(retentionPct) || retentionPct === 0) && retentionEnabled && (
+                            {(isCustomRetention || (![0, 4, 6, 7, 11].includes(retentionPct) && retentionPct !== 0)) && retentionEnabled && (
                                 <input
                                     type="number"
+                                    step="0.01"
                                     value={retentionPct}
                                     onChange={e => setRetentionPct(Number(e.target.value))}
-                                    className="w-20 p-3 bg-slate-50 border-none rounded-xl text-lg font-black text-slate-900 outline-none"
+                                    className="w-24 p-3 bg-slate-50 border-none rounded-xl text-lg font-black text-slate-900 outline-none ring-2 ring-emerald-500/20"
+                                    placeholder="%"
                                 />
                             )}
                         </div>
@@ -1006,7 +1041,7 @@ const InvoicePreviewModal: React.FC<{ data: any, onClose: () => void }> = ({ dat
 };
 
 // --- 2. HISTORY VIEW ---
-const LiquidationHistory: React.FC<{ liquidations: Liquidation[] }> = ({ liquidations }) => {
+const LiquidationHistory: React.FC<{ liquidations: Liquidation[], onDelete?: (id: string) => void }> = ({ liquidations, onDelete }) => {
     return (
         <div className="bg-white rounded-[40px] border border-slate-100 shadow-xl overflow-hidden">
             <div className="overflow-x-auto">
@@ -1044,7 +1079,17 @@ const LiquidationHistory: React.FC<{ liquidations: Liquidation[] }> = ({ liquida
                                     </span>
                                 </td>
                                 <td className="px-8 py-5 text-right">
-                                    <button className="p-2 text-slate-400 hover:text-slate-900"><Printer size={16} /></button>
+                                    <div className="flex justify-end gap-2">
+                                        <button className="p-2 text-slate-400 hover:text-slate-900"><Printer size={16} /></button>
+                                        {onDelete && (
+                                            <button 
+                                                onClick={() => onDelete(l.id)}
+                                                className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -1131,7 +1176,7 @@ const PrivateSpreadDashboard: React.FC<{ liquidations: Liquidation[] }> = ({ liq
 };
 
 // --- HELPERS (Beneficiaries/Platforms Simple Lists) ---
-const BeneficiariesList: React.FC<{data: MonetizationBeneficiary[], onCreate: () => void, onEdit: (b: MonetizationBeneficiary) => void}> = ({data, onCreate, onEdit}) => (
+const BeneficiariesList: React.FC<{data: MonetizationBeneficiary[], onCreate: () => void, onEdit: (b: MonetizationBeneficiary) => void, onDelete?: (id: string) => void}> = ({data, onCreate, onEdit, onDelete}) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {data.map(b => (
             <div key={b.id} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-md transition-all group relative">
@@ -1147,6 +1192,14 @@ const BeneficiariesList: React.FC<{data: MonetizationBeneficiary[], onCreate: ()
                         >
                             <Settings size={14} />
                         </button>
+                        {onDelete && (
+                            <button
+                                onClick={() => onDelete(b.id)}
+                                className="p-2 bg-slate-50 text-slate-400 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-50 hover:text-red-600"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        )}
                         <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase ${b.active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>{b.active ? 'Activo' : 'Inactivo'}</span>
                     </div>
                 </div>

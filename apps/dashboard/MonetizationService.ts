@@ -150,6 +150,14 @@ const MonetizationService = {
       : (beneficiary as MonetizationBeneficiary);
   },
 
+  async deleteBeneficiary(id: string) {
+    const { error } = await supabase
+      .from('monetization_beneficiaries')
+      .delete()
+      .eq('beneficiary_id', id);
+    if (error) throw error;
+  },
+
   async getLiquidations(): Promise<Liquidation[]> {
     const { data, error } = await supabase
       .from('monetization_liquidations')
@@ -321,6 +329,20 @@ const MonetizationService = {
     }
 
     return { ...(liq as Liquidation), id: String(liquidationId) };
+  },
+
+  async deleteLiquidation(id: string) {
+    // Delete items, discounts, retentions first if they are not cascaded (though Supabase usually handles FK delete)
+    // Actually, it's safer to delete them explicitly if not sure about cascade config
+    await supabase.from('monetization_liquidation_items').delete().eq('liquidation_id', id);
+    await supabase.from('monetization_liquidation_discounts').delete().eq('liquidation_id', id);
+    await supabase.from('monetization_liquidation_retentions').delete().eq('liquidation_id', id);
+    
+    const { error } = await supabase
+      .from('monetization_liquidations')
+      .delete()
+      .eq('liquidation_id', id);
+    if (error) throw error;
   },
 
   calculateLiquidation(data: Partial<Liquidation>): Partial<Liquidation> {
