@@ -24,6 +24,17 @@ services:
       S3_SECRET_KEY: ${STUDIOCORE_STAGING_S3_SECRET_KEY:-}
       S3_FORCE_PATH_STYLE: ${STUDIOCORE_STAGING_S3_FORCE_PATH_STYLE:-false}
       S3_PUBLIC_BASE_URL: ${STUDIOCORE_STAGING_S3_PUBLIC_BASE_URL:-}
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: easypanel
+      traefik.http.routers.studiocore-api-pruebas.rule: Host(`pruebas.livstre.com`) && (Path(`/erp-api`) || PathPrefix(`/erp-api/`))
+      traefik.http.routers.studiocore-api-pruebas.entrypoints: https
+      traefik.http.routers.studiocore-api-pruebas.tls.certresolver: letsencrypt
+      traefik.http.routers.studiocore-api-pruebas.priority: "120"
+      traefik.http.routers.studiocore-api-pruebas.service: studiocore-api-pruebas
+      traefik.http.routers.studiocore-api-pruebas.middlewares: studiocore-api-pruebas-strip
+      traefik.http.middlewares.studiocore-api-pruebas-strip.stripprefix.prefixes: /erp-api
+      traefik.http.services.studiocore-api-pruebas.loadbalancer.server.port: "4102"
     networks:
       - easypanel
       - easypanel-elcastillo
@@ -41,6 +52,17 @@ services:
     restart: unless-stopped
     depends_on:
       - studiocore-api-pruebas
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: easypanel
+      traefik.http.routers.studiocore-web-pruebas.rule: Host(`pruebas.livstre.com`) && (Path(`/erp`) || PathPrefix(`/erp/`))
+      traefik.http.routers.studiocore-web-pruebas.entrypoints: https
+      traefik.http.routers.studiocore-web-pruebas.tls.certresolver: letsencrypt
+      traefik.http.routers.studiocore-web-pruebas.priority: "110"
+      traefik.http.routers.studiocore-web-pruebas.service: studiocore-web-pruebas
+      traefik.http.routers.studiocore-web-pruebas.middlewares: studiocore-web-pruebas-strip
+      traefik.http.middlewares.studiocore-web-pruebas-strip.stripprefix.prefixes: /erp
+      traefik.http.services.studiocore-web-pruebas.loadbalancer.server.port: "80"
     networks:
       - easypanel
       - easypanel-elcastillo

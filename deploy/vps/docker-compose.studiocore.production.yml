@@ -24,6 +24,17 @@ services:
       S3_SECRET_KEY: ${STUDIOCORE_PRODUCTION_S3_SECRET_KEY:-}
       S3_FORCE_PATH_STYLE: ${STUDIOCORE_PRODUCTION_S3_FORCE_PATH_STYLE:-false}
       S3_PUBLIC_BASE_URL: ${STUDIOCORE_PRODUCTION_S3_PUBLIC_BASE_URL:-}
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: easypanel
+      traefik.http.routers.studiocore-api-produccion.rule: Host(`terminado.livstre.com`) && (Path(`/erp-api`) || PathPrefix(`/erp-api/`))
+      traefik.http.routers.studiocore-api-produccion.entrypoints: https
+      traefik.http.routers.studiocore-api-produccion.tls.certresolver: letsencrypt
+      traefik.http.routers.studiocore-api-produccion.priority: "120"
+      traefik.http.routers.studiocore-api-produccion.service: studiocore-api-produccion
+      traefik.http.routers.studiocore-api-produccion.middlewares: studiocore-api-produccion-strip
+      traefik.http.middlewares.studiocore-api-produccion-strip.stripprefix.prefixes: /erp-api
+      traefik.http.services.studiocore-api-produccion.loadbalancer.server.port: "4102"
     networks:
       - easypanel
       - easypanel-elcastillo
@@ -41,6 +52,17 @@ services:
     restart: unless-stopped
     depends_on:
       - studiocore-api-produccion
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: easypanel
+      traefik.http.routers.studiocore-web-produccion.rule: Host(`terminado.livstre.com`) && (Path(`/erp`) || PathPrefix(`/erp/`))
+      traefik.http.routers.studiocore-web-produccion.entrypoints: https
+      traefik.http.routers.studiocore-web-produccion.tls.certresolver: letsencrypt
+      traefik.http.routers.studiocore-web-produccion.priority: "110"
+      traefik.http.routers.studiocore-web-produccion.service: studiocore-web-produccion
+      traefik.http.routers.studiocore-web-produccion.middlewares: studiocore-web-produccion-strip
+      traefik.http.middlewares.studiocore-web-produccion-strip.stripprefix.prefixes: /erp
+      traefik.http.services.studiocore-web-produccion.loadbalancer.server.port: "80"
     networks:
       - easypanel
       - easypanel-elcastillo
