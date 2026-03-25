@@ -2,7 +2,7 @@ import { createSupabaseAdminClient, createSupabaseAnonClient } from './load-supa
 import axios from 'axios';
 
 const TEST_EMAIL = '1108563423@legacy.elcastillo.local';
-const TEMP_PASSWORD = 'TempPassword123!';
+const TEMP_PASSWORD = process.env.TEMP_PASSWORD || 'TU_PASSWORD_TEMPORAL';
 const TEST_AUTH_USER_ID = 'd9364779-a6c7-4d89-a1bc-a0fda318386a';
 
 async function testBridge() {

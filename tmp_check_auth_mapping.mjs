@@ -1,5 +1,5 @@
 const PROJECT_REF = 'pnnrsqocukixusmzrlhy';
-const SECRET = 'sbp_a59d08fd6ca69466d51b887edda8d2ab84e15022';
+const SECRET = process.env.SUPABASE_ACCESS_TOKEN || 'TU_SUPABASE_ACCESS_TOKEN';
 
 async function runQuery(sql) {
   const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {

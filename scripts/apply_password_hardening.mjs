@@ -2,7 +2,7 @@ import { createSupabaseAdminClient, loadSupabaseProject, authAdminUpdateUserById
 
 async function applyHardening(env) {
   const project = loadSupabaseProject(env);
-  const token = 'sbp_a59d08fd6ca69466d51b887edda8d2ab84e15022'; // From tmp_run_sql.mjs
+const token = process.env.SUPABASE_ACCESS_TOKEN || 'TU_SUPABASE_ACCESS_TOKEN';
   const supabase = createSupabaseAdminClient(env);
 
   console.log(`--- Applying Password Hardening in ${env} ---`);
@@ -61,4 +61,3 @@ async function applyHardening(env) {
 
 const env = process.argv[2] || 'staging';
 applyHardening(env);
-

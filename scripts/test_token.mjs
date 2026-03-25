@@ -3,7 +3,7 @@ import { loadSupabaseProject } from './load-supabase-env.mjs';
 async function testToken() {
   const project = loadSupabaseProject('staging');
   // Use the token from tmp_run_sql.mjs or environment
-  const token = process.env.SUPABASE_ACCESS_TOKEN || 'sbp_a59d08fd6ca69466d51b887edda8d2ab84e15022';
+  const token = process.env.SUPABASE_ACCESS_TOKEN || 'TU_SUPABASE_ACCESS_TOKEN';
   
   console.log(`Testing token for project ${project.ref}...`);
   

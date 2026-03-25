@@ -1,5 +1,5 @@
 const ref = 'pnnrsqocukixusmzrlhy';
-const token = 'sbp_a59d08fd6ca69466d51b887edda8d2ab84e15022';
+const token = process.env.SUPABASE_ACCESS_TOKEN || 'TU_SUPABASE_ACCESS_TOKEN';
 
 fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
   method: 'POST',

@@ -1,5 +1,5 @@
 const PROJECT_REF = 'pnnrsqocukixusmzrlhy';
-const SECRET = 'sbp_a59d08fd6ca69466d51b887edda8d2ab84e15022';
+const SECRET = process.env.SUPABASE_ACCESS_TOKEN || 'TU_SUPABASE_ACCESS_TOKEN';
 
 async function runDiagnostics() {
   console.log(`Running diagnostics for Staging (${PROJECT_REF})...`);

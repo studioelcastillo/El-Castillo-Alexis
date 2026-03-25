@@ -2,7 +2,7 @@ import { loadSupabaseProject } from './load-supabase-env.mjs';
 
 async function checkProgress() {
   const project = loadSupabaseProject('staging');
-  const token = 'sbp_a59d08fd6ca69466d51b887edda8d2ab84e15022';
+const token = process.env.SUPABASE_ACCESS_TOKEN || 'TU_SUPABASE_ACCESS_TOKEN';
   
   const sql = `SELECT count(*) as count FROM public.users WHERE must_change_password = true;`;
   

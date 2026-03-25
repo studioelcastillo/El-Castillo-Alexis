@@ -1,6 +1,6 @@
 const PROJECT_REF = 'pnnrsqocukixusmzrlhy';
-const SECRET = 'sbp_a59d08fd6ca69466d51b887edda8d2ab84e15022';
-const NEW_PASSWORD = '*Alexis12';
+const SECRET = process.env.SUPABASE_ACCESS_TOKEN || 'TU_SUPABASE_ACCESS_TOKEN';
+const NEW_PASSWORD = process.env.NEW_PASSWORD || 'TU_PASSWORD_NUEVA';
 
 async function resetPassword() {
   console.log(`Resetting PostgreSQL password for Staging (${PROJECT_REF}) via Management API (dedicated endpoint)...`);
@@ -29,4 +29,3 @@ async function resetPassword() {
 }
 
 resetPassword();
-

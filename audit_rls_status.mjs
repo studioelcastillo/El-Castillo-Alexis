@@ -1,5 +1,5 @@
 const PROJECT_REF = 'ysorlqfwqccsgxxkpzdx';
-const TOKEN = 'sbp_a59d08fd6ca69466d51b887edda8d2ab84e15022';
+const TOKEN = process.env.SUPABASE_ACCESS_TOKEN || 'TU_SUPABASE_ACCESS_TOKEN';
 
 async function runSql(query) {
   const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
