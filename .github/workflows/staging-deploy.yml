@@ -117,7 +117,7 @@ jobs:
           : "${VPS_USER:?Missing VPS_SSH_USER}"
           PORT="22"
           APP_DIR="${VPS_APP_DIR:-/srv/el-castillo}"
-          ssh -p "$PORT" "$VPS_USER@$VPS_HOST" "set -euo pipefail; APP_DIR='$APP_DIR'; if [ ! -d \"\$APP_DIR/.git\" ]; then echo 'Missing git repo in VPS_APP_DIR' >&2; exit 1; fi; cd \"\$APP_DIR\"; git fetch origin staging; if git show-ref --verify --quiet refs/heads/staging; then git checkout staging; else git checkout -b staging --track origin/staging; fi; git pull --ff-only origin staging; if sudo -n true >/dev/null 2>&1; then sudo -n bash deploy/vps/publish.sh staging; else bash deploy/vps/publish.sh staging; fi"
+          ssh -p "$PORT" "$VPS_USER@$VPS_HOST" "set -euo pipefail; APP_DIR='$APP_DIR'; DEPLOY_DIR=\"\${APP_DIR}-github-deploy\"; if [ ! -d \"\$APP_DIR/.git\" ]; then echo 'Missing git repo in VPS_APP_DIR' >&2; exit 1; fi; rm -rf \"\$DEPLOY_DIR\"; cd \"\$APP_DIR\"; git worktree prune; git fetch origin staging; git worktree add -f --detach \"\$DEPLOY_DIR\" origin/staging; mkdir -p \"\$DEPLOY_DIR/.secure\"; if [ -d \"\$APP_DIR/.secure\" ]; then cp -a \"\$APP_DIR/.secure/.\" \"\$DEPLOY_DIR/.secure/\"; fi; cd \"\$DEPLOY_DIR\"; if sudo -n true >/dev/null 2>&1; then sudo -n bash deploy/vps/publish.sh staging; else bash deploy/vps/publish.sh staging; fi; cd \"\$APP_DIR\"; git worktree remove \"\$DEPLOY_DIR\" --force"
 
       - name: Verify staging health
         run: |
