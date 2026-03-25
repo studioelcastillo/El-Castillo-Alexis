@@ -8,15 +8,21 @@ cd "$ROOT_DIR"
 
 source_env_file() {
   local env_file="$1"
+  local sanitized_env
   if [[ ! -f "$env_file" ]]; then
     printf 'Missing required env file: %s\n' "$env_file" >&2
     exit 1
   fi
 
+  sanitized_env="$(mktemp)"
+  tr -d '\r' < "$env_file" > "$sanitized_env"
+
   set -a
   # shellcheck disable=SC1091
-  source "$env_file"
+  source "$sanitized_env"
   set +a
+
+  rm -f "$sanitized_env"
 }
 
 publish_staging() {
