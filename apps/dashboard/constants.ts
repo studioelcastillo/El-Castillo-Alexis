@@ -6,7 +6,7 @@ import {
   FileBarChart, Briefcase, MessageSquare, ShieldCheck, Megaphone,
   FileJson, Zap, BookOpen, Key, ShoppingCart, Archive, Package, Camera, Image,
   CreditCard as PaymentIcon, Wallet, Cake, Clock, Share2, Banknote,
-  History, UploadCloud, Database
+  History, UploadCloud, Database, Globe
 } from 'lucide-react';
 import { SidebarSection, PricingTier, User, Room } from './types';
 
@@ -107,6 +107,12 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
     items: [
       { id: 'liquidacion_modelos', icon: FileBarChart, label: "Liquidación Modelos" },
       { id: 'studios_liquidation', icon: FileBarChart, label: "Liquidación Estudios" },
+    ]
+  },
+  {
+    title: "Herramientas",
+    items: [
+      { id: 'scraping_paginas', icon: Globe, label: "Scraping Páginas" },
     ]
   }
 ];

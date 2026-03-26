@@ -26,6 +26,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { StaffModule } from './modules/staff/staff.module';
 import { UsersModule } from './modules/users/users.module';
 import { FinanceModule } from './modules/finance/finance.module';
+import { ScrapingModule } from './modules/scraping/scraping.module';
 
 for (const candidate of [resolve(process.cwd(), '.env'), resolve(__dirname, '../../../.env')]) {
   if (existsSync(candidate)) {
@@ -61,6 +62,7 @@ for (const candidate of [resolve(process.cwd(), '.env'), resolve(__dirname, '../
     RolesModule,
     PermissionsModule,
     FinanceModule,
+    ScrapingModule,
   ],
 })
 export class AppModule {}

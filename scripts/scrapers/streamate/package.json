@@ -1,0 +1,15 @@
+{
+  "name": "streamate-scraper-worker",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Playwright scraper worker for Streamate studio earnings extraction",
+  "scripts": {
+    "run:master": "node streamate-worker.mjs",
+    "install:browser": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.43.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.4.0"
+  }
+}

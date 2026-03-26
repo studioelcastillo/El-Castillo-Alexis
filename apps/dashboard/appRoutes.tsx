@@ -35,6 +35,7 @@ const SubscriptionManagementPage = lazy(() => import('./components/SubscriptionM
 const LocationsPage = lazy(() => import('./components/LocationsPage'));
 const AdminDataPage = lazy(() => import('./components/AdminDataPage'));
 const SubscriptionLockScreen = lazy(() => import('./components/SubscriptionLockScreen'));
+const ScrapingPaginasPage = lazy(() => import('./components/ScrapingPaginasPage'));
 
 export const PAGE_TO_PATH: Record<string, string> = {
   inicio: '/dashboard',
@@ -99,6 +100,7 @@ export const PAGE_TO_PATH: Record<string, string> = {
   users_permissions2: '/users_permissions2',
   paysheet: '/paysheet',
   massive_liquidation: '/massive_liquidation',
+  scraping_paginas: '/scraping_paginas',
 };
 
 export const PATH_ALIASES: Record<string, string> = {
@@ -265,6 +267,7 @@ export const renderAppPage = ({
     case 'exchanges_rates': return <ExchangeRatesPage />;
     case 'users2': return <Users2Page />;
     case 'users_permissions2': return <UserPermissions2Page />;
+    case 'scraping_paginas': return <ScrapingPaginasPage />;
     default: return <Dashboard />;
   }
 };
