@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { spawn } from 'child_process';
 import { resolve } from 'path';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { ConfigService } from '@nestjs/config';
 
 export interface RunScraperDto {
   site: string;
@@ -20,6 +22,18 @@ export interface ScraperResult {
 @Injectable()
 export class ScrapingService {
   private readonly logger = new Logger(ScrapingService.name);
+  private supabase: SupabaseClient;
+
+  constructor(private configService: ConfigService) {
+    const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
+    const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      this.logger.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+    }
+    
+    this.supabase = createClient(supabaseUrl || '', supabaseKey || '');
+  }
 
   /**
    * Spawns the Playwright worker process for the given site.
@@ -29,19 +43,51 @@ export class ScrapingService {
   async runScraper(dto: RunScraperDto): Promise<ScraperResult> {
     const { site, date, username, password, std_id } = dto;
 
+    // 1. Create the job record in the API before spawning
+    let jobId: string | undefined;
+    try {
+      this.logger.log(`[Scraping] Attempting to create job record for site=${site}...`);
+      const { data, error } = await this.supabase
+        .from('scraping_jobs')
+        .insert({
+          site,
+          mode: 'master',
+          target_date: date,
+          status: 'RUNNING',
+          std_id: std_id,
+          started_at: new Date().toISOString()
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        this.logger.error(`[Scraping] Supabase insert error: ${JSON.stringify(error)}`);
+        throw error;
+      }
+      jobId = data.id;
+      this.logger.log(`[Scraping] Created job record: ${jobId}`);
+    } catch (err: any) {
+      this.logger.error(`[Scraping] Exception during job record creation: ${err?.message || err}`);
+      return {
+        status: 'error',
+        message: `Error al crear el registro del trabajo: ${err?.message || 'Error desconocido'}`,
+      };
+    }
+
     // Resolve the worker path relative to the repo root
     const workerPath = resolve(
       __dirname,
       '../../../../../scripts/scrapers/streamate/streamate-worker.mjs',
     );
 
-    this.logger.log(`[Scraping] Spawning worker for site=${site} date=${date}`);
+    this.logger.log(`[Scraping] Spawning worker for site=${site} date=${date} jobId=${jobId}`);
 
     const args = [
       workerPath,
       '--date', date,
       '--username', username,
       '--password', password,
+      '--job_id', jobId!, // Pass the existing Job ID
     ];
     if (std_id) args.push('--std_id', String(std_id));
 
@@ -59,12 +105,23 @@ export class ScrapingService {
       this.logger.log(`[Scraping] Worker started with PID=${pid}`);
 
       return {
+        jobId,
         status: 'started',
-        message: `Extracción iniciada (PID: ${pid}). Los resultados se guardarán en la base de datos.`,
+        message: `Extracción iniciada (PID: ${pid}). ID del trabajo: ${jobId}`,
         pid,
       };
     } catch (err: any) {
       this.logger.error(`[Scraping] Failed to spawn worker: ${err?.message}`);
+      
+      // Update job status to FAILED if we couldn't spawn the worker
+      if (jobId) {
+        await this.supabase.from('scraping_jobs').update({
+          status: 'FAILED_PERMANENT',
+          last_error: `Failed to spawn worker: ${err?.message}`,
+          finished_at: new Date().toISOString()
+        }).eq('id', jobId);
+      }
+
       return {
         status: 'error',
         message: `Error al iniciar el worker: ${err?.message}`,

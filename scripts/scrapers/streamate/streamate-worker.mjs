@@ -37,12 +37,13 @@ function parseArgs() {
   const date     = get('--date');
   const username = get('--username');
   const password = get('--password');
+  const jobId    = get('--job_id');
   const stdId    = get('--std_id') ? Number(get('--std_id')) : null;
   if (!date || !username || !password) {
-    console.error('Usage: node streamate-worker.mjs --date YYYY-MM-DD --username U --password P [--std_id N]');
+    console.error('Usage: node streamate-worker.mjs --date YYYY-MM-DD --username U --password P [--std_id N] [--job_id UUID]');
     process.exit(1);
   }
-  return { date, username, password, stdId };
+  return { date, username, password, stdId, jobId };
 }
 
 // ─── SUPABASE CLIENT ──────────────────────────────────────────────────────────
@@ -246,9 +247,13 @@ async function main() {
   let attemptNumber = 0;
   let lastError = null;
 
-  // Create the job record
-  jobId = await createJob(supabase, { date, stdId });
-  console.log(`[Main] Job created: ${jobId} for date ${date}`);
+  // Create or use existing job record
+  if (jobId) {
+    console.log(`[Main] Using existing Job ID: ${jobId}`);
+  } else {
+    jobId = await createJob(supabase, { date, stdId });
+    console.log(`[Main] Job created: ${jobId} for date ${date}`);
+  }
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     attemptNumber = attempt + 1;

@@ -6,7 +6,7 @@ import {
   FileBarChart, Briefcase, MessageSquare, ShieldCheck, Megaphone,
   FileJson, Zap, BookOpen, Key, ShoppingCart, Archive, Package, Camera, Image,
   CreditCard as PaymentIcon, Wallet, Cake, Clock, Share2, Banknote,
-  History, UploadCloud, Database, Globe
+  History, UploadCloud, Database, Globe, ClipboardList
 } from 'lucide-react';
 import { SidebarSection, PricingTier, User, Room } from './types';
 
@@ -112,7 +112,13 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
   {
     title: "Herramientas",
     items: [
-      { id: 'scraping_paginas', icon: Globe, label: "Scraping Páginas" },
+      { id: 'panel_vps', icon: Globe, label: "Panel VPS / Scrapers" },
+      { id: 'scraping_paginas', icon: Globe, label: "Extracciones" },
+      { id: 'supervision_tareas', icon: ClipboardList, label: "Supervisión de Tareas" },
+      { id: 'gestion_pseudonimos', icon: Key, label: "Gestión de Pseudónimos" },
+      { id: 'terceros', icon: Users, label: "Terceros" },
+      { id: 'metas_bonos', icon: Award, label: "Metas Bonos" },
+      { id: 'nomina_sugerida', icon: FileBarChart, label: "Nómina Sugerida" },
     ]
   }
 ];

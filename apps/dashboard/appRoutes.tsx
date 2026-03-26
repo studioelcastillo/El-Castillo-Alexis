@@ -36,6 +36,9 @@ const LocationsPage = lazy(() => import('./components/LocationsPage'));
 const AdminDataPage = lazy(() => import('./components/AdminDataPage'));
 const SubscriptionLockScreen = lazy(() => import('./components/SubscriptionLockScreen'));
 const ScrapingPaginasPage = lazy(() => import('./components/ScrapingPaginasPage'));
+const TaskSupervisionPage = lazy(() => import('./components/TaskSupervisionPage'));
+const PseudonymManagementPage = lazy(() => import('./components/PseudonymManagementPage'));
+const BonusGoalsPage = lazy(() => import('./components/BonusGoalsPage'));
 
 export const PAGE_TO_PATH: Record<string, string> = {
   inicio: '/dashboard',
@@ -101,6 +104,12 @@ export const PAGE_TO_PATH: Record<string, string> = {
   paysheet: '/paysheet',
   massive_liquidation: '/massive_liquidation',
   scraping_paginas: '/scraping_paginas',
+  panel_vps: '/panel_vps',
+  supervision_tareas: '/supervision_tareas',
+  gestion_pseudonimos: '/gestion_pseudonimos',
+  terceros: '/terceros',
+  metas_bonos: '/metas_bonos',
+  nomina_sugerida: '/nomina_sugerida',
 };
 
 export const PATH_ALIASES: Record<string, string> = {
@@ -267,6 +276,12 @@ export const renderAppPage = ({
     case 'exchanges_rates': return <ExchangeRatesPage />;
     case 'users2': return <Users2Page />;
     case 'users_permissions2': return <UserPermissions2Page />;
+    case 'supervision_tareas': return <TaskSupervisionPage />;
+    case 'gestion_pseudonimos': return <PseudonymManagementPage />;
+    case 'terceros': return <ResourcePage resourceKey="terceros" />;
+    case 'metas_bonos': return <BonusGoalsPage />;
+    case 'panel_vps': return <ScrapingPaginasPage />;
+    case 'nomina_sugerida': return <ModelPayrollPage />;
     case 'scraping_paginas': return <ScrapingPaginasPage />;
     default: return <Dashboard />;
   }

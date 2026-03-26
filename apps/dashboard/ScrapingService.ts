@@ -6,6 +6,8 @@
 import { supabase } from './supabaseClient';
 import { getCurrentStudioId } from './tenant';
 
+const SCRAPING_API_BASE = import.meta.env.VITE_SCRAPING_API_URL || '/erp-api/api/v1';
+
 export interface ScrapingJob {
   id: string;
   site: string;
@@ -109,20 +111,30 @@ const ScrapingService = {
    */
   async triggerRun(payload: { date: string; username: string; password: string }): Promise<{ jobId?: string; message: string }> {
     try {
-      // The API endpoint spawns the Playwright worker process
-      const res = await fetch('/api/v1/scraping/streamate/run', {
+      const response = await fetch(`${SCRAPING_API_BASE}/scraping/streamate/run`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: payload.date, username: payload.username, password: payload.password }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          date: payload.date,
+          username: payload.username,
+          password: payload.password,
+          std_id: getCurrentStudioId() ? Number(getCurrentStudioId()) : undefined,
+        }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: 'Error desconocido' }));
-        return { message: err.message || `Error HTTP ${res.status}` };
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return { message: data.message || `Error HTTP ${response.status}` };
       }
-      const data = await res.json();
-      return { jobId: data.jobId, message: 'Extracción iniciada correctamente.' };
+
+      const jobId = data.jobId || data.pid;
+      return { jobId, message: data.message || 'Extracción iniciada correctamente.' };
     } catch (e: any) {
-      return { message: e.message || 'Error de red al iniciar extracción.' };
+      console.error('ScrapingService.triggerRun error', e);
+      const msg = e.message || 'Error de red al iniciar extracción.';
+      return { message: msg };
     }
   },
 

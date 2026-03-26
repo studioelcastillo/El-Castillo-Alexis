@@ -52,6 +52,7 @@ export class ScrapingController {
       ok: result.status === 'started',
       message: result.message,
       pid: result.pid,
+      jobId: result.jobId,
     };
   }
 }
