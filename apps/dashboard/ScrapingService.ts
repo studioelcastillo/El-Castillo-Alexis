@@ -7,8 +7,10 @@ import { supabase } from './supabaseClient';
 import { api } from './api';
 import { getCurrentStudioId } from './tenant';
 
-// Keep this as fallback or internal ref if needed, but we'll use 'api' instance
-const SCRAPING_API_BASE = import.meta.env.VITE_SCRAPING_API_URL || '/api/v1';
+// Derive the base URL for NestJS endpoints (v1) from the general API URL if SCRAPING API is not explicitly defined.
+const defaultApiUrl = import.meta.env.VITE_API_URL || '/api';
+const resolvedApiBase = defaultApiUrl.endsWith('/api') ? `${defaultApiUrl}/v1` : defaultApiUrl;
+const SCRAPING_API_BASE = import.meta.env.VITE_SCRAPING_API_URL || resolvedApiBase;
 
 export interface ScrapingJob {
   id: string;
@@ -134,16 +136,32 @@ const ScrapingService = {
    */
   async triggerRun(payload: { date: string; username: string; password: string }): Promise<{ jobId?: string; message: string }> {
     try {
-      const res = await api.post('/scraping/streamate/run', {
-        date: payload.date,
-        username: payload.username,
-        password: payload.password,
-        std_id: getCurrentStudioId() ? Number(getCurrentStudioId()) : undefined,
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      const response = await fetch(`${SCRAPING_API_BASE}/scraping/streamate/run`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+        },
+        body: JSON.stringify({
+          date: payload.date,
+          username: payload.username,
+          password: payload.password,
+          std_id: getCurrentStudioId() ? Number(getCurrentStudioId()) : undefined,
+        })
       });
 
-      const data = res.data;
-      const jobId = data.jobId || data.pid;
-      return { jobId, message: data.message || 'Extracción iniciada correctamente.' };
+      const payloadRes = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payloadRes.message || `Error HTTP ${response.status}`);
+      }
+
+      const jobId = payloadRes.jobId || payloadRes.pid;
+      return { jobId, message: payloadRes.message || 'Extracción iniciada correctamente.' };
     } catch (e: any) {
       console.error('ScrapingService.triggerRun error', e);
       const msg = e.response?.data?.message || e.message || 'Error de red al iniciar extracción.';
