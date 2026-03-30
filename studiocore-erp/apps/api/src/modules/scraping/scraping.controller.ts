@@ -1,12 +1,24 @@
 import {
-  Controller, Post, Body, UseGuards, HttpCode, HttpStatus, Logger, BadRequestException,
+  Controller, Post, Body, HttpCode, HttpStatus, Logger, BadRequestException, Get, Param,
 } from '@nestjs/common';
 import { ScrapingService } from './scraping.service';
+import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
 
 class RunStreamateDto {
+  @IsString()
+  @IsNotEmpty()
   date!: string;
+
+  @IsString()
+  @IsNotEmpty()
   username!: string;
+
+  @IsString()
+  @IsNotEmpty()
   password!: string;
+
+  @IsOptional()
+  @IsNumber()
   std_id?: number;
 }
 
@@ -16,8 +28,16 @@ export class ScrapingController {
 
   constructor(private readonly scrapingService: ScrapingService) {}
 
+  @Get('jobs/:jobId/screenshots')
+  async getJobScreenshots(@Param('jobId') jobId: string) {
+    return {
+      ok: true,
+      data: await this.scrapingService.getJobScreenshots(jobId),
+    };
+  }
+
   /**
-   * POST /api/scraping/streamate/run
+   * POST /api/v1/scraping/streamate/run
    * Triggers a Playwright worker to extract Streamate studio earnings for a given date.
    *
    * SECURITY:
@@ -29,11 +49,7 @@ export class ScrapingController {
   async runStreamate(@Body() body: RunStreamateDto) {
     const { date, username, password, std_id } = body;
 
-    if (!date || !username || !password) {
-      throw new BadRequestException('Se requieren: date, username, password.');
-    }
-
-    // Basic date format validation
+    // Basic date format validation (additional to Class-Validator)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       throw new BadRequestException('El formato de fecha debe ser YYYY-MM-DD.');
     }

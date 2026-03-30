@@ -272,10 +272,17 @@ function JobsTable({
 function AttemptsTable({ job, onBack }: { job: ScrapingJob; onBack: () => void }) {
   const [attempts, setAttempts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedShot, setSelectedShot] = useState<any | null>(null);
 
   useEffect(() => {
-    ScrapingService.getJobAttempts(job.id).then(a => { setAttempts(a); setLoading(false); });
+    ScrapingService.getJobAttempts(job.id).then(a => {
+      setAttempts(a);
+      setSelectedShot(a.find((item) => item.screenshot_url) || null);
+      setLoading(false);
+    });
   }, [job.id]);
+
+  const screenshotAttempts = attempts.filter((attempt) => attempt.screenshot_url);
 
   return (
     <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
@@ -296,52 +303,104 @@ function AttemptsTable({ job, onBack }: { job: ScrapingJob; onBack: () => void }
       {loading ? (
         <div className="flex justify-center py-12"><RefreshCw className="animate-spin text-slate-400" size={28} /></div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50/50">
-              <tr>
-                {['#', 'Etapa', 'Inicio', 'Fin', 'Duración', 'Error', 'Mensaje'].map(h => (
-                  <th key={h} className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {attempts.map(att => (
-                <tr key={att.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-4 text-xs font-black text-slate-400">{att.attempt_number}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 bg-slate-100 text-slate-900 rounded-lg text-[10px] font-black uppercase tracking-tighter">
-                      {att.stage}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-[10px] text-slate-500 font-bold">
-                    {att.started_at ? new Date(att.started_at).toLocaleString('es-CO') : '—'}
-                  </td>
-                  <td className="px-6 py-4 text-[10px] text-slate-500">
-                    {att.ended_at ? new Date(att.ended_at).toLocaleString('es-CO') : '—'}
-                  </td>
-                  <td className="px-6 py-4 text-[10px] text-slate-900 font-black">
-                    {att.duration_ms ? `${(att.duration_ms / 1000).toFixed(1)}s` : '—'}
-                  </td>
-                  <td className="px-6 py-4">
-                    {att.error_type ? (
-                      <span className="px-2 py-1 bg-red-50 text-red-600 rounded-lg text-[9px] font-black uppercase tracking-widest">
-                        {att.error_type}
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-widest">OK</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-xs text-slate-500 max-w-[300px] truncate" title={att.error_message || ''}>
-                    {att.error_message || '—'}
-                  </td>
+        <div className="space-y-6 p-6">
+          {screenshotAttempts.length > 0 ? (
+            <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Pantallazos de depuración</h4>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{screenshotAttempts.length} capturas</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {screenshotAttempts.map((att) => (
+                    <button
+                      key={`${att.id}-shot`}
+                      onClick={() => setSelectedShot(att)}
+                      className={`text-left rounded-[24px] border overflow-hidden transition-all ${selectedShot?.id === att.id ? 'border-blue-300 shadow-lg shadow-blue-100' : 'border-slate-100 shadow-sm hover:border-slate-200'}`}
+                    >
+                      <img src={att.screenshot_url} alt={`Captura ${att.stage}`} className="w-full h-48 object-cover bg-slate-100" />
+                      <div className="p-4 space-y-2 bg-white">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="px-2 py-1 bg-slate-100 text-slate-900 rounded-lg text-[10px] font-black uppercase tracking-widest">{att.stage}</span>
+                          <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${att.error_type ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>{att.error_type || 'OK'}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 line-clamp-2">{att.current_url || 'Sin URL registrada.'}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {selectedShot ? (
+                <div className="bg-slate-950 rounded-[28px] p-4 shadow-xl space-y-4">
+                  <img src={selectedShot.screenshot_url} alt={`Preview ${selectedShot.stage}`} className="w-full rounded-[20px] border border-white/10 bg-slate-900" />
+                  <div className="space-y-2 text-white">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-black uppercase tracking-[0.2em]">{selectedShot.stage}</span>
+                      <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${selectedShot.error_type ? 'bg-red-500/20 text-red-200' : 'bg-emerald-500/20 text-emerald-200'}`}>{selectedShot.error_type || 'OK'}</span>
+                    </div>
+                    <p className="text-xs text-slate-300 break-all">{selectedShot.current_url || 'Sin URL registrada.'}</p>
+                    <p className="text-[11px] text-slate-400">{selectedShot.error_message || 'Sin mensaje de error para esta etapa.'}</p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="overflow-x-auto rounded-[24px] border border-slate-100">
+            <table className="w-full text-left bg-white">
+              <thead className="bg-slate-50/50">
+                <tr>
+                  {['#', 'Etapa', 'Inicio', 'Fin', 'Duración', 'Error', 'Captura', 'Mensaje'].map(h => (
+                    <th key={h} className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</th>
+                  ))}
                 </tr>
-              ))}
-              {attempts.length === 0 && (
-                <tr><td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-400 italic">No hay registros detallados para este job.</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {attempts.map(att => (
+                  <tr key={att.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4 text-xs font-black text-slate-400">{att.attempt_number}</td>
+                    <td className="px-6 py-4">
+                      <span className="px-2 py-1 bg-slate-100 text-slate-900 rounded-lg text-[10px] font-black uppercase tracking-tighter">
+                        {att.stage}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-[10px] text-slate-500 font-bold">
+                      {att.started_at ? new Date(att.started_at).toLocaleString('es-CO') : '—'}
+                    </td>
+                    <td className="px-6 py-4 text-[10px] text-slate-500">
+                      {att.ended_at ? new Date(att.ended_at).toLocaleString('es-CO') : '—'}
+                    </td>
+                    <td className="px-6 py-4 text-[10px] text-slate-900 font-black">
+                      {att.duration_ms ? `${(att.duration_ms / 1000).toFixed(1)}s` : '—'}
+                    </td>
+                    <td className="px-6 py-4">
+                      {att.error_type ? (
+                        <span className="px-2 py-1 bg-red-50 text-red-600 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                          {att.error_type}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-widest">OK</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {att.screenshot_url ? (
+                        <button onClick={() => setSelectedShot(att)} className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">
+                          Ver captura
+                        </button>
+                      ) : '—'}
+                    </td>
+                    <td className="px-6 py-4 text-xs text-slate-500 max-w-[320px] truncate" title={att.error_message || att.current_url || ''}>
+                      {att.error_message || att.current_url || '—'}
+                    </td>
+                  </tr>
+                ))}
+                {attempts.length === 0 && (
+                  <tr><td colSpan={8} className="px-6 py-8 text-center text-sm text-slate-400 italic">No hay registros detallados para este job.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

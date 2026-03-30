@@ -40,6 +40,8 @@ services:
       - easypanel-elcastillo
     ports:
       - "127.0.0.1:${STUDIOCORE_PRODUCTION_API_PORT:-5202}:4102"
+    volumes:
+      - ../../scripts/scrapers:/app/scripts/scrapers:ro
 
   studiocore-web-produccion:
     build:

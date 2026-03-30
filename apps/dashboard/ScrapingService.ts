@@ -4,9 +4,11 @@
  * Also triggers the Playwright worker via the API bridge.
  */
 import { supabase } from './supabaseClient';
+import { api } from './api';
 import { getCurrentStudioId } from './tenant';
 
-const SCRAPING_API_BASE = import.meta.env.VITE_SCRAPING_API_URL || '/erp-api/api/v1';
+// Keep this as fallback or internal ref if needed, but we'll use 'api' instance
+const SCRAPING_API_BASE = import.meta.env.VITE_SCRAPING_API_URL || '/api/v1';
 
 export interface ScrapingJob {
   id: string;
@@ -47,6 +49,9 @@ export interface ScrapingJobAttempt {
   error_type: string | null;
   error_code: string | null;
   error_message: string | null;
+  current_url?: string | null;
+  screenshot_path?: string | null;
+  screenshot_url?: string | null;
 }
 
 const ScrapingService = {
@@ -69,14 +74,32 @@ const ScrapingService = {
 
   /** Get individual attempts/logs for a specific job */
   async getJobAttempts(jobId: string): Promise<ScrapingJobAttempt[]> {
-    const { data, error } = await supabase
-      .from('scraping_attempts')
-      .select('*')
-      .eq('job_id', jobId)
-      .order('started_at', { ascending: false });
+    try {
+      const response = await fetch(`${SCRAPING_API_BASE}/scraping/jobs/${jobId}/screenshots`);
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.message || `Error HTTP ${response.status}`);
+      }
 
-    if (error) { console.error('ScrapingService.getJobAttempts error', error); return []; }
-    return data || [];
+      return (payload.data || []).map((row: any) => ({
+        id: row.id,
+        job_id: jobId,
+        attempt_number: row.attemptNumber,
+        stage: row.stage,
+        started_at: row.startedAt,
+        ended_at: row.endedAt,
+        duration_ms: row.durationMs,
+        error_type: row.errorType,
+        error_code: row.errorCode,
+        error_message: row.errorMessage,
+        current_url: row.currentUrl,
+        screenshot_path: row.screenshotPath,
+        screenshot_url: row.screenshotUrl,
+      }));
+    } catch (error) {
+      console.error('ScrapingService.getJobAttempts error', error);
+      return [];
+    }
   },
 
   /** Get extracted rows for a job, optionally filtered by model */
@@ -111,29 +134,19 @@ const ScrapingService = {
    */
   async triggerRun(payload: { date: string; username: string; password: string }): Promise<{ jobId?: string; message: string }> {
     try {
-      const response = await fetch(`${SCRAPING_API_BASE}/scraping/streamate/run`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          date: payload.date,
-          username: payload.username,
-          password: payload.password,
-          std_id: getCurrentStudioId() ? Number(getCurrentStudioId()) : undefined,
-        }),
+      const res = await api.post('/scraping/streamate/run', {
+        date: payload.date,
+        username: payload.username,
+        password: payload.password,
+        std_id: getCurrentStudioId() ? Number(getCurrentStudioId()) : undefined,
       });
 
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        return { message: data.message || `Error HTTP ${response.status}` };
-      }
-
+      const data = res.data;
       const jobId = data.jobId || data.pid;
       return { jobId, message: data.message || 'Extracción iniciada correctamente.' };
     } catch (e: any) {
       console.error('ScrapingService.triggerRun error', e);
-      const msg = e.message || 'Error de red al iniciar extracción.';
+      const msg = e.response?.data?.message || e.message || 'Error de red al iniciar extracción.';
       return { message: msg };
     }
   },

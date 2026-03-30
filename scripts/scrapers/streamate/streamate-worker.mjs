@@ -24,6 +24,8 @@ dotenv.config({ path: '../../../.env' });
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const SUPABASE_URL  = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const SCRAPING_DEBUG_BUCKET = process.env.SCRAPING_DEBUG_BUCKET || 'scraping-debug';
+const PLAYWRIGHT_EXECUTABLE_PATH = process.env.PLAYWRIGHT_EXECUTABLE_PATH || null;
 const MAX_RETRIES   = 4;
 const RATE_LIMIT_MS = 2500; // min ms between major actions
 const JITTER_MS     = 1500;
@@ -68,13 +70,77 @@ async function updateJob(supabase, jobId, fields) {
 }
 
 async function logAttempt(supabase, jobId, attemptData) {
-  await supabase.from('scraping_attempts').insert({ job_id: jobId, ...attemptData });
+  const { data, error } = await supabase
+    .from('scraping_attempts')
+    .insert({ job_id: jobId, ...attemptData })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('[DB] Attempt insert error:', error.message);
+    return null;
+  }
+
+  return data?.id || null;
+}
+
+async function updateAttempt(supabase, attemptId, fields) {
+  if (!attemptId) return;
+  const { error } = await supabase.from('scraping_attempts').update(fields).eq('id', attemptId);
+  if (error) {
+    console.error('[DB] Attempt update error:', error.message);
+  }
 }
 
 async function saveRows(supabase, rows) {
   if (!rows?.length) return;
   const { error } = await supabase.from('scraping_streamate').insert(rows);
   if (error) console.error('[DB] Insert error:', error.message);
+}
+
+let bucketReady = false;
+
+async function ensureDebugBucket(supabase) {
+  if (bucketReady) return;
+
+  const { data } = await supabase.storage.getBucket(SCRAPING_DEBUG_BUCKET);
+  if (!data) {
+    const { error } = await supabase.storage.createBucket(SCRAPING_DEBUG_BUCKET, {
+      public: false,
+      fileSizeLimit: 10 * 1024 * 1024,
+      allowedMimeTypes: ['image/png'],
+    });
+
+    if (error && !String(error.message || '').toLowerCase().includes('already exists')) {
+      throw error;
+    }
+  }
+
+  bucketReady = true;
+}
+
+async function captureStageScreenshot(supabase, page, { jobId, attemptNumber, stage }) {
+  if (!page) return null;
+
+  try {
+    await ensureDebugBucket(supabase);
+    const screenshot = await page.screenshot({ fullPage: true, type: 'png' });
+    const safeStage = String(stage || 'unknown').toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
+    const path = `streamate/${jobId}/attempt-${attemptNumber}/${Date.now()}-${safeStage}.png`;
+    const { error } = await supabase.storage
+      .from(SCRAPING_DEBUG_BUCKET)
+      .upload(path, screenshot, { contentType: 'image/png', upsert: true });
+
+    if (error) {
+      console.error('[Storage] Screenshot upload error:', error.message);
+      return null;
+    }
+
+    return path;
+  } catch (error) {
+    console.error('[Storage] Could not capture screenshot:', error?.message || error);
+    return null;
+  }
 }
 
 // ─── PARSERS ──────────────────────────────────────────────────────────────────
@@ -239,11 +305,11 @@ async function extractModelTransactions(page, modelSection, modelName, jobId, st
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 async function main() {
-  const { date, username, password, stdId } = parseArgs();
+  const { date, username, password, stdId, jobId: providedJobId } = parseArgs();
   const supabase = buildSupabase();
   const rateLimiter = createRateLimiter(RATE_LIMIT_MS, JITTER_MS);
 
-  let jobId = null;
+  let jobId = providedJobId || null;
   let attemptNumber = 0;
   let lastError = null;
 
@@ -257,15 +323,22 @@ async function main() {
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     attemptNumber = attempt + 1;
-    const attemptStart = new Date();
+    const attemptStartedAt = new Date();
+    let currentAttemptId = null;
+    let currentStage = 'LOGIN';
+    let stageStartedAt = new Date();
+    let browser = null;
+    let context = null;
+    let page = null;
 
     try {
-      const browser = await chromium.launch({
+      browser = await chromium.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        ...(PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: PLAYWRIGHT_EXECUTABLE_PATH } : {}),
       });
 
-      const context = await browser.newContext({
+      context = await browser.newContext({
         userAgent: USER_AGENT,
         locale: 'en-US',
         timezoneId: 'America/New_York',
@@ -276,19 +349,37 @@ async function main() {
         },
       });
 
-      const page = await context.newPage();
+      page = await context.newPage();
 
       // LOGIN
-      await logAttempt(supabase, jobId, { attempt_number: attemptNumber, stage: 'LOGIN', started_at: attemptStart.toISOString() });
+      currentStage = 'LOGIN';
+      stageStartedAt = new Date();
+      currentAttemptId = await logAttempt(supabase, jobId, { attempt_number: attemptNumber, stage: currentStage, started_at: stageStartedAt.toISOString() });
       await loginToStreamate(page, username, password);
+      await updateAttempt(supabase, currentAttemptId, {
+        ended_at: new Date().toISOString(),
+        duration_ms: Date.now() - stageStartedAt.getTime(),
+        current_url: page.url(),
+        screenshot_path: await captureStageScreenshot(supabase, page, { jobId, attemptNumber, stage: currentStage }),
+      });
       await rateLimiter();
 
       // NAVIGATION
-      await logAttempt(supabase, jobId, { attempt_number: attemptNumber, stage: 'NAVIGATION', started_at: new Date().toISOString() });
+      currentStage = 'NAVIGATION';
+      stageStartedAt = new Date();
+      currentAttemptId = await logAttempt(supabase, jobId, { attempt_number: attemptNumber, stage: currentStage, started_at: stageStartedAt.toISOString() });
       await navigateToReport(page, date, rateLimiter);
+      await updateAttempt(supabase, currentAttemptId, {
+        ended_at: new Date().toISOString(),
+        duration_ms: Date.now() - stageStartedAt.getTime(),
+        current_url: page.url(),
+        screenshot_path: await captureStageScreenshot(supabase, page, { jobId, attemptNumber, stage: currentStage }),
+      });
 
       // EXTRACTION — find all "Earnings for [MODEL]" sections
-      await logAttempt(supabase, jobId, { attempt_number: attemptNumber, stage: 'EXTRACTION', started_at: new Date().toISOString() });
+      currentStage = 'EXTRACTION';
+      stageStartedAt = new Date();
+      currentAttemptId = await logAttempt(supabase, jobId, { attempt_number: attemptNumber, stage: currentStage, started_at: stageStartedAt.toISOString() });
 
       // Streamate shows sections headed by "Earnings for ModelName"
       // We look for heading elements (h3/h4/div) that contain "Earnings for"
@@ -322,14 +413,29 @@ async function main() {
         allRows = allRows.concat(rows);
       }
 
+      await updateAttempt(supabase, currentAttemptId, {
+        ended_at: new Date().toISOString(),
+        duration_ms: Date.now() - stageStartedAt.getTime(),
+        current_url: page.url(),
+        screenshot_path: await captureStageScreenshot(supabase, page, { jobId, attemptNumber, stage: currentStage }),
+      });
+
       // PARSING / SAVE
-      await logAttempt(supabase, jobId, { attempt_number: attemptNumber, stage: 'PARSING', started_at: new Date().toISOString() });
+      currentStage = 'PARSING';
+      stageStartedAt = new Date();
+      currentAttemptId = await logAttempt(supabase, jobId, { attempt_number: attemptNumber, stage: currentStage, started_at: stageStartedAt.toISOString() });
       await saveRows(supabase, allRows);
+      await updateAttempt(supabase, currentAttemptId, {
+        ended_at: new Date().toISOString(),
+        duration_ms: Date.now() - stageStartedAt.getTime(),
+        current_url: page.url(),
+        screenshot_path: await captureStageScreenshot(supabase, page, { jobId, attemptNumber, stage: currentStage }),
+      });
 
       await browser.close();
 
       // Mark job DONE
-      const durationMs = Date.now() - attemptStart.getTime();
+      const durationMs = Date.now() - attemptStartedAt.getTime();
       await updateJob(supabase, jobId, {
         status: 'DONE',
         attempts_count: attemptNumber,
@@ -342,19 +448,23 @@ async function main() {
     } catch (err) {
       const classification = classifyError(err, null, 'EXTRACTION');
       lastError = classification;
-      const durationMs = Date.now() - attemptStart.getTime();
+      const durationMs = Date.now() - attemptStartedAt.getTime();
 
       console.error(`[Main] ❌ Attempt ${attemptNumber} failed [${classification.type}]: ${err.message}`);
 
-      await logAttempt(supabase, jobId, {
-        attempt_number: attemptNumber,
-        started_at:     attemptStart.toISOString(),
+      await updateAttempt(supabase, currentAttemptId, {
         ended_at:       new Date().toISOString(),
         duration_ms:    durationMs,
         error_type:     classification.type,
         error_code:     classification.code,
         error_message:  classification.message,
+        current_url:    page?.url?.() || null,
+        screenshot_path: await captureStageScreenshot(supabase, page, { jobId, attemptNumber, stage: `${currentStage}-error` }),
       });
+
+      if (browser) {
+        await browser.close().catch(() => undefined);
+      }
 
       if (classification.type === ERROR_TYPE.PERMANENT) {
         await updateJob(supabase, jobId, {
