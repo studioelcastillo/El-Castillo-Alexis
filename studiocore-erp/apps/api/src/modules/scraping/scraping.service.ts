@@ -37,18 +37,25 @@ export interface ScrapingScreenshotRecord {
 @Injectable()
 export class ScrapingService {
   private readonly logger = new Logger(ScrapingService.name);
-  private readonly supabase: SupabaseClient;
+  private readonly supabase: SupabaseClient | null;
   private readonly screenshotBucket: string;
 
   constructor(private configService: ConfigService) {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL') || '';
     const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY') || '';
-    this.supabase = createClient(supabaseUrl, supabaseKey);
+    this.supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
     this.screenshotBucket = this.configService.get<string>('SCRAPING_DEBUG_BUCKET') || 'scraping-debug';
   }
 
   async getJobScreenshots(jobId: string): Promise<ScrapingScreenshotRecord[]> {
-    const { data, error } = await this.supabase
+    const supabase = this.supabase;
+
+    if (!supabase) {
+      this.logger.warn('[Scraping] Screenshot debug requested without Supabase storage configuration.');
+      return [];
+    }
+
+    const { data, error } = await supabase
       .from('scraping_attempts')
       .select('id, attempt_number, stage, started_at, ended_at, duration_ms, error_type, error_code, error_message, current_url, screenshot_path')
       .eq('job_id', jobId)
@@ -64,7 +71,7 @@ export class ScrapingService {
       attempts.map(async (attempt: any) => {
         if (!attempt.screenshot_path) return null;
 
-        const signed = await this.supabase.storage
+        const signed = await supabase.storage
           .from(this.screenshotBucket)
           .createSignedUrl(attempt.screenshot_path, 60 * 60);
 
